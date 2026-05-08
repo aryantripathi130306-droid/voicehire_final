@@ -268,6 +268,51 @@ def worker_dashboard():
         print(traceback.format_exc())
         return f"Database error: {e}"
 
+@app.route('/api/worker/stats')
+def worker_stats_api():
+    """Real-time stats endpoint polled by the worker dashboard every 30 seconds."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        worker_id = session['user_id']
+
+        worker_resp = try_select("workers", "hourly_rate", filters={"id": worker_id})
+        worker_data = worker_resp.data[0] if worker_resp and worker_resp.data else {}
+        hourly_rate = int(worker_data.get('hourly_rate') or 500)
+
+        jobs_resp = supabase.table("jobs").select("status, amount, created_at").eq("worker_id", worker_id).execute()
+        jobs = jobs_resp.data or []
+
+        bookings_resp = supabase.table("bookings").select("status, amount, created_at, customer_id").eq("worker_id", worker_id).execute()
+        bookings = bookings_resp.data or []
+
+        completed_jobs = [j for j in jobs if j['status'] in ['completed', 'done', 'pending_confirmation']]
+        completed_bookings = [b for b in bookings if b['status'] in ['Completed', 'Work Started']]
+        all_completed = completed_jobs + completed_bookings
+
+        reviews_resp = supabase.table("reviews").select("rating, created_at").eq("worker_id", worker_id).execute()
+        reviews_all = reviews_resp.data or []
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        this_month = datetime.now().strftime("%Y-%m")
+
+        reviews_today = [r for r in reviews_all if r.get('created_at', '').startswith(today)]
+
+        stats = {
+            "total_services": len(all_completed),
+            "pending_requests": len([j for j in jobs if j['status'] == 'open']) + len([b for b in bookings if b['status'] == 'Pending']),
+            "completed_month": len([j for j in all_completed if j.get('created_at', '').startswith(this_month)]),
+            "earnings_today": sum([int(j.get('amount') or hourly_rate) for j in all_completed if j.get('created_at', '').startswith(today)]),
+            "earnings_month": sum([int(j.get('amount') or hourly_rate) for j in all_completed if j.get('created_at', '').startswith(this_month)]),
+            "reviews_today": len(reviews_today),
+            "hourly_rate": hourly_rate,
+        }
+        return jsonify(stats), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
+
 @app.route('/scan')
 def scan_page():
     if 'user_id' not in session or session.get('role') != 'worker':

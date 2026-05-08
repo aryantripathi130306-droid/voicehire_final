@@ -122,6 +122,16 @@
             100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
         }
 
+        @keyframes live-flash {
+            0% { color: inherit; }
+            30% { color: #10b981; }
+            100% { color: inherit; }
+        }
+
+        .live-flash {
+            animation: live-flash 0.8s ease-out;
+        }
+
         .pulse-green {
             animation: pulse-soft 2s infinite;
         }
@@ -326,21 +336,21 @@
                             <div class="grid grid-cols-2 gap-4 mb-4">
                                 <div>
                                     <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('Today') }}</p>
-                                    <p class="text-xl font-black text-primary">₹{{ stats.earnings_today }}</p>
+                                    <p id="stat-earnings-today" class="text-xl font-black text-primary">₹{{ stats.earnings_today }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('This Month') }}</p>
-                                    <p class="text-xl font-black text-secondary">₹{{ stats.earnings_month }}</p>
+                                    <p id="stat-earnings-month" class="text-xl font-black text-secondary">₹{{ stats.earnings_month }}</p>
                                 </div>
                             </div>
                             <div class="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
                                 <div>
                                     <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('Jobs this Month') }}</p>
-                                    <p class="text-lg font-black text-slate-700">{{ stats.completed_month }}</p>
+                                    <p id="stat-completed-month" class="text-lg font-black text-slate-700">{{ stats.completed_month }}</p>
                                 </div>
                                 <div>
                                     <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('Reviews Today') }}</p>
-                                    <p class="text-lg font-black text-slate-700">{{ stats.reviews_today }}</p>
+                                    <p id="stat-reviews-today" class="text-lg font-black text-slate-700">{{ stats.reviews_today }}</p>
                                 </div>
                             </div>
                         </div>
@@ -631,6 +641,34 @@
             app.fetchJobsForWorker(initialWork);
             app.fetchWorkerPendingBookings();
             app.fetchDashboardBookings();
+
+            // Real-time stats polling every 30 seconds
+            function refreshLiveStats() {
+                fetch('/api/worker/stats')
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (!data || data.error) return;
+                        const todayEl = document.getElementById('stat-earnings-today');
+                        const monthEl = document.getElementById('stat-earnings-month');
+                        const jobsMonthEl = document.getElementById('stat-completed-month');
+                        const reviewsTodayEl = document.getElementById('stat-reviews-today');
+
+                        if (todayEl) { todayEl.textContent = '₹' + data.earnings_today; todayEl.classList.add('live-flash'); setTimeout(() => todayEl.classList.remove('live-flash'), 800); }
+                        if (monthEl) monthEl.textContent = '₹' + data.earnings_month;
+                        if (jobsMonthEl) jobsMonthEl.textContent = data.completed_month;
+                        if (reviewsTodayEl) reviewsTodayEl.textContent = data.reviews_today;
+
+                        // Also update the hidden data element so Listen Stats & Export Data stay fresh
+                        dataEl.dataset.statsTodayEarnings = data.earnings_today;
+                        dataEl.dataset.statsMonthEarnings = data.earnings_month;
+                        dataEl.dataset.statsMonthCount = data.completed_month;
+                        dataEl.dataset.statsTodayReviews = data.reviews_today;
+                    })
+                    .catch(() => {});
+            }
+            // Poll immediately then every 30 s
+            refreshLiveStats();
+            setInterval(refreshLiveStats, 30000);
         });
 
         function vhScrollTo(event, id) {
