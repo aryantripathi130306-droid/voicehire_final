@@ -39,7 +39,7 @@ graph TD
 - **QR Verification**: HMAC-secured check-ins for job safety.
 
 ## 🚀 Technical Stack
-- **Frontend**: React/Next.js with Tailwind CSS & shadcn/ui.
+- **Frontend**: html css and js
 - **Backend**: Python Flask with Supabase integration.
 - **Voice Engine**: Web Speech API with custom NLP for field mapping.
 
