@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Worker Registration - VoiceHire</title>
+    <meta name="description" content="Register as a local worker on VoiceHire and start getting job requests.">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#000000", "secondary": "#00668a", "background": "#f7f9fb",
+                        "surface": "#ffffff", "on-surface": "#191c1e",
+                        "on-surface-variant": "#45464d", "outline-variant": "#c6c6cd", "outline": "#76777d"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1.5px solid rgba(226, 232, 240, 0.6);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+        }
+
+        .custom-input {
+            border: none;
+            border-bottom: 2px solid #e2e8f0;
+            background: transparent;
+            transition: all 0.3s ease;
+            width: 100%;
+            height: 3.5rem;
+            font-size: 1.0625rem;
+            outline: none;
+            padding: 0.5rem 0;
+            font-weight: 500;
+        }
+
+        .custom-input:focus {
+            border-bottom-color: #00668a;
+        }
+
+        .custom-input::placeholder {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .listening-indicator {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+            margin-top: 0.75rem;
+        }
+
+        .listening-indicator .bar {
+            width: 5px;
+            height: 18px;
+            background: #00668a;
+            border-radius: 99px;
+            animation: surge 0.8s infinite ease-in-out;
+        }
+
+        .listening-indicator .bar:nth-child(2) {
+            animation-delay: 0.1s;
+        }
+
+        .listening-indicator .bar:nth-child(3) {
+            animation-delay: 0.2s;
+        }
+
+        @keyframes surge {
+
+            0%,
+            100% {
+                height: 8px
+            }
+
+            50% {
+                height: 26px
+            }
+        }
+
+        .ai-speech-bubble {
+            background: linear-gradient(135deg, #dae2fd, #c4e7ff);
+            padding: 1.25rem 1.5rem;
+            border-radius: 1.5rem 1.5rem 1.5rem 0;
+            margin-bottom: 1.25rem;
+            border: 1.5px solid rgba(0, 102, 138, 0.1);
+            font-size: 0.9375rem;
+            color: #191c1e;
+            font-weight: 600;
+            line-height: 1.5;
+            box-shadow: 0 8px 24px rgba(0, 102, 138, 0.08);
+        }
+
+        .transcript-box {
+            font-style: italic;
+            color: #64748b;
+            font-size: 0.875rem;
+            margin-top: 0.5rem;
+            font-weight: 500;
+        }
+
+        @media (min-width: 1024px) {
+            .worker-signup-layout {
+                display: grid;
+                grid-template-columns: 380px 1fr;
+                gap: 2.5rem;
+                align-items: start;
+            }
+
+            .ai-panel-sticky {
+                position: sticky;
+                top: 6rem;
+            }
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-surface antialiased min-h-screen selection:bg-blue-100">
+
+    <!-- Fixed Header -->
+    <header
+        class="fixed top-0 left-0 w-full z-50 flex justify-between items-center px-6 h-18 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 shadow-sm"
+        style="height: 72px;">
+        <a href="{{ url_for('login_page', role='worker') }}"
+            class="text-slate-400 hover:text-secondary transition-colors flex items-center gap-2 font-bold uppercase tracking-widest text-[11px]">
+            <span class="material-symbols-outlined text-lg">arrow_back</span>
+            <span class="hidden sm:inline">{{ t('Back to Login') }}</span>
+        </a>
+        <div class="flex items-center gap-2.5">
+            <span class="material-symbols-outlined text-secondary text-2xl"
+                style="font-variation-settings:'FILL' 1">settings_voice</span>
+            <span class="text-xl font-black tracking-tighter text-primary">VoiceHire</span>
+        </div>
+        <div class="w-24 hidden sm:block"></div>
+    </header>
+
+    <main class="pt-28 pb-16 px-4 sm:px-8 max-w-6xl mx-auto">
+
+        <!-- Page title -->
+        <div class="text-center mb-12">
+            <h1 class="text-4xl font-black text-primary tracking-tight">{{ t('Worker Join') }}</h1>
+            <p class="text-slate-500 mt-2 font-medium max-w-md mx-auto">{{ t('Join the elite network of local
+                professionals and grow your business today.') }}</p>
+        </div>
+
+        <div class="worker-signup-layout">
+
+            <!-- ═══ LEFT / TOP — AI Voice Setup ═══ -->
+            <div class="ai-panel-sticky">
+                <div class="glass-panel rounded-3xl p-8 border-2 border-secondary/10" id="ai-builder-card">
+                    <div class="flex items-center gap-4 mb-6">
+                        <div
+                            class="w-12 h-12 rounded-2xl bg-secondary/10 flex items-center justify-center border border-secondary/20">
+                            <span class="material-symbols-outlined text-secondary text-3xl"
+                                style="font-variation-settings:'FILL' 1">smart_toy</span>
+                        </div>
+                        <div>
+                            <h2 class="font-black text-lg text-primary tracking-tight">{{ t('AI Assistant') }}</h2>
+                            <p class="text-[11px] font-black text-secondary uppercase tracking-widest">{{ t('Hands-free
+                                setup') }}</p>
+                        </div>
+                    </div>
+                    <p class="text-sm text-slate-500 mb-6 font-medium leading-relaxed">
+                        {{ t("Register without typing! Just speak your details — name, work, city, and phone number.")
+                        }}
+                    </p>
+                    <button id="btn-start-ai"
+                        class="w-full h-14 bg-secondary text-white rounded-2xl flex items-center justify-center gap-2 hover:opacity-90 active:scale-95 transition-all font-black text-base shadow-xl shadow-secondary/20"
+                        onclick="app.startStepByStepAI()">
+                        <span class="material-symbols-outlined">mic</span>
+                        {{ t('Start Voice Setup') }}
+                    </button>
+
+                    <div id="ai-conversation-area" style="display:none; margin-top:2rem;">
+                        <p id="ai-question" class="ai-speech-bubble">Hi! I will guide you.</p>
+                        <div class="listening-indicator" id="ai-listening-anim">
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                            <div class="bar"></div>
+                        </div>
+                        <p id="ai-transcript" class="transcript-box"></p>
+                    </div>
+                </div>
+
+                <div class="flex items-center gap-4 my-8 lg:mt-8 lg:mb-0">
+                    <div class="flex-1 h-px bg-slate-200"></div>
+                    <span class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em]">{{ t('Or manual')
+                        }}</span>
+                    <div class="flex-1 h-px bg-slate-200"></div>
+                </div>
+            </div>
+
+            <!-- ═══ RIGHT / BOTTOM — Manual Form ═══ -->
+            <div class="glass-panel rounded-3xl p-8 sm:p-10">
+                <form id="worker-signup-form" class="flex flex-col gap-8" enctype="multipart/form-data">
+
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-8">
+                        <!-- Name -->
+                        <div class="relative pt-6 group">
+                            <label
+                                class="absolute top-0 left-0 text-[11px] font-black text-slate-400 uppercase tracking-widest"
+                                for="w-name">{{ t('Full Name') }}</label>
+                            <input class="custom-input pr-12" id="w-name" name="name"
+                                placeholder="{{ t('e.g. Rahul Kumar') }}" required type="text" />
+                            <button type="button" aria-label="Voice input"
+                                class="absolute right-0 bottom-3 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary border border-slate-200"
+                                onclick="app.listenForInput('w-name')">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                        </div>
+                        <!-- Work -->
+                        <div class="relative pt-6 group">
+                            <label
+                                class="absolute top-0 left-0 text-[11px] font-black text-slate-400 uppercase tracking-widest"
+                                for="w-work">{{ t('Work Type') }}</label>
+                            <input class="custom-input pr-12" id="w-work" name="work"
+                                placeholder="{{ t('e.g. Plumber, Electrician') }}" required type="text" />
+                            <button type="button" aria-label="Voice input"
+                                class="absolute right-0 bottom-3 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary border border-slate-200"
+                                onclick="app.listenForInput('w-work')">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                        </div>
+                        <!-- Location -->
+                        <div class="relative pt-6 group">
+                            <label
+                                class="absolute top-0 left-0 text-[11px] font-black text-slate-400 uppercase tracking-widest"
+                                for="w-location">{{ t('City / Area') }}</label>
+                            <input class="custom-input pr-24" id="w-location" name="location"
+                                placeholder="{{ t('e.g. Mumbai') }}" required type="text" />
+                            <div class="absolute right-0 bottom-3 flex items-center gap-2">
+                                <button type="button" onclick="app.detectLocation('w-location')"
+                                    class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-secondary border border-slate-200"
+                                    title="{{ t('Detect Location') }}">
+                                    <span class="material-symbols-outlined text-[20px]">my_location</span>
+                                </button>
+                                <button type="button" aria-label="Voice input"
+                                    class="w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary border border-slate-200"
+                                    onclick="app.listenForInput('w-location')">
+                                    <span class="material-symbols-outlined">mic</span>
+                                </button>
+                            </div>
+                        </div>
+                        <!-- Phone -->
+                        <div class="relative pt-6 group">
+                            <label
+                                class="absolute top-0 left-0 text-[11px] font-black text-slate-400 uppercase tracking-widest"
+                                for="w-phone">{{ t('Phone Number') }}</label>
+                            <input class="custom-input pr-12" id="w-phone" name="phone"
+                                placeholder="{{ t('10-digit number') }}" required type="tel" />
+                            <button type="button" aria-label="Voice input"
+                                class="absolute right-0 bottom-3 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary border border-slate-200"
+                                onclick="app.listenForInput('w-phone')">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                        </div>
+                        <!-- Password -->
+                        <div class="relative pt-6 sm:col-span-2 group">
+                            <label
+                                class="absolute top-0 left-0 text-[11px] font-black text-slate-400 uppercase tracking-widest"
+                                for="w-password">{{ t('Password') }}</label>
+                            <input class="custom-input pr-12" id="w-password" name="password"
+                                placeholder="{{ t('Create a strong password') }}" required type="password" />
+                            <button type="button" aria-label="Voice input"
+                                class="absolute right-0 bottom-3 w-10 h-10 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary border border-slate-200"
+                                onclick="app.listenForInput('w-password')">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                        </div>
+                    </div>
+
+                    <!-- Portfolio upload -->
+                    <div class="bg-slate-50/50 rounded-3xl p-6 sm:p-8 border border-slate-200 shadow-inner">
+                        <h3
+                            class="font-black text-sm flex items-center gap-2 text-primary mb-6 uppercase tracking-wider">
+                            <span class="material-symbols-outlined text-secondary text-xl"
+                                style="font-variation-settings:'FILL' 1">cloud_upload</span>
+                            {{ t('Professional Portfolio') }}
+                        </h3>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                            <div class="flex flex-col gap-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                    for="w-voice">
+                                    {{ t('Voice Bio') }}
+                                </label>
+                                <input
+                                    class="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-secondary file:text-white hover:file:opacity-90 transition-all cursor-pointer"
+                                    id="w-voice" name="voice_note" type="file" accept="audio/*" />
+                            </div>
+                            <div class="flex flex-col gap-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                    for="w-video">
+                                    {{ t('Video Pitch') }}
+                                </label>
+                                <input
+                                    class="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-secondary file:text-white hover:file:opacity-90 transition-all cursor-pointer"
+                                    id="w-video" name="video" type="file" accept="video/*" />
+                            </div>
+                            <div class="flex flex-col gap-2 sm:col-span-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                    for="w-profile-pic">
+                                    {{ t('Profile Picture') }}
+                                </label>
+                                <input
+                                    class="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-blue-600 file:text-white hover:file:opacity-90 transition-all cursor-pointer"
+                                    id="w-profile-pic" name="profile_pic" type="file" accept="image/*" />
+                            </div>
+                            <div class="flex flex-col gap-2 sm:col-span-2">
+                                <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest"
+                                    for="w-id">
+                                    {{ t('Identity Proof (Aadhaar/Voter ID)') }}
+                                </label>
+                                <input
+                                    class="block w-full text-xs text-slate-500 file:mr-4 file:py-2.5 file:px-5 file:rounded-xl file:border-0 file:text-[10px] file:font-black file:uppercase file:tracking-widest file:bg-primary file:text-white hover:file:opacity-90 transition-all cursor-pointer"
+                                    id="w-id" name="id_proof" type="file" accept="image/*" />
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="latitude" id="w-lat">
+                    <input type="hidden" name="longitude" id="w-lng">
+
+                    <button type="submit" id="btn-submit-worker"
+                        class="w-full h-16 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-2xl shadow-slate-300">
+                        <span>{{ t('Complete Registration') }}</span>
+                        <span class="material-symbols-outlined font-bold">check_circle</span>
+                    </button>
+
+                    <p class="text-center text-sm text-slate-500 font-medium">
+                        {{ t('Already a worker?') }} <a href="{{ url_for('login_page', role='worker') }}"
+                            class="font-bold text-secondary hover:underline ml-1">{{ t('Log in') }}</a>
+                    </p>
+                </form>
+            </div>
+        </div>
+    </main>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+
+    <!-- AI Prompts for DOM Translation -->
+    <div id="ai-prompts" style="display:none;">
+        <span id="ai-p0">{{ t('What is your full name?') }}</span>
+        <span id="ai-p1">{{ t('What type of work do you do?') }}</span>
+        <span id="ai-p2">{{ t('In which city or area do you live?') }}</span>
+        <span id="ai-p3">{{ t('Please say your 10 digit phone number.') }}</span>
+        <span id="ai-p4">{{ t('Now, please say a password you would like to use.') }}</span>
+        <span id="ai-p5">{{ t('Great! Your details are saved. You can upload a voice note or video below, then click
+            Complete Registration.') }}</span>
+        <span id="ai-retry">{{ t("Sorry, I didn't catch that. Please repeat.") }}</span>
+    </div>
+</body>
+
+</html>

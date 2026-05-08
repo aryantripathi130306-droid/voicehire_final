@@ -1,0 +1,326 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="utf-8"/>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+    <title>{{ t('My Bookings') }} – VoiceHire</title>
+    <meta name="description" content="View all your bookings and track live job status on VoiceHire.">
+    <script src="https://cdn.tailwindcss.com?plugins=forms"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap" rel="stylesheet"/>
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap" rel="stylesheet"/>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}"/>
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: { extend: { colors: { "secondary": "#00668a" } } }
+        }
+    </script>
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+        body { background: #f7f9fb; }
+
+        .glass-panel {
+            background: rgba(255,255,255,0.8);
+            backdrop-filter: blur(20px);
+            border: 1.5px solid rgba(226,232,240,0.6);
+        }
+
+        /* Booking card */
+        .booking-card {
+            background: white;
+            border-radius: 24px;
+            border: 1.5px solid #f1f5f9;
+            transition: all 0.25s cubic-bezier(0.4,0,0.2,1);
+        }
+        .booking-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 16px 40px -12px rgba(0,0,0,0.09);
+            border-color: rgba(0,102,138,0.15);
+        }
+
+        /* Status pills */
+        .s-booked       { background:#fef9c3; color:#854d0e; border:1px solid #fde68a; }
+        .s-work-started { background:#dbeafe; color:#1e40af; border:1px solid #93c5fd; }
+        .s-completed    { background:#dcfce7; color:#166534; border:1px solid #86efac; }
+        .s-cancelled    { background:#fee2e2; color:#991b1b; border:1px solid #fca5a5; }
+
+        /* Status step dots on card */
+        .mini-step { width: 8px; height: 8px; border-radius: 50%; background: #e2e8f0; }
+        .mini-step.done   { background: #22c55e; }
+        .mini-step.active { background: #3b82f6; box-shadow: 0 0 0 3px rgba(59,130,246,0.2); }
+
+        /* Spinner */
+        @keyframes spin { to { transform: rotate(360deg); } }
+        .spinner { animation: spin 0.8s linear infinite; display: inline-block; }
+
+        /* Empty state */
+        .empty-state { border: 2px dashed #e2e8f0; border-radius: 28px; background: #f8fafc; }
+
+        /* Filter tabs */
+        .filter-tab { 
+            padding: 0.5rem 1.25rem; border-radius: 9999px; font-size: 0.75rem; font-weight: 800;
+            text-transform: uppercase; letter-spacing: 0.05em; transition: all 0.2s; cursor: pointer;
+            border: 1.5px solid #e2e8f0; color: #64748b; background: white;
+        }
+        .filter-tab.active { background: #000; color: white; border-color: #000; }
+        .filter-tab:hover:not(.active) { border-color: #00668a; color: #00668a; background: #f0f9ff; }
+    </style>
+</head>
+<body class="text-slate-900 antialiased">
+
+    <!-- ═══ DESKTOP SIDEBAR ═══ -->
+    <aside class="vh-sidebar">
+        <div class="vh-sidebar-logo px-8 h-20 flex items-center border-b border-slate-100">
+            <span class="material-symbols-outlined text-secondary text-3xl mr-3" style="font-variation-settings:'FILL' 1">settings_voice</span>
+            <span class="text-xl font-black tracking-tighter">VoiceHire</span>
+        </div>
+        <nav class="vh-sidebar-nav p-4 space-y-1">
+            <button class="vh-nav-item w-full" onclick="window.location.href='/dashboard/{{ session.role }}'">
+                <span class="material-symbols-outlined">home</span>
+                <span>{{ t('Dashboard') }}</span>
+            </button>
+            <button class="vh-nav-item active w-full">
+                <span class="material-symbols-outlined">calendar_month</span>
+                <span>{{ t('My Bookings') }}</span>
+            </button>
+            <button class="vh-nav-item w-full" onclick="window.location.href='/dashboard/user#find-workers-section'">
+                <span class="material-symbols-outlined">person_search</span>
+                <span>{{ t('Find Workers') }}</span>
+            </button>
+        </nav>
+        <div class="vh-sidebar-footer p-4 border-t border-slate-100">
+            <button class="vh-nav-item w-full text-red-500 hover:bg-red-50 hover:text-red-600" onclick="window.location.href='/logout'">
+                <span class="material-symbols-outlined">logout</span>
+                <span>{{ t('Sign Out') }}</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ═══ MAIN ═══ -->
+    <div class="vh-main">
+        <header class="vh-header flex items-center justify-between px-6 h-18 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 z-40">
+            <div class="flex items-center gap-2.5 vh-header-logo">
+                <span class="material-symbols-outlined text-secondary text-2xl" style="font-variation-settings:'FILL' 1">settings_voice</span>
+                <span class="text-xl font-black tracking-tighter">VoiceHire</span>
+            </div>
+            <h1 class="hidden lg:block font-black text-lg tracking-tight text-slate-800">{{ t('My Bookings') }}</h1>
+            <button class="p-2.5 rounded-xl hover:bg-slate-100 transition-colors lg:hidden" onclick="window.location.href='/logout'">
+                <span class="material-symbols-outlined text-slate-500">logout</span>
+            </button>
+        </header>
+
+        <main class="vh-page-content max-w-4xl mx-auto py-8 px-4 sm:px-8 space-y-8">
+
+            <!-- Page Title -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+                <div>
+                    <h2 class="text-3xl font-black tracking-tight">📅 {{ t('My Bookings') }}</h2>
+                    <p class="text-slate-500 font-medium mt-1">{{ t('Track all your scheduled jobs in one place.') }}</p>
+                </div>
+                <a href="/dashboard/user" class="flex items-center gap-2 bg-secondary text-white font-black px-5 h-11 rounded-2xl hover:opacity-90 transition-opacity text-sm shadow-lg shadow-secondary/20 self-start sm:self-center">
+                    <span class="material-symbols-outlined text-base">add</span>
+                    {{ t('Book a Worker') }}
+                </a>
+            </div>
+
+            <!-- Filter Tabs -->
+            <div class="flex items-center gap-2 flex-wrap">
+                <button class="filter-tab active" onclick="setFilter('all', this)" id="tab-all">{{ t('All') }}</button>
+                <button class="filter-tab" onclick="setFilter('Pending', this)">⏳ {{ t('Request') }}</button>
+                <button class="filter-tab" onclick="setFilter('Booked', this)">🟡 {{ t('Confirmed') }}</button>
+                <button class="filter-tab" onclick="setFilter('Work Started', this)">🔵 {{ t('Active') }}</button>
+                <button class="filter-tab" onclick="setFilter('Completed', this)">🟢 {{ t('Completed') }}</button>
+                <button class="filter-tab" onclick="setFilter('Cancelled', this)">🔴 {{ t('Cancelled') }}</button>
+                <button onclick="loadBookings()" class="w-9 h-9 flex items-center justify-center rounded-xl bg-slate-100 text-slate-500 hover:text-secondary border border-slate-200 transition-all ml-auto">
+                    <span class="material-symbols-outlined text-xl">refresh</span>
+                </button>
+            </div>
+
+            <!-- Stats Row -->
+            <div class="grid grid-cols-2 sm:grid-cols-4 gap-4" id="stats-row">
+                <div class="bg-white rounded-2xl p-4 border border-slate-100 text-center">
+                    <p id="stat-total" class="text-2xl font-black text-slate-900">—</p>
+                    <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mt-1">{{ t('Total') }}</p>
+                </div>
+                <div class="bg-yellow-50 rounded-2xl p-4 border border-yellow-100 text-center">
+                    <p id="stat-booked" class="text-2xl font-black text-yellow-700">—</p>
+                    <p class="text-[10px] font-black text-yellow-600 uppercase tracking-widest mt-1">{{ t('Pending') }}</p>
+                </div>
+                <div class="bg-blue-50 rounded-2xl p-4 border border-blue-100 text-center">
+                    <p id="stat-active" class="text-2xl font-black text-blue-700">—</p>
+                    <p class="text-[10px] font-black text-blue-600 uppercase tracking-widest mt-1">{{ t('Active') }}</p>
+                </div>
+                <div class="bg-green-50 rounded-2xl p-4 border border-green-100 text-center">
+                    <p id="stat-done" class="text-2xl font-black text-green-700">—</p>
+                    <p class="text-[10px] font-black text-green-600 uppercase tracking-widest mt-1">{{ t('Done') }}</p>
+                </div>
+            </div>
+
+            <!-- Bookings Grid -->
+            <div id="bookings-grid" class="space-y-4 pb-24">
+                <div class="flex items-center justify-center py-20 text-slate-400">
+                    <span class="material-symbols-outlined spinner mr-2 text-3xl">autorenew</span>
+                    <span class="font-semibold">{{ t('Loading bookings...') }}</span>
+                </div>
+            </div>
+
+        </main>
+    </div>
+
+    <!-- Mobile Bottom Nav -->
+    <nav class="vh-bottom-nav px-6">
+        <button class="vh-bottom-nav-item" onclick="window.location.href='/dashboard/{{ session.role }}'">
+            <span class="material-symbols-outlined">home</span>
+            <span>{{ t('Home') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item active">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <span>{{ t('Bookings') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item" onclick="window.location.href='/dashboard/user'">
+            <span class="material-symbols-outlined">person_search</span>
+            <span>{{ t('Explore') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item" onclick="window.location.href='/logout'">
+            <span class="material-symbols-outlined">logout</span>
+            <span>{{ t('Out') }}</span>
+        </button>
+    </nav>
+
+<script>
+    const IS_CUSTOMER = '{{ session.role }}' === 'user';
+    let allBookings  = [];
+    let activeFilter = 'all';
+
+    const STATUS_CONFIG = {
+        'Pending':      { cls: 's-booked',       icon: 'hourglass_empty', label: '{{ t("Request") }}',   steps: [1,0,0] },
+        'Booked':       { cls: 's-booked',       icon: 'pending',    label: '{{ t("Confirmed") }}', steps: [1,0,0] },
+        'Work Started': { cls: 's-work-started',  icon: 'handyman',   label: '{{ t("Active") }}',  steps: [1,1,0] },
+        'Completed':    { cls: 's-completed',     icon: 'task_alt',   label: '{{ t("Done") }}',    steps: [1,1,1] },
+        'Cancelled':    { cls: 's-cancelled',     icon: 'cancel',     label: '{{ t("Cancelled") }}',    steps: [0,0,0] },
+    };
+
+    function setFilter(filter, btn) {
+        activeFilter = filter;
+        document.querySelectorAll('.filter-tab').forEach(b => b.classList.remove('active'));
+        if (btn) btn.classList.add('active');
+        renderBookings();
+    }
+
+    function formatDate(dateStr) {
+        // dateStr = "2026-05-10"
+        const d = new Date(dateStr + 'T00:00:00');
+        return d.toLocaleDateString('en-IN', { weekday: 'short', day: 'numeric', month: 'short', year: 'numeric' });
+    }
+
+    function formatSlot(slot) {
+        const [s, e] = slot.split('-');
+        const fmt = t => {
+            const [h] = t.split(':');
+            const hr = parseInt(h);
+            return hr === 12 ? '12 PM' : hr > 12 ? `${hr-12} PM` : `${hr} AM`;
+        };
+        return `${fmt(s)} – ${fmt(e)}`;
+    }
+
+    function renderBookings() {
+        const grid = document.getElementById('bookings-grid');
+        const filtered = activeFilter === 'all'
+            ? allBookings
+            : allBookings.filter(b => b.status === activeFilter);
+
+        if (filtered.length === 0) {
+            grid.innerHTML = `
+                <div class="empty-state flex flex-col items-center justify-center py-20 px-8 text-center gap-4">
+                    <span class="material-symbols-outlined text-5xl text-slate-300">calendar_month</span>
+                    <p class="text-slate-500 font-bold">No bookings found</p>
+                    <a href="/dashboard/user" class="mt-2 px-6 h-11 bg-secondary text-white rounded-2xl font-black text-sm hover:opacity-90 transition-opacity flex items-center gap-2">
+                        <span class="material-symbols-outlined text-base">add</span> Book a Worker
+                    </a>
+                </div>`;
+            return;
+        }
+
+        grid.innerHTML = filtered.map(b => {
+            const cfg    = STATUS_CONFIG[b.status] || STATUS_CONFIG['Cancelled'];
+            const steps  = cfg.steps;
+            const dotCls = (v) => v === 1 ? 'done' : v === 2 ? 'active' : '';
+
+            return `
+            <a href="/bookings/${b.id}" class="booking-card p-5 sm:p-6 flex flex-col gap-4 block cursor-pointer" style="text-decoration:none;">
+                <!-- Top Row -->
+                <div class="flex items-start justify-between gap-3">
+                    <div class="flex-1 min-w-0">
+                        <div class="flex items-center gap-2 mb-1">
+                            <span class="text-xs font-black text-slate-400 uppercase tracking-widest">#${b.id}</span>
+                        </div>
+                        <h3 class="font-black text-slate-900 text-lg leading-tight">${b.worker_name}</h3>
+                        <p class="text-sm text-secondary font-semibold mt-0.5">${b.worker_work || ''}</p>
+                    </div>
+                    <span class="flex-shrink-0 px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest ${cfg.cls}">
+                        ${cfg.label}
+                    </span>
+                </div>
+
+                <!-- Date + Slot Row -->
+                <div class="flex flex-wrap items-center gap-3">
+                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                        <span class="material-symbols-outlined text-base text-slate-400">calendar_today</span>
+                        <span class="text-xs font-black text-slate-700">${formatDate(b.date)}</span>
+                    </div>
+                    <div class="flex items-center gap-1.5 bg-slate-50 border border-slate-200 rounded-xl px-3 py-2">
+                        <span class="material-symbols-outlined text-base text-slate-400">schedule</span>
+                        <span class="text-xs font-black text-slate-700">${formatSlot(b.time_slot)}</span>
+                    </div>
+                </div>
+
+                <!-- Progress Mini -->
+                <div class="flex items-center gap-2 pt-3 border-t border-slate-100">
+                    <div class="mini-step ${b.status !== 'Cancelled' ? 'done' : ''}"></div>
+                    <div class="flex-1 h-px ${['Work Started','Completed'].includes(b.status) ? 'bg-green-400' : 'bg-slate-200'}"></div>
+                    <div class="mini-step ${b.status === 'Work Started' ? 'active' : b.status === 'Completed' ? 'done' : ''}"></div>
+                    <div class="flex-1 h-px ${b.status === 'Completed' ? 'bg-green-400' : 'bg-slate-200'}"></div>
+                    <div class="mini-step ${b.status === 'Completed' ? 'done' : ''}"></div>
+                    ${b.status === 'Completed' && !b.has_reviewed && IS_CUSTOMER ? `
+                        <span class="ml-auto flex items-center gap-1 bg-amber-100 text-amber-700 hover:bg-amber-200 transition-colors px-3 py-1.5 rounded-full text-[10px] font-black uppercase tracking-widest shadow-sm">
+                            <span class="material-symbols-outlined text-[14px]">star</span> Rate Work
+                        </span>
+                    ` : `
+                        <span class="ml-auto flex items-center gap-1 text-secondary text-[10px] font-black uppercase tracking-widest">
+                            View <span class="material-symbols-outlined text-xs">arrow_forward</span>
+                        </span>
+                    `}
+                </div>
+            </a>`;
+        }).join('');
+    }
+
+    function updateStats(bookings) {
+        document.getElementById('stat-total').textContent  = bookings.length;
+        document.getElementById('stat-booked').textContent = bookings.filter(b => b.status === 'Booked').length;
+        document.getElementById('stat-active').textContent = bookings.filter(b => b.status === 'Work Started').length;
+        document.getElementById('stat-done').textContent   = bookings.filter(b => b.status === 'Completed').length;
+    }
+
+    async function loadBookings() {
+        const grid = document.getElementById('bookings-grid');
+        grid.innerHTML = `
+            <div class="flex items-center justify-center py-20 text-slate-400">
+                <span class="material-symbols-outlined spinner mr-2 text-3xl">autorenew</span>
+                <span class="font-semibold">Loading bookings...</span>
+            </div>`;
+        try {
+            const res = await fetch('/api/bookings');
+            allBookings = await res.json();
+            if (!Array.isArray(allBookings)) throw new Error();
+            updateStats(allBookings);
+            renderBookings();
+        } catch(e) {
+            grid.innerHTML = `<div class="text-center py-20 text-red-400 font-semibold">Failed to load bookings. Please refresh.</div>`;
+        }
+    }
+
+    document.addEventListener('DOMContentLoaded', loadBookings);
+</script>
+</body>
+</html>

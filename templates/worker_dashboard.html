@@ -1,0 +1,771 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Worker Dashboard - VoiceHire</title>
+    <meta name="description" content="Manage your worker profile and find job opportunities on VoiceHire.">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#000000",
+                        "secondary": "#00668a",
+                        "background": "#f7f9fb",
+                        "surface": "#ffffff",
+                        "on-surface": "#191c1e",
+                        "on-surface-variant": "#45464d",
+                        "outline-variant": "#c6c6cd"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.75);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1.5px solid rgba(226, 232, 240, 0.6);
+        }
+
+        .job-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            border: 1.5px solid #f1f5f9;
+            background: white;
+            border-radius: 24px;
+            padding: 1.5rem;
+        }
+
+        .job-card:hover {
+            transform: translateY(-6px);
+            box-shadow: 0 20px 40px -12px rgba(0, 0, 0, 0.08);
+            border-color: rgba(0, 102, 138, 0.2);
+        }
+
+        audio,
+        video {
+            width: 100%;
+            border-radius: 16px;
+            background: #f1f5f9;
+        }
+
+        video {
+            max-height: 280px;
+            object-fit: cover;
+            background: #000;
+            border: 1.5px solid #e2e8f0;
+        }
+
+        .profile-stat {
+            background: #f8fafc;
+            border-radius: 16px;
+            padding: 1rem;
+            text-align: center;
+            border: 1.5px solid #f1f5f9;
+        }
+
+        .availability-pill {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.6rem 1.25rem;
+            border-radius: 9999px;
+            font-size: 0.75rem;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .btn-premium-green {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            box-shadow: 0 10px 20px -5px rgba(16, 185, 129, 0.3);
+        }
+
+        .btn-premium-green:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 15px 25px -5px rgba(16, 185, 129, 0.4);
+            filter: brightness(1.1);
+        }
+
+        .btn-premium-white {
+            background: white;
+            color: #1e293b;
+            border: 1.5px solid #e2e8f0;
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+
+        .btn-premium-white:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+            transform: translateY(-2px);
+        }
+
+        @keyframes pulse-soft {
+            0% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0.4); }
+            70% { transform: scale(1.02); box-shadow: 0 0 0 10px rgba(16, 185, 129, 0); }
+            100% { transform: scale(1); box-shadow: 0 0 0 0 rgba(16, 185, 129, 0); }
+        }
+
+        @keyframes live-flash {
+            0% { color: inherit; }
+            30% { color: #10b981; }
+            100% { color: inherit; }
+        }
+
+        .live-flash {
+            animation: live-flash 0.8s ease-out;
+        }
+
+        .pulse-green {
+            animation: pulse-soft 2s infinite;
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-surface antialiased selection:bg-blue-100">
+
+    <!-- ═══ DESKTOP SIDEBAR ═══ -->
+    <aside class="vh-sidebar">
+        <div class="vh-sidebar-logo px-8 h-20 flex items-center border-b border-slate-100">
+            <span class="material-symbols-outlined text-secondary text-3xl mr-3"
+                style="font-variation-settings:'FILL' 1">settings_voice</span>
+            <span class="text-xl font-black tracking-tighter">VoiceHire</span>
+        </div>
+        <nav class="vh-sidebar-nav p-4 space-y-1">
+            <button class="vh-nav-item active w-full" onclick="window.location.href='/dashboard/worker'">
+                <span class="material-symbols-outlined">work</span>
+                <span>{{ t('My Jobs') }}</span>
+            </button>
+            <button class="vh-nav-item w-full"
+                onclick="vhScrollTo(event, 'profile-section')">
+                <span class="material-symbols-outlined">account_circle</span>
+                <span>{{ t('My Profile') }}</span>
+            </button>
+            <button class="vh-nav-item w-full"
+                onclick="vhScrollTo(event, 'portfolio-section')">
+                <span class="material-symbols-outlined">perm_media</span>
+                <span>{{ t('Portfolio') }}</span>
+            </button>
+            <button class="vh-nav-item w-full" onclick="window.location.href='/bookings'">
+                <span class="material-symbols-outlined">calendar_month</span>
+                <span>{{ t('My Bookings') }}</span>
+            </button>
+        </nav>
+        <div class="vh-sidebar-footer p-4 border-t border-slate-100">
+            <div class="vh-user-chip bg-slate-50 p-3 rounded-2xl flex items-center gap-3 mb-2">
+                <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary overflow-hidden">
+                    {% if worker.profile_pic %}
+                    <img src="{{ media_url(worker.profile_pic) }}" class="w-full h-full object-cover">
+                    {% else %}
+                    <span class="material-symbols-outlined">handyman</span>
+                    {% endif %}
+                </div>
+                <div class="flex-1 min-w-0">
+                    <p class="text-xs font-black text-primary truncate">{{ worker.name }}</p>
+                    <p class="text-[10px] font-bold text-slate-400 uppercase tracking-widest">{{ t('Worker') }}</p>
+                </div>
+            </div>
+            <button class="vh-nav-item w-full text-red-500 hover:bg-red-50 hover:text-red-600"
+                onclick="window.location.href='/logout'">
+                <span class="material-symbols-outlined">logout</span>
+                <span>{{ t('Sign Out') }}</span>
+            </button>
+        </div>
+    </aside>
+
+    <!-- ═══ MAIN WRAPPER ═══ -->
+    <div class="vh-main">
+
+        <!-- Sticky Header -->
+        <header
+            class="vh-header flex items-center justify-between px-6 h-18 bg-white/80 backdrop-blur-xl border-b border-slate-200/60 z-40">
+            <div class="flex items-center gap-2.5 vh-header-logo">
+                <span class="material-symbols-outlined text-secondary text-2xl"
+                    style="font-variation-settings:'FILL' 1">settings_voice</span>
+                <span class="text-xl font-black tracking-tighter">VoiceHire</span>
+            </div>
+            <h1 class="hidden lg:block font-black text-lg tracking-tight text-slate-800">{{ t('Worker Dashboard') }}
+            </h1>
+            <button class="p-2.5 rounded-xl hover:bg-slate-100 transition-colors lg:hidden"
+                onclick="window.location.href='/logout'">
+                <span class="material-symbols-outlined text-slate-500">logout</span>
+            </button>
+        </header>
+
+        <!-- ═══ PAGE CONTENT ═══ -->
+        <main class="vh-page-content max-w-6xl mx-auto py-8 px-4 sm:px-8 space-y-10">
+
+            <!-- Welcome -->
+            <div class="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-6">
+                <div class="space-y-1">
+                    <h2 class="text-4xl font-black text-primary tracking-tight">{{ t('Welcome,') }} {{
+                        worker.name.split(' ')[0] }}!</h2>
+                    <p class="text-slate-500 font-medium text-lg">
+                        {{ t('You have new job recommendations matching') }} <span class="text-secondary font-black">{{
+                            worker.work }}</span>
+                    </p>
+                </div>
+                <div class="flex flex-wrap items-center gap-3">
+                    <button id="availability-toggle"
+                        data-available="{{ 'true' if worker.is_available else 'false' }}"
+                        onclick="app.toggleAvailability(this.getAttribute('data-available') === 'true')"
+                        class="availability-pill {{ 'bg-green-100 text-green-700 border border-green-200 shadow-sm shadow-green-100' if worker.is_available else 'bg-slate-100 text-slate-500 border border-slate-200' }}">
+                        <span class="material-symbols-outlined text-[18px]">{{ 'check_circle' if worker.is_available
+                            else 'do_not_disturb_on' }}</span>
+                        <span>{{ t('Available') if worker.is_available else t('Busy') }}</span>
+                    </button>
+
+                    <button id="location-share-btn"
+                        data-sharing="{{ 'true' if worker.is_sharing_location else 'false' }}"
+                        onclick="app.toggleLocationSharing(this.getAttribute('data-sharing') === 'true')"
+                        class="availability-pill {{ 'bg-blue-600 text-white shadow-lg shadow-blue-200' if worker.is_sharing_location else 'bg-slate-100 text-slate-500 border border-slate-200' }}">
+                        <span class="material-symbols-outlined text-[18px]">{{ 'location_on' if
+                            worker.is_sharing_location else 'location_off' }}</span>
+                        <span>{{ t('Share Location') if worker.is_sharing_location else t('Location Off') }}</span>
+                    </button>
+
+                    <a href="/scan" class="availability-pill bg-primary text-white shadow-xl shadow-slate-200">
+                        <span class="material-symbols-outlined text-[18px]">qr_code_scanner</span>
+                        <span>{{ t('Scan QR') }}</span>
+                    </a>
+
+                    <button onclick="exportDashboardData()" class="availability-pill btn-premium-white">
+                        <span class="material-symbols-outlined text-[18px]">download</span>
+                        <span>{{ t('Export Data') }}</span>
+                    </button>
+
+                    <button onclick="speakStats()" class="availability-pill btn-premium-green pulse-green">
+                        <span class="material-symbols-outlined text-[18px]">volume_up</span>
+                        <span>{{ t('Listen Stats') }}</span>
+                    </button>
+
+                    <button onclick="document.getElementById('edit-profile-modal').style.display='flex'" 
+                        class="availability-pill bg-blue-600 text-white shadow-xl shadow-blue-200 border border-blue-500 hover:bg-blue-700 transition-all">
+                        <span class="material-symbols-outlined text-[18px]">payments</span>
+                        <span>₹{{ worker.hourly_rate or '500' }}/hr</span>
+                    </button>
+
+                    <span class="vh-badge-active">{{ t('Active') }}</span>
+                </div>
+            </div>
+
+            <!-- Pending Requests -->
+            <section id="pending-bookings-section" class="space-y-6" style="display:none;">
+                <div class="flex items-center justify-between">
+                    <h3 class="text-2xl font-black tracking-tight text-amber-600 flex items-center gap-2">
+                        <span class="material-symbols-outlined">pending_actions</span>
+                        {{ t('Pending Requests') }}
+                    </h3>
+                </div>
+                <div id="pending-bookings-list" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-6">
+                    <!-- Dynamic -->
+                </div>
+            </section>
+
+            <!-- ═══ TWO-PANE LAYOUT ═══ -->
+            <div class="vh-two-pane">
+
+                <!-- LEFT PANE — Profile Card -->
+                <div class="vh-pane-left" id="profile-section">
+                    <div class="glass-panel rounded-[32px] p-8 border-2 border-secondary/5 mb-6">
+                        <div class="flex flex-col items-center text-center mb-8">
+                            <div class="w-24 h-24 rounded-3xl bg-secondary/10 flex items-center justify-center text-secondary mb-5 border-2 border-secondary/20 shadow-xl shadow-secondary/5 overflow-hidden">
+                                {% if worker.profile_pic %}
+                                <img src="{{ media_url(worker.profile_pic) }}" class="w-full h-full object-cover">
+                                {% else %}
+                                <span class="material-symbols-outlined text-6xl" style="font-variation-settings:'FILL' 1">person</span>
+                                {% endif %}
+                            </div>
+                            <h3 class="text-2xl font-black tracking-tight text-slate-900 flex items-center justify-center gap-2">
+                                {{ worker.name }}
+                                {% if worker.is_verified %}
+                                <span class="material-symbols-outlined text-green-500 text-2xl"
+                                    title="{{ t('Verified') }}" style="font-variation-settings:'FILL' 1">verified</span>
+                                {% endif %}
+                            </h3>
+                            <p class="text-slate-500 font-bold uppercase tracking-widest text-[11px] mt-2 flex items-center gap-1.5 justify-center">
+                                <span class="material-symbols-outlined text-sm text-secondary">location_on</span>
+                                {{ worker.location }}
+                            </p>
+                        </div>
+
+                        <div class="grid grid-cols-2 gap-3 mb-6">
+                            <div class="profile-stat">
+                                <p class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-1">{{ t('Primary Skill') }}</p>
+                                <p class="font-black text-slate-800 text-xs truncate">{{ worker.work }}</p>
+                            </div>
+                            <div class="profile-stat bg-secondary/5 border-secondary/10">
+                                <p class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1">{{ t('Hourly Rate') }}</p>
+                                <p class="font-black text-slate-800 text-sm">₹{{ worker.hourly_rate or '500' }}<span class="text-[9px] text-slate-400">/hr</span></p>
+                            </div>
+                        </div>
+
+                        <div class="flex gap-2 mb-8">
+                            <button onclick="document.getElementById('edit-profile-modal').style.display='flex'"
+                                class="flex-1 h-12 bg-primary text-white font-black rounded-xl transition-all flex items-center justify-center gap-2 shadow-lg shadow-slate-200">
+                                <span class="material-symbols-outlined text-sm">edit</span> {{ t('Edit Profile') }}
+                            </button>
+                            <button onclick="document.getElementById('portfolio-section').scrollIntoView({behavior:'smooth', block:'start'})"
+                                class="h-12 w-12 bg-slate-100 text-slate-600 rounded-xl flex items-center justify-center hover:bg-slate-200 transition-all border border-slate-200">
+                                <span class="material-symbols-outlined">visibility</span>
+                            </button>
+                        </div>
+
+                        <!-- Earnings Stats -->
+                        <div class="bg-white/50 rounded-[24px] p-6 border border-slate-100 mb-8 shadow-sm">
+                            <div class="flex items-center justify-between mb-4">
+                                <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest">{{ t('Real-time Earnings') }}</h4>
+                                <span class="text-[10px] font-bold text-secondary bg-secondary/10 px-2 py-0.5 rounded-full">INR</span>
+                            </div>
+                            <div class="grid grid-cols-2 gap-4 mb-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('Today') }}</p>
+                                    <p id="stat-earnings-today" class="text-xl font-black text-primary">₹{{ stats.earnings_today }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('This Month') }}</p>
+                                    <p id="stat-earnings-month" class="text-xl font-black text-secondary">₹{{ stats.earnings_month }}</p>
+                                </div>
+                            </div>
+                            <div class="pt-4 border-t border-slate-100 grid grid-cols-2 gap-4">
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('Jobs this Month') }}</p>
+                                    <p id="stat-completed-month" class="text-lg font-black text-slate-700">{{ stats.completed_month }}</p>
+                                </div>
+                                <div>
+                                    <p class="text-[10px] font-bold text-slate-500 mb-1">{{ t('Reviews Today') }}</p>
+                                    <p id="stat-reviews-today" class="text-lg font-black text-slate-700">{{ stats.reviews_today }}</p>
+                                </div>
+                            </div>
+                        </div>
+
+                        <!-- Voice Resume Section -->
+                        <div class="mt-6 p-4 bg-slate-50 rounded-2xl border border-slate-100">
+                            <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-3 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-sm text-secondary">mic</span>
+                                {{ t('My Voice Resume') }}
+                            </h4>
+                            <div id="voice-resume-display" class="mb-4">
+                                {% if worker.voice_resume %}
+                                <p class="text-xs font-medium text-slate-700 italic">"{{ worker.voice_resume }}"</p>
+                                {% else %}
+                                <p class="text-xs text-slate-400 italic">{{ t('No resume recorded yet.') }}</p>
+                                {% endif %}
+                            </div>
+                            <button id="btn-record-resume" onclick="app.startVoiceResume()"
+                                class="w-full py-3 bg-white text-secondary font-black text-xs rounded-xl border border-secondary/20 flex items-center justify-center gap-2 active:scale-95 transition-all">
+                                <span class="material-symbols-outlined text-sm">record_voice_over</span>
+                                {{ t('Record New Resume') }}
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- RIGHT PANE — Jobs Feed -->
+                <div class="vh-pane-right">
+                    <div id="jobs-section" class="space-y-6">
+                        <div class="flex items-center justify-between mb-2">
+                            <h3 class="text-2xl font-black tracking-tight text-primary flex items-center gap-2">
+                                <span class="material-symbols-outlined">explore</span>
+                                {{ t('Available Jobs') }}
+                            </h3>
+                            <button onclick="app.fetchJobsForWorker('{{ worker.work }}')"
+                                class="px-5 h-11 bg-white text-secondary hover:bg-secondary/5 border border-slate-200 rounded-xl transition-all flex items-center gap-2 text-xs font-black uppercase tracking-widest shadow-sm">
+                                <span class="material-symbols-outlined text-lg">refresh</span>
+                                <span class="hidden sm:inline">{{ t('Refresh') }}</span>
+                            </button>
+                        </div>
+                        <div id="worker-jobs-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Dynamic Content -->
+                            <div class="col-span-full py-12 text-center text-slate-400 italic">{{ t('Loading jobs...') }}</div>
+                        </div>
+                    </div>
+
+                    <!-- Bookings Section -->
+                    <div id="dashboard-bookings-section" class="mt-12 space-y-6">
+                        <div class="flex items-center justify-between border-b border-slate-100 pb-4">
+                            <h3 class="text-2xl font-black tracking-tight text-slate-800 flex items-center gap-2">
+                                <span class="material-symbols-outlined text-secondary">calendar_month</span>
+                                {{ t('Bookings') }}
+                            </h3>
+                            <a href="/bookings" class="text-xs font-black text-secondary uppercase tracking-widest hover:underline">{{ t('View All') }}</a>
+                        </div>
+                        <div id="dashboard-bookings-list" class="grid grid-cols-1 md:grid-cols-2 gap-6">
+                            <!-- Dynamic Content -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Portfolio & Work History (Full Width) -->
+            <div class="glass-panel rounded-[32px] p-8 border border-secondary/5" id="portfolio-section">
+                <h3 class="font-black text-lg flex items-center gap-3 mb-8">
+                    <div class="w-8 h-8 rounded-lg bg-secondary/10 flex items-center justify-center text-secondary border border-secondary/20">
+                        <span class="material-symbols-outlined text-xl" style="font-variation-settings:'FILL' 1">history_edu</span>
+                    </div>
+                    {{ t('Portfolio & Experience') }}
+                </h3>
+
+                <!-- Voice & Video Introductions -->
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-8 mb-10">
+                    {% if worker.voice_note %}
+                    <div class="bg-slate-50/50 rounded-2xl p-6 border border-slate-100">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-secondary">mic</span>{{ t('Voice Introduction') }}
+                        </label>
+                        <audio controls src="{{ media_url(worker.voice_note) }}" class="w-full h-10"></audio>
+                    </div>
+                    {% endif %}
+
+                    {% if worker.video %}
+                    <div class="bg-slate-50/50 rounded-2xl p-6 border border-slate-100">
+                        <label class="text-[10px] font-black text-slate-400 uppercase tracking-widest block mb-4 flex items-center gap-2">
+                            <span class="material-symbols-outlined text-sm text-secondary">videocam</span>{{ t('Work Showcase') }}
+                        </label>
+                        <video controls preload="metadata" src="{{ media_url(worker.video) }}" class="w-full rounded-xl"></video>
+                    </div>
+                    {% endif %}
+                </div>
+
+                <div class="mb-10">
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-secondary">verified</span>{{ t('Completed Work History') }}
+                    </h4>
+                    <div class="space-y-3">
+                        {% for work in stats.recent_works %}
+                        <div class="flex items-center gap-4 p-4 bg-white rounded-2xl border border-slate-100 shadow-sm">
+                            <div class="w-10 h-10 rounded-full bg-slate-50 flex items-center justify-center text-slate-400">
+                                <span class="material-symbols-outlined">task_alt</span>
+                            </div>
+                            <div>
+                                <p class="text-sm font-black text-slate-800">{{ work }}</p>
+                                <p class="text-[10px] font-bold text-green-600 uppercase">{{ t('Verified Completion') }}</p>
+                            </div>
+                        </div>
+                        {% endfor %}
+                        {% if not stats.recent_works %}
+                        <div class="py-12 flex flex-col items-center justify-center text-center opacity-40">
+                            <span class="material-symbols-outlined text-6xl mb-3">history_edu</span>
+                            <p class="text-sm font-black">{{ t('No completed work history yet.') }}</p>
+                            <p class="text-[10px] mt-1 uppercase tracking-widest">{{ t('Complete your first job to build your profile!') }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+
+                <!-- Detailed Client Reviews -->
+                <div class="pt-8 border-t border-slate-100">
+                    <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-widest mb-6 flex items-center gap-2">
+                        <span class="material-symbols-outlined text-sm text-secondary">stars</span>{{ t('Client Feedback') }}
+                    </h4>
+                    <div class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                        {% for review in worker.detailed_reviews %}
+                        <div class="p-5 bg-slate-50/50 rounded-2xl border border-slate-100">
+                            <div class="flex items-center gap-3 mb-3">
+                                <div class="w-8 h-8 rounded-full bg-white border border-slate-200 overflow-hidden">
+                                    {% if review.customer_pic %}
+                                    <img src="{{ url_for('static', filename=review.customer_pic) }}" class="w-full h-full object-cover">
+                                    {% else %}
+                                    <div class="w-full h-full flex items-center justify-center bg-secondary/5 text-secondary text-[10px] font-black">
+                                        {{ review.customer_name[0] }}
+                                    </div>
+                                    {% endif %}
+                                </div>
+                                <div>
+                                    <p class="text-xs font-black text-slate-800">{{ review.customer_name }}</p>
+                                    <div class="flex text-[10px] text-amber-500 font-bold">
+                                        {% for i in range(review.rating) %}★{% endfor %}
+                                        <span class="text-slate-300">{% for i in range(5 - review.rating) %}★{% endfor %}</span>
+                                    </div>
+                                </div>
+                            </div>
+                            <p class="text-xs text-slate-600 leading-relaxed italic">"{{ review.review }}"</p>
+                            <p class="text-[9px] text-slate-400 mt-3 font-bold uppercase tracking-wider">{{ review.created_at[:10] }}</p>
+                        </div>
+                        {% endfor %}
+                        {% if not worker.detailed_reviews %}
+                        <div class="col-span-full py-10 text-center bg-slate-50/50 rounded-3xl border border-dashed border-slate-200">
+                            <p class="text-xs text-slate-400">{{ t('No reviews yet.') }}</p>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <!-- Edit Profile Modal -->
+    <div id="edit-profile-modal" style="display:none;"
+        class="fixed inset-0 bg-slate-900/40 backdrop-blur-md z-[100] flex items-center justify-center p-4">
+        <div class="bg-white rounded-[32px] shadow-2xl w-full max-w-lg max-h-[90vh] overflow-y-auto animate-in zoom-in duration-300">
+            <div class="p-8 sm:p-10">
+                <div class="flex justify-between items-center mb-10">
+                    <h3 class="text-3xl font-black tracking-tight text-primary">{{ t('Edit Profile') }}</h3>
+                    <button onclick="document.getElementById('edit-profile-modal').style.display='none'"
+                        class="w-12 h-12 flex items-center justify-center rounded-full bg-slate-100 text-slate-400 hover:text-red-500 transition-colors">
+                        <span class="material-symbols-outlined">close</span>
+                    </button>
+                </div>
+                <form id="worker-edit-form" enctype="multipart/form-data" class="space-y-8">
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-8">
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ t('Full Name') }}</label>
+                            <input type="text" name="name" value="{{ worker.name }}" required
+                                class="w-full h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-secondary/20 px-5 font-semibold">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ t('Work Type') }}</label>
+                            <input type="text" name="work" value="{{ worker.work }}" required
+                                class="w-full h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-secondary/20 px-5 font-semibold">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ t('Location') }}</label>
+                            <div class="relative">
+                                <input type="text" name="location" id="edit-w-loc" value="{{ worker.location }}" required
+                                    class="w-full h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-secondary/20 px-5 pr-12 font-semibold">
+                                <button type="button" onclick="app.detectLocation('edit-w-loc')" class="absolute right-4 top-4 text-secondary">
+                                    <span class="material-symbols-outlined">my_location</span>
+                                </button>
+                            </div>
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ t('Phone') }}</label>
+                            <input type="tel" name="phone" value="{{ worker.phone }}" required pattern="[6-9][0-9]{9}"
+                                class="w-full h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-secondary/20 px-5 font-semibold">
+                        </div>
+                        <div class="space-y-2">
+                            <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ t('Price Per Hour (₹)') }}</label>
+                            <input type="number" name="hourly_rate" value="{{ worker.hourly_rate or '500' }}" required min="100"
+                                class="w-full h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-secondary/20 px-5 font-semibold">
+                        </div>
+                    </div>
+                    <div class="space-y-2">
+                        <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest ml-1">{{ t('New Password') }}</label>
+                        <input type="password" name="password" minlength="6" placeholder="{{ t('Keep empty to stay the same') }}"
+                            class="w-full h-14 rounded-2xl border-slate-200 bg-slate-50/50 focus:ring-2 focus:ring-secondary/20 px-5 font-semibold">
+                    </div>
+
+                    <div class="bg-slate-50/80 rounded-[24px] p-6 space-y-6 border border-slate-200">
+                        <h4 class="text-[10px] font-black text-slate-400 uppercase tracking-[0.2em] mb-2">{{ t('Update Media') }}</h4>
+                        <div class="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-500">{{ t('Voice Note') }}</label>
+                                <input type="file" name="voice_note" accept="audio/*" class="w-full text-xs">
+                            </div>
+                            <div class="space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-500">{{ t('Video Pitch') }}</label>
+                                <input type="file" name="video" accept="video/*" class="w-full text-xs">
+                            </div>
+                            <div class="sm:col-span-2 space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-500">{{ t('Profile Picture') }}</label>
+                                <input type="file" name="profile_pic" accept="image/*" class="w-full text-xs">
+                            </div>
+                            <div class="sm:col-span-2 space-y-1.5">
+                                <label class="text-[10px] font-black text-slate-500">{{ t('Identity Proof') }}</label>
+                                <input type="file" name="id_proof" accept="image/*" class="w-full text-xs">
+                            </div>
+                        </div>
+                    </div>
+
+                    <input type="hidden" name="latitude" id="w-lat" value="{{ worker.latitude or '' }}">
+                    <input type="hidden" name="longitude" id="w-lng" value="{{ worker.longitude or '' }}">
+
+                    <button type="submit" id="btn-update-worker"
+                        class="w-full h-16 bg-primary text-white font-black rounded-2xl hover:opacity-90 active:scale-95 transition-all shadow-2xl shadow-slate-200">
+                        {{ t('Save All Changes') }}
+                    </button>
+                </form>
+            </div>
+        </div>
+    </div>
+
+    <!-- ═══ MOBILE BOTTOM NAV ═══ -->
+    <nav class="vh-bottom-nav px-6">
+        <button class="vh-bottom-nav-item active" onclick="window.location.href='/dashboard/worker'">
+            <span class="material-symbols-outlined">work</span>
+            <span>{{ t('Jobs') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item" onclick="document.getElementById('profile-section').scrollIntoView({behavior:'smooth'})">
+            <span class="material-symbols-outlined">account_circle</span>
+            <span>{{ t('Profile') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item" onclick="document.getElementById('portfolio-section').scrollIntoView({behavior:'smooth'})">
+            <span class="material-symbols-outlined">perm_media</span>
+            <span>{{ t('Portfolio') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item" onclick="window.location.href='/bookings'">
+            <span class="material-symbols-outlined">calendar_month</span>
+            <span>{{ t('Bookings') }}</span>
+        </button>
+        <button class="vh-bottom-nav-item" onclick="window.location.href='/logout'">
+            <span class="material-symbols-outlined">logout</span>
+            <span>{{ t('Out') }}</span>
+        </button>
+    </nav>
+
+    <!-- Hidden Data for Scripting (Resolves IDE Linting Errors) -->
+    <div id="worker-stats-data" style="display:none;" 
+        data-worker-work="{{ worker.get('work', '') | e }}"
+        data-worker-name="{{ worker.get('name', 'Worker') | e }}"
+        data-stats-total="{{ stats.total_services }}"
+        data-stats-month-count="{{ stats.completed_month }}"
+        data-stats-today-earnings="{{ stats.earnings_today }}"
+        data-stats-month-earnings="{{ stats.earnings_month }}"
+        data-stats-today-reviews="{{ stats.reviews_today }}"
+        data-worker-rate="{{ worker.get('hourly_rate', 500) }}"
+        data-stats-last-works="{{ stats.recent_works | tojson | forceescape }}"
+        data-lang="{{ session.get('lang', 'en') | e }}">
+    </div>
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        document.addEventListener('DOMContentLoaded', () => {
+            const dataEl = document.getElementById('worker-stats-data');
+            const initialWork = dataEl.dataset.workerWork;
+            app.fetchJobsForWorker(initialWork);
+            app.fetchWorkerPendingBookings();
+            app.fetchDashboardBookings();
+
+            // Real-time stats polling every 30 seconds
+            function refreshLiveStats() {
+                fetch('/api/worker/stats')
+                    .then(r => r.ok ? r.json() : null)
+                    .then(data => {
+                        if (!data || data.error) return;
+                        const todayEl = document.getElementById('stat-earnings-today');
+                        const monthEl = document.getElementById('stat-earnings-month');
+                        const jobsMonthEl = document.getElementById('stat-completed-month');
+                        const reviewsTodayEl = document.getElementById('stat-reviews-today');
+
+                        if (todayEl) { todayEl.textContent = '₹' + data.earnings_today; todayEl.classList.add('live-flash'); setTimeout(() => todayEl.classList.remove('live-flash'), 800); }
+                        if (monthEl) monthEl.textContent = '₹' + data.earnings_month;
+                        if (jobsMonthEl) jobsMonthEl.textContent = data.completed_month;
+                        if (reviewsTodayEl) reviewsTodayEl.textContent = data.reviews_today;
+
+                        // Also update the hidden data element so Listen Stats & Export Data stay fresh
+                        dataEl.dataset.statsTodayEarnings = data.earnings_today;
+                        dataEl.dataset.statsMonthEarnings = data.earnings_month;
+                        dataEl.dataset.statsMonthCount = data.completed_month;
+                        dataEl.dataset.statsTodayReviews = data.reviews_today;
+                    })
+                    .catch(() => {});
+            }
+            // Poll immediately then every 30 s
+            refreshLiveStats();
+            setInterval(refreshLiveStats, 30000);
+        });
+
+        function vhScrollTo(event, id) {
+            const el = document.getElementById(id);
+            if (!el) return;
+            const headerOffset = 80;
+            const elementPosition = el.getBoundingClientRect().top;
+            const offsetPosition = elementPosition + window.pageYOffset - headerOffset;
+
+            window.scrollTo({
+                top: offsetPosition,
+                behavior: "smooth"
+            });
+            
+            // Update active state in sidebar
+            document.querySelectorAll('.vh-nav-item').forEach(btn => btn.classList.remove('active'));
+            if(event && event.currentTarget) {
+                event.currentTarget.classList.add('active');
+            }
+        }
+
+        function exportDashboardData() {
+            const dataEl = document.getElementById('worker-stats-data');
+            const headers = ['Name', 'Total Bookings', 'Completed This Month', 'Earnings Today', 'Earnings Month', 'Reviews Today', 'Hourly Rate', 'Recent Works'];
+            const lastWorksArr = JSON.parse(dataEl.dataset.statsLastWorks || '[]');
+            const row = [
+                dataEl.dataset.workerName || 'Worker',
+                dataEl.dataset.statsTotal || '0',
+                dataEl.dataset.statsMonthCount || '0',
+                dataEl.dataset.statsTodayEarnings || '0',
+                dataEl.dataset.statsMonthEarnings || '0',
+                dataEl.dataset.statsTodayReviews || '0',
+                dataEl.dataset.workerRate || '500',
+                lastWorksArr.join(' | ')
+            ];
+            
+            const csvContent = headers.join(',') + '\n' + row.map(v => `"${String(v).replace(/"/g, '""')}"`).join(',');
+            
+            const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
+            const url = URL.createObjectURL(blob);
+            const a = document.createElement('a');
+            a.href = url;
+            a.download = `voicehire_stats_${new Date().toISOString().split('T')[0]}.csv`;
+            a.click();
+        }
+
+        function speakStats() {
+            const dataEl = document.getElementById('worker-stats-data');
+            const name = dataEl.dataset.workerName;
+            const today = dataEl.dataset.statsTodayEarnings;
+            const month = dataEl.dataset.statsMonthEarnings;
+            const completedMonth = dataEl.dataset.statsMonthCount;
+            const reviewsToday = dataEl.dataset.statsTodayReviews;
+            const rate = dataEl.dataset.workerRate || '500';
+            const lastWorks = JSON.parse(dataEl.dataset.statsLastWorks || '[]');
+            const lang = dataEl.dataset.lang;
+            
+            window.speechSynthesis.cancel();
+
+            let text = "";
+            if (lang === 'hi') {
+                text = `नमस्ते ${name}। यह आपका प्रदर्शन सारांश है। `;
+                text += `आपकी प्रति घंटा दर ${rate} रुपये है। `;
+                text += `आज की आपकी कुल कमाई ${today} रुपये है और आपको आज ${reviewsToday} नई समीक्षाएं मिली हैं। `;
+                text += `इस पूरे महीने में आपने कुल ${completedMonth} काम पूरे किए हैं और ${month} रुपये कमाए हैं। `;
+                if (lastWorks && lastWorks.length > 0) {
+                    const worksText = lastWorks.slice(0,2).map(w => w.replace(' on ', ' को ')).join('; और ');
+                    text += `आपके हालिया कामों में ${worksText} शामिल हैं। `;
+                }
+                text += "शानदार काम जारी रखें!";
+            } else {
+                text = `Hello ${name}. Here is your performance summary. `;
+                text += `Your current hourly rate is set to ${rate} rupees. `;
+                text += `Your total earnings for today are ${today} rupees, and you received ${reviewsToday} new reviews today. `;
+                text += `For this entire month, you have completed ${completedMonth} jobs and earned a total of ${month} rupees. `;
+                if (lastWorks && lastWorks.length > 0) {
+                    text += `Your most recent works were: ${lastWorks.slice(0,2).join(', and ')}. `;
+                }
+                text += "Keep up the great work!";
+            }
+
+            const utterance = new SpeechSynthesisUtterance(text);
+            const voices = window.speechSynthesis.getVoices();
+            let voice;
+
+            if (lang === 'hi') {
+                utterance.lang = 'hi-IN';
+                voice = voices.find(v => v.lang.startsWith('hi') && (v.name.includes('Google') || v.name.includes('Natural'))) || voices.find(v => v.lang.startsWith('hi'));
+            } else {
+                utterance.lang = 'en-US';
+                voice = voices.find(v => v.lang.startsWith('en') && (v.name.includes('Google') || v.name.includes('Natural'))) || voices.find(v => v.lang.startsWith('en'));
+            }
+            if (voice) utterance.voice = voice;
+            utterance.rate = 0.9;
+            window.speechSynthesis.speak(utterance);
+        }
+    </script>
+</body>
+
+</html>
