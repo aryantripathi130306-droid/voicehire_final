@@ -1248,4 +1248,70 @@ def cancel_booking(booking_id):
         if booking['customer_id'] != uid and booking['worker_id'] != uid:
             return jsonify({'error': 'Unauthorized'}), 403
 
-        
+        if booking['status'] in ('Completed', 'Cancelled'):
+            return jsonify({'error': 'Cannot cancel a completed or already cancelled booking'}), 400
+
+        supabase.table("bookings").update({
+            "status": "Cancelled",
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", booking_id).execute()
+        return jsonify({'message': 'Booking cancelled.', 'status': 'Cancelled'}), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+@app.route('/api/bookings/<int:booking_id>/accept', methods=['POST'])
+def accept_booking(booking_id):
+    """Worker accepts a pending booking."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized'}), 401
+    uid = session['user_id']
+    try:
+        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
+        if not resp.data:
+            return jsonify({'error': 'Booking not found'}), 404
+        booking = resp.data[0]
+        if booking['worker_id'] != uid:
+            return jsonify({'error': 'Unauthorized'}), 403
+        if booking['status'] != 'Pending':
+            return jsonify({'error': f"Cannot accept. Current status: {booking['status']}"}), 400
+        supabase.table("bookings").update({
+            "status": "Booked",
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", booking_id).execute()
+        return jsonify({'message': 'Booking accepted!', 'status': 'Booked'}), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
+
+@app.route('/api/bookings/<int:booking_id>/decline', methods=['POST'])
+def decline_booking(booking_id):
+    """Worker declines a pending booking."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized'}), 401
+    uid = session['user_id']
+    try:
+        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
+        if not resp.data:
+            return jsonify({'error': 'Booking not found'}), 404
+        booking = resp.data[0]
+        if booking['worker_id'] != uid:
+            return jsonify({'error': 'Unauthorized'}), 403
+        if booking['status'] != 'Pending':
+            return jsonify({'error': 'Cannot decline a booking that is not pending'}), 400
+        supabase.table("bookings").update({
+            "status": "Cancelled",
+            "updated_at": datetime.utcnow().isoformat()
+        }).eq("id", booking_id).execute()
+        return jsonify({'message': 'Booking declined.', 'status': 'Cancelled'}), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
+if __name__ == '__main__':
+    print("Starting VoiceHire Server...")
+    debug_mode = os.environ.get('FLASK_DEBUG', 'False').lower() in ['true', '1', 't']
+    port = int(os.environ.get('PORT', 5000))
+    print(f"Debug Mode: {debug_mode}, Port: {port}")
+    # Using '::' to listen on both IPv4 and IPv6 (handles cases where IPv4 loopback is broken)
+    app.run(host='::', port=port, debug=debug_mode)
