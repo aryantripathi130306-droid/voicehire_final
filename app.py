@@ -40,6 +40,7 @@ ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a', 'aac'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov'}
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 
+# ---- SUPABASE CLIENT ----
 supabase_url = os.environ.get('SUPABASE_URL')
 supabase_key = os.environ.get('SUPABASE_KEY')
 
@@ -59,7 +60,7 @@ def safe_str(val):
     return str(val).strip() if val else ''
 
 def try_select(table, columns, filters=None, in_filters=None):
-    """Helper to try selecting with profile_pic, fallback if column missing."""
+    """Helper to try selecting with profile_pic/hourly_rate, fallback if column missing."""
     try:
         query = supabase.table(table).select(columns)
         if filters:
@@ -68,24 +69,58 @@ def try_select(table, columns, filters=None, in_filters=None):
             for k, v in in_filters.items(): query = query.in_(k, v)
         return query.execute()
     except Exception as e:
-        if 'profile_pic' in str(e).lower():
+        err_str = str(e).lower()
+        if 'profile_pic' in err_str or 'hourly_rate' in err_str:
             cols = columns.replace(', profile_pic', '').replace('profile_pic, ', '').replace('profile_pic', '')
+            cols = cols.replace(', hourly_rate', '').replace('hourly_rate, ', '').replace('hourly_rate', '')
             query = supabase.table(table).select(cols)
             if filters:
                 for k, v in filters.items(): query = query.eq(k, v)
             if in_filters:
                 for k, v in in_filters.items(): query = query.in_(k, v)
             resp = query.execute()
-            for row in resp.data: row['profile_pic'] = None
+            for row in resp.data:
+                if 'profile_pic' in columns: row['profile_pic'] = None
+                if 'hourly_rate' in columns: row['hourly_rate'] = 500
             return resp
         raise e
 
+
+def upload_to_supabase_storage(file_obj, folder: str) -> str:
+    """Upload a file object to Supabase Storage and return its public URL.
+    Files are stored in the 'voicehire-uploads' bucket so they persist
+    across server restarts and deployments."""
+    ext = file_obj.filename.rsplit('.', 1)[-1].lower()
+    filename = f"{folder}/{uuid.uuid4().hex}.{ext}"
+    file_bytes = file_obj.read()
+    content_type = file_obj.content_type or 'application/octet-stream'
+    supabase.storage.from_('voicehire-uploads').upload(
+        filename,
+        file_bytes,
+        {'content-type': content_type, 'upsert': 'true'}
+    )
+    public_url = f"{supabase_url}/storage/v1/object/public/voicehire-uploads/{filename}"
+    return public_url
+
+# ---- TRANSLATION CONFIG ----
 @app.context_processor
 def inject_translation():
     def t(text):
         lang = session.get('lang', 'en')
         return get_translation(lang, text)
     return dict(t=t)
+
+@app.template_global()
+def media_url(path):
+    """Return the correct URL for a media file.
+    If path is already an absolute URL (Supabase Storage), return it directly.
+    Otherwise prefix with /static/ for local legacy files."""
+    if not path:
+        return None
+    if path.startswith('http://') or path.startswith('https://'):
+        return path
+    # Legacy local path
+    return f'/static/{path}'
 
 @app.route('/set_lang/<lang_code>')
 def set_lang(lang_code):
@@ -166,14 +201,146 @@ def worker_dashboard():
     if 'user_id' not in session or session.get('role') != 'worker':
         return redirect(url_for('login_page', role='worker'))
     try:
-        resp = try_select("workers", "*", filters={"id": session['user_id']})
+        worker_id = session['user_id']
+        resp = try_select("workers", "*", filters={"id": worker_id})
         if not resp.data:
             session.clear()
             return redirect(url_for('login_page', role='worker'))
         worker_data = resp.data[0]
-        return render_template('worker_dashboard.html', worker=worker_data)
+
+        # Fetch real stats from jobs
+        jobs_resp = supabase.table("jobs").select("*").eq("worker_id", worker_id).execute()
+        jobs = jobs_resp.data or []
+        
+        # Fetch real stats from bookings
+        bookings_resp = supabase.table("bookings").select("*").eq("worker_id", worker_id).execute()
+        bookings = bookings_resp.data or []
+        
+        # Combine completed items
+        completed_jobs = [j for j in jobs if j['status'] in ['completed', 'done', 'pending_confirmation']]
+        completed_bookings = [b for b in bookings if b['status'] in ['Completed', 'Work Started']]
+        
+        all_completed = completed_jobs + completed_bookings
+        
+        # Sort by date desc
+        all_completed.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        # Get real rating from reviews table
+        reviews_resp = supabase.table("reviews").select("*").eq("worker_id", worker_id).order("created_at", desc=True).execute()
+        reviews = reviews_resp.data or []
+        
+        # Gather all user IDs from reviews and last_two jobs
+        user_ids_to_fetch = set()
+        for r in reviews:
+            if r.get('user_id'): user_ids_to_fetch.add(r['user_id'])
+            
+        last_two = all_completed[:2]
+        for j in last_two:
+            cid = j.get('user_id') or j.get('customer_id')
+            if cid: user_ids_to_fetch.add(cid)
+            
+        # Fetch all customers in one go
+        customer_map = {}
+        if user_ids_to_fetch:
+            c_resp = try_select("users", "id, name, profile_pic", in_filters={"id": list(user_ids_to_fetch)})
+            if c_resp and getattr(c_resp, 'data', None):
+                customer_map = {c['id']: c for c in c_resp.data}
+                
+        # Enrich reviews with customer details
+        for r in reviews:
+            c_info = customer_map.get(r['user_id'], {})
+            r['customer_name'] = c_info.get('name', "Customer")
+            r['customer_pic'] = c_info.get('profile_pic')
+        
+        ratings = [r['rating'] for r in reviews]
+        avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
+        review_count = len(ratings)
+        
+        # Update worker data with real rating
+        worker_data['avg_rating'] = avg_rating
+        worker_data['review_count'] = review_count
+        worker_data['detailed_reviews'] = reviews
+
+        # Calculate daily and monthly stats
+        today = datetime.now().strftime("%Y-%m-%d")
+        this_month = datetime.now().strftime("%Y-%m")
+        
+        for j in last_two:
+            # Check if it's a job or booking and fetch customer name
+            cid = j.get('user_id') or j.get('customer_id')
+            c_info = customer_map.get(cid, {})
+            j['customer_name'] = c_info.get('name') if c_info.get('name') else j.get('user_name', 'Customer')
+        
+        # Use hourly_rate if available, else default to 500
+        hourly_rate = int(worker_data.get('hourly_rate', 500))
+        
+        # Get real reviews count for today
+        reviews_all = reviews_resp.data or []
+        reviews_today = [r for r in reviews_all if r.get('created_at', '').startswith(today)]
+        
+        stats = {
+            "total_services": len(all_completed),
+            "pending_requests": len([j for j in jobs if j['status'] == 'open']) + len([b for b in bookings if b['status'] == 'Pending']),
+            "completed_jobs": len(all_completed),
+            "completed_month": len([j for j in all_completed if j.get('created_at', '').startswith(this_month)]),
+            "earnings": sum([int(j.get('amount', hourly_rate)) for j in all_completed]),
+            "earnings_today": sum([int(j.get('amount', hourly_rate)) for j in all_completed if j.get('created_at', '').startswith(today)]),
+            "earnings_month": sum([int(j.get('amount', hourly_rate)) for j in all_completed if j.get('created_at', '').startswith(this_month)]),
+            "reviews_today": len(reviews_today),
+            "recent_works": [f"{j.get('customer_name')} on {j.get('created_at')[:10]}" for j in all_completed]
+        }
+
+        return render_template('worker_dashboard.html', worker=worker_data, stats=stats)
+
     except Exception as e:
+        import traceback
+        print(traceback.format_exc())
         return f"Database error: {e}"
+
+@app.route('/api/worker/stats')
+def worker_stats_api():
+    """Real-time stats endpoint polled by the worker dashboard every 30 seconds."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized'}), 401
+    try:
+        worker_id = session['user_id']
+
+        worker_resp = try_select("workers", "hourly_rate", filters={"id": worker_id})
+        worker_data = worker_resp.data[0] if worker_resp and worker_resp.data else {}
+        hourly_rate = int(worker_data.get('hourly_rate') or 500)
+
+        jobs_resp = supabase.table("jobs").select("status, amount, created_at").eq("worker_id", worker_id).execute()
+        jobs = jobs_resp.data or []
+
+        bookings_resp = supabase.table("bookings").select("status, amount, created_at, customer_id").eq("worker_id", worker_id).execute()
+        bookings = bookings_resp.data or []
+
+        completed_jobs = [j for j in jobs if j['status'] in ['completed', 'done', 'pending_confirmation']]
+        completed_bookings = [b for b in bookings if b['status'] in ['Completed', 'Work Started']]
+        all_completed = completed_jobs + completed_bookings
+
+        reviews_resp = supabase.table("reviews").select("rating, created_at").eq("worker_id", worker_id).execute()
+        reviews_all = reviews_resp.data or []
+
+        today = datetime.now().strftime("%Y-%m-%d")
+        this_month = datetime.now().strftime("%Y-%m")
+
+        reviews_today = [r for r in reviews_all if r.get('created_at', '').startswith(today)]
+
+        stats = {
+            "total_services": len(all_completed),
+            "pending_requests": len([j for j in jobs if j['status'] == 'open']) + len([b for b in bookings if b['status'] == 'Pending']),
+            "completed_month": len([j for j in all_completed if j.get('created_at', '').startswith(this_month)]),
+            "earnings_today": sum([int(j.get('amount') or hourly_rate) for j in all_completed if j.get('created_at', '').startswith(today)]),
+            "earnings_month": sum([int(j.get('amount') or hourly_rate) for j in all_completed if j.get('created_at', '').startswith(this_month)]),
+            "reviews_today": len(reviews_today),
+            "hourly_rate": hourly_rate,
+        }
+        return jsonify(stats), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
 
 @app.route('/scan')
 def scan_page():
@@ -210,6 +377,8 @@ def complete_job_via_qr(token):
         import traceback; print(traceback.format_exc())
         return render_template('qr_result.html', success=False, message="Server error.")
 
+# ---- AUTHENTICATION API ENDPOINTS ----
+
 @app.route('/api/auth/signup/user', methods=['POST'])
 def signup_user():
     name = safe_str(request.form.get('name'))
@@ -244,7 +413,7 @@ def signup_user():
             "password": hashed_pw,
             "profile_pic": profile_pic_path
         }
-
+        
         try:
             response = supabase.table("users").insert(insert_data).execute()
         except Exception as e:
@@ -325,6 +494,8 @@ def signup_worker():
 
         lat = request.form.get('latitude')
         lng = request.form.get('longitude')
+        hourly_rate = request.form.get('hourly_rate', 500)
+        
         insert_data = {
             "name": name,
             "work": work,
@@ -337,6 +508,7 @@ def signup_worker():
             "profile_pic": profile_pic_path,
             "latitude": float(lat) if lat else None,
             "longitude": float(lng) if lng else None,
+            "hourly_rate": int(hourly_rate) if str(hourly_rate).isdigit() else 500,
             "is_available": True,
             "is_verified": False
         }
@@ -443,34 +615,28 @@ def edit_worker_profile():
         if voice_file and voice_file.filename != '':
             if not allowed_file(voice_file.filename, ALLOWED_AUDIO_EXTENSIONS):
                 return jsonify({'error': 'Invalid audio file type'}), 400
-            filename = f"{uuid.uuid4().hex}_{secure_filename(voice_file.filename)}"
-            voice_file.save(os.path.join(AUDIO_FOLDER, filename))
-            voice_path = f'uploads/audio/{filename}'
+            voice_path = upload_to_supabase_storage(voice_file, 'audio')
 
         if video_file and video_file.filename != '':
             if not allowed_file(video_file.filename, ALLOWED_VIDEO_EXTENSIONS):
                 return jsonify({'error': 'Invalid video file type'}), 400
-            filename = f"{uuid.uuid4().hex}_{secure_filename(video_file.filename)}"
-            video_file.save(os.path.join(VIDEO_FOLDER, filename))
-            video_path = f'uploads/video/{filename}'
+            video_path = upload_to_supabase_storage(video_file, 'video')
+
         id_file = request.files.get('id_proof')
         if id_file and id_file.filename != '':
             if not allowed_file(id_file.filename, ALLOWED_IMAGE_EXTENSIONS):
                 return jsonify({'error': 'Invalid image file type for ID proof'}), 400
-            filename = f"{uuid.uuid4().hex}_{secure_filename(id_file.filename)}"
-            id_file.save(os.path.join(ID_FOLDER, filename))
-            id_path = f'uploads/ids/{filename}'
+            id_path = upload_to_supabase_storage(id_file, 'ids')
 
         profile_pic = request.files.get('profile_pic')
         if profile_pic and profile_pic.filename != '':
             if not allowed_file(profile_pic.filename, ALLOWED_IMAGE_EXTENSIONS):
                 return jsonify({'error': 'Invalid image file type for profile picture'}), 400
-            filename = f"{uuid.uuid4().hex}_{secure_filename(profile_pic.filename)}"
-            profile_pic.save(os.path.join(PROFILE_PIC_FOLDER, filename))
-            profile_pic_path = f'uploads/profile_pics/{filename}'
+            profile_pic_path = upload_to_supabase_storage(profile_pic, 'profile_pics')
 
         lat = request.form.get('latitude')
         lng = request.form.get('longitude')
+        hourly_rate = request.form.get('hourly_rate')
 
         update_data = {
             "name": name,
@@ -484,6 +650,9 @@ def edit_worker_profile():
             "latitude": float(lat) if lat else None,
             "longitude": float(lng) if lng else None,
         }
+        
+        if hourly_rate:
+            update_data["hourly_rate"] = int(hourly_rate) if str(hourly_rate).isdigit() else 500
 
         if password:
             if len(password) < 6:
@@ -493,11 +662,12 @@ def edit_worker_profile():
         try:
             supabase.table("workers").update(update_data).eq("id", worker_id).execute()
         except Exception as e:
-            if 'profile_pic' in str(e).lower():
-                update_data.pop('profile_pic', None)
-                supabase.table("workers").update(update_data).eq("id", worker_id).execute()
-            else:
-                raise e
+            err_str = str(e).lower()
+            if 'hourly_rate' in err_str or 'profile_pic' in err_str:
+                return jsonify({'error': 'Schema Error: Please add "hourly_rate" (integer) and "profile_pic" (text) columns to the "workers" table in Supabase.'}), 400
+            if 'duplicate key' in err_str:
+                return jsonify({'error': 'Phone number already exists for another account.'}), 400
+            raise e
         session['name'] = name
         return jsonify({'message': 'Profile updated successfully', 'redirect': url_for('worker_dashboard')}), 200
     except Exception as e:
@@ -879,7 +1049,7 @@ def translate_api():
 
 
 # ════════════════════════════════════════════════════════════
-#  BOOKING & QR VERIFICATION SYSTEM
+#  BOOKING & QR VERIFICATION SYSTEM (from partner's codebase)
 # ════════════════════════════════════════════════════════════
 
 TIME_SLOTS = [
@@ -902,10 +1072,7 @@ def verify_qr_token(booking_id, token: str) -> bool:
     return hmac.compare_digest(expected, token)
 
 def generate_qr_base64(data: dict) -> str:
-    """
-    Render a QR code as a base64-encoded PNG string.
-    The QR payload is a compact JSON string with booking_id and token.
-    """
+    """Render a QR code as a base64-encoded PNG string."""
     payload = json.dumps(data, separators=(',', ':'))
     qr = qrcode.QRCode(
         version=2,
@@ -926,7 +1093,6 @@ def generate_qr_base64(data: dict) -> str:
 
 @app.route('/bookings')
 def my_bookings_page():
-    """List of all bookings for the logged-in customer."""
     if 'user_id' not in session:
         return redirect(url_for('login_page', role='user'))
     return render_template('my_bookings.html', name=session.get('name'))
@@ -934,7 +1100,6 @@ def my_bookings_page():
 
 @app.route('/bookings/<int:booking_id>')
 def booking_detail_page(booking_id):
-    """Booking detail page — shows QR code and live status."""
     if 'user_id' not in session:
         return redirect(url_for('login_page', role='user'))
     try:
@@ -945,20 +1110,27 @@ def booking_detail_page(booking_id):
 
         uid = session['user_id']
         role = session.get('role')
-        # Only the customer or the worker of this booking can view it
         if booking['customer_id'] != uid and booking['worker_id'] != uid:
             return "Unauthorized", 403
 
-        # Fetch worker info (using try_select for profile_pic safety)
-        w_resp = try_select("workers", "name, phone, work, profile_pic", filters={"id": booking['worker_id']})
+        w_resp = try_select("workers", "name, phone, work, profile_pic, hourly_rate", filters={"id": booking['worker_id']})
         worker = w_resp.data[0] if w_resp.data else {}
 
-        # Fetch customer info
         c_resp = try_select("users", "name, phone, profile_pic", filters={"id": booking['customer_id']})
         customer = c_resp.data[0] if c_resp.data else {}
+
         token = make_qr_token(booking_id)
         qr_data = {"bid": booking_id, "tok": token}
         qr_b64 = generate_qr_base64(qr_data)
+        
+        is_customer = (role == 'user' and uid == booking['customer_id'])
+        has_reviewed = False
+        if booking['status'] == 'Completed' and is_customer:
+            try:
+                r_resp = supabase.table("reviews").select("id").eq("job_id", booking_id).eq("user_id", uid).execute()
+                has_reviewed = bool(r_resp.data)
+            except:
+                pass
 
         return render_template(
             'booking_detail.html',
@@ -967,7 +1139,8 @@ def booking_detail_page(booking_id):
             customer=customer,
             qr_b64=qr_b64,
             role=role,
-            is_customer=(uid == booking['customer_id'])
+            is_customer=is_customer,
+            has_reviewed=has_reviewed
         )
     except Exception as e:
         print(traceback.format_exc())
@@ -976,16 +1149,52 @@ def booking_detail_page(booking_id):
 
 @app.route('/book/<int:worker_id>')
 def book_worker_page(worker_id):
-    """Time-slot booking page for a specific worker."""
     if 'user_id' not in session or session.get('role') != 'user':
         return redirect(url_for('login_page', role='user'))
     try:
-        resp = supabase.table("workers").select("id, name, work, location, is_available").eq("id", worker_id).execute()
+        resp = supabase.table("workers").select("*").eq("id", worker_id).execute()
         if not resp.data:
             return "Worker not found", 404
         worker = resp.data[0]
+        
+        # Fetch ratings/reviews for portfolio
+        reviews_resp = supabase.table("reviews").select("*").eq("worker_id", worker_id).order("created_at", desc=True).execute()
+        reviews = reviews_resp.data or []
+        
+        user_ids_to_fetch = list(set([r['user_id'] for r in reviews if r.get('user_id')]))
+        customer_map = {}
+        if user_ids_to_fetch:
+            c_resp = try_select("users", "id, name, profile_pic", in_filters={"id": user_ids_to_fetch})
+            if c_resp and getattr(c_resp, 'data', None):
+                customer_map = {c['id']: c for c in c_resp.data}
+                
+        for r in reviews:
+            c_info = customer_map.get(r['user_id'], {})
+            r['customer_name'] = c_info.get('name') if c_info.get('name') else "Customer"
+            r['customer_pic'] = c_info.get('profile_pic')
+            
+        worker['detailed_reviews'] = reviews
+        ratings = [r['rating'] for r in reviews if r.get('rating')]
+        worker['avg_rating'] = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
+        worker['review_count'] = len(ratings)
+        
+        # Fetch completed work for portfolio from both jobs and bookings tables
+        jobs_history = supabase.table("jobs").select("*").eq("worker_id", worker_id).in_("status", ["completed", "Completed"]).execute().data or []
+        bookings_history = supabase.table("bookings").select("*").eq("worker_id", worker_id).in_("status", ["completed", "Completed", "Success", "Success!"]).execute().data or []
+        
+        history = jobs_history + bookings_history
+        history.sort(key=lambda x: x.get('created_at', ''), reverse=True)
+        
+        # Extract meaningful descriptions for the history items
+        worker['work_history'] = []
+        for h in history:
+            date = h.get('created_at', 'Recently')[:10]
+            service = h.get('service_type') or h.get('work') or "Service"
+            worker['work_history'].append(f"{service} completed on {date}")
+
         return render_template('booking_slots.html', worker=worker, slots=TIME_SLOTS)
     except Exception as e:
+        print(traceback.format_exc())
         return f"Error: {e}", 500
 
 
@@ -993,18 +1202,11 @@ def book_worker_page(worker_id):
 
 @app.route('/api/bookings/slots', methods=['GET'])
 def get_available_slots():
-    """
-    GET /api/bookings/slots?worker_id=<uuid>&date=<YYYY-MM-DD>
-    Returns all slots with availability status.
-    """
     worker_id = request.args.get('worker_id', '').strip()
     date_str  = request.args.get('date', '').strip()
-
     if not worker_id or not date_str:
         return jsonify({'error': 'worker_id and date are required'}), 400
-
     try:
-        # Validate date
         datetime.strptime(date_str, '%Y-%m-%d')
     except ValueError:
         return jsonify({'error': 'date must be YYYY-MM-DD'}), 400
@@ -1025,11 +1227,6 @@ def get_available_slots():
 
 @app.route('/api/bookings', methods=['POST'])
 def create_booking():
-    """
-    POST /api/bookings
-    Body: { worker_id, date, time_slot, notes? }
-    Creates a booking and returns the booking data with QR token.
-    """
     if 'user_id' not in session or session.get('role') != 'user':
         return jsonify({'error': 'Unauthorized'}), 401
     try:
@@ -1053,12 +1250,10 @@ def create_booking():
 
     customer_id = session['user_id']
     try:
-        # Check worker exists
         w_resp = supabase.table("workers").select("id, name").eq("id", worker_id).execute()
         if not w_resp.data:
             return jsonify({'error': 'Worker not found'}), 404
 
-        # Double-booking guard
         conflict = supabase.table("bookings") \
             .select("id") \
             .eq("worker_id", worker_id) \
@@ -1076,10 +1271,11 @@ def create_booking():
             "time_slot":   time_slot,
             "notes":       notes,
             "status":      "Pending",
-            "qr_token":    uuid.uuid4().hex
+            "qr_token":    str(uuid.uuid4().hex) # Use UUID string for token
         }
         
-        insert_resp = supabase.table("bookings").insert(insert_data).execute()
+        # Use list for insert to be extra safe with some client versions
+        insert_resp = supabase.table("bookings").insert([insert_data]).execute()
         if not insert_resp.data:
             return jsonify({'error': 'Failed to create booking record'}), 500
 
@@ -1102,10 +1298,6 @@ def create_booking():
 
 @app.route('/api/bookings', methods=['GET'])
 def get_my_bookings():
-    """
-    GET /api/bookings
-    Returns bookings for the logged-in user (customer or worker).
-    """
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
@@ -1129,6 +1321,16 @@ def get_my_bookings():
         workers_resp = try_select("workers", "id, name, profile_pic, work", in_filters={"id": worker_ids})
         worker_map = {w['id']: w for w in workers_resp.data}
 
+        # Check for existing reviews if the user is a customer
+        reviewed_booking_ids = set()
+        completed_ids = [b['id'] for b in bookings if b['status'] == 'Completed']
+        if completed_ids and session.get('role') == 'user':
+            try:
+                r_resp = supabase.table("reviews").select("job_id").in_("job_id", completed_ids).eq("user_id", uid).execute()
+                reviewed_booking_ids = {r['job_id'] for r in r_resp.data}
+            except Exception as e:
+                print(f"Error fetching reviews in bulk: {e}")
+
         # Enrich bookings
         for b in bookings:
             c_info = customer_map.get(b['customer_id'], {})
@@ -1140,6 +1342,9 @@ def get_my_bookings():
             b['worker_name'] = w_info.get('name', 'Unknown')
             b['worker_work'] = w_info.get('work', 'N/A')
             b['worker_profile_pic'] = w_info.get('profile_pic')
+            
+            # Attach review status
+            b['has_reviewed'] = b['id'] in reviewed_booking_ids
 
         return jsonify(bookings), 200
     except Exception as e:
@@ -1147,9 +1352,8 @@ def get_my_bookings():
         return jsonify([]), 200
 
 
-@app.route('/api/bookings/<booking_id>', methods=['GET'])
+@app.route('/api/bookings/<int:booking_id>', methods=['GET'])
 def get_booking(booking_id):
-    """Fetch a single booking's current status (used for polling)."""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
@@ -1166,16 +1370,10 @@ def get_booking(booking_id):
         return jsonify({'error': 'Server error'}), 500
 
 
-@app.route('/api/bookings/<booking_id>/checkin', methods=['POST'])
+@app.route('/api/bookings/<int:booking_id>/checkin', methods=['POST'])
 def checkin_booking(booking_id):
-    """
-    POST /api/bookings/<booking_id>/checkin
-    Body: { "token": "<qr_token>" }
-    Verifies QR token and marks booking as 'Work Started'.
-    """
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
-
     try:
         data  = request.get_json() or {}
         token = safe_str(data.get('token', ''))
@@ -1191,27 +1389,18 @@ def checkin_booking(booking_id):
             return jsonify({'error': 'Unauthorized'}), 403
         if booking['status'] != 'Booked':
             return jsonify({'error': f"Cannot check in. Current status: {booking['status']}"}), 400
-        
-        # Verify token (handle both legacy HMAC and new UUID tokens)
-        if token != booking['qr_token'] and not verify_qr_token(booking_id, token):
+        if not verify_qr_token(booking_id, token):
             return jsonify({'error': 'Invalid or expired QR code'}), 403
 
-        supabase.table("bookings").update({
-            "status": "Work Started",
-            "updated_at": datetime.utcnow().isoformat()
-        }).eq("id", booking_id).execute()
+        supabase.table("bookings").update({"status": "Work Started"}).eq("id", booking_id).execute()
         return jsonify({'message': 'Check-in successful! Work has started.', 'status': 'Work Started'}), 200
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
 
 
-@app.route('/api/bookings/<booking_id>/complete', methods=['POST'])
+@app.route('/api/bookings/<int:booking_id>/complete', methods=['POST'])
 def complete_booking(booking_id):
-    """
-    POST /api/bookings/<booking_id>/complete
-    Customer marks the job as done → status = 'Completed'.
-    """
     if 'user_id' not in session or session.get('role') != 'user':
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
@@ -1224,11 +1413,52 @@ def complete_booking(booking_id):
             return jsonify({'error': 'Only the customer can mark work as complete'}), 403
         if booking['status'] != 'Work Started':
             return jsonify({'error': f"Work must be started before completing. Current: {booking['status']}"}), 400
-        supabase.table("bookings").update({
-            "status": "Completed",
-            "updated_at": datetime.utcnow().isoformat()
-        }).eq("id", booking_id).execute()
+        supabase.table("bookings").update({"status": "Completed"}).eq("id", booking_id).execute()
         return jsonify({'message': 'Work marked as completed!', 'status': 'Completed'}), 200
+    except Exception as e:
+        print(traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
+
+@app.route('/api/bookings/<int:booking_id>/review', methods=['POST'])
+def review_booking(booking_id):
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized'}), 401
+    
+    try:
+        data = request.get_json() or {}
+        rating = int(data.get('rating', 0))
+        review_text = safe_str(data.get('review', ''))
+        
+        if not (1 <= rating <= 5):
+            return jsonify({'error': 'Valid rating (1-5) is required'}), 400
+            
+        uid = session['user_id']
+        
+        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
+        if not resp.data:
+            return jsonify({'error': 'Booking not found'}), 404
+            
+        booking = resp.data[0]
+        if booking['customer_id'] != uid:
+            return jsonify({'error': 'Unauthorized'}), 403
+        if booking['status'] != 'Completed':
+            return jsonify({'error': 'Booking must be completed to leave a review'}), 400
+            
+        # Check for duplicate review per booking (1 review per booking, not per worker)
+        dup_resp = supabase.table("reviews").select("id").eq("booking_id", booking_id).eq("user_id", uid).execute()
+        if dup_resp.data:
+            return jsonify({'error': 'You have already submitted a review for this booking'}), 400
+            
+        supabase.table("reviews").insert({
+            "booking_id": booking_id,
+            "worker_id": booking['worker_id'],
+            "user_id": uid,
+            "rating": rating,
+            "review": review_text
+        }).execute()
+        
+        return jsonify({'message': 'Review submitted successfully!'}), 201
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
@@ -1236,7 +1466,6 @@ def complete_booking(booking_id):
 
 @app.route('/api/bookings/<int:booking_id>/cancel', methods=['POST'])
 def cancel_booking(booking_id):
-    """Customer cancels a booking that hasn't started yet."""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
@@ -1247,21 +1476,17 @@ def cancel_booking(booking_id):
         booking = resp.data[0]
         if booking['customer_id'] != uid and booking['worker_id'] != uid:
             return jsonify({'error': 'Unauthorized'}), 403
-
         if booking['status'] in ('Completed', 'Cancelled'):
-            return jsonify({'error': 'Cannot cancel a completed or already cancelled booking'}), 400
-
-        supabase.table("bookings").update({
-            "status": "Cancelled",
-            "updated_at": datetime.utcnow().isoformat()
-        }).eq("id", booking_id).execute()
+            return jsonify({'error': 'Cannot cancel'}), 400
+        supabase.table("bookings").update({"status": "Cancelled"}).eq("id", booking_id).execute()
         return jsonify({'message': 'Booking cancelled.', 'status': 'Cancelled'}), 200
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
+
+
 @app.route('/api/bookings/<int:booking_id>/accept', methods=['POST'])
 def accept_booking(booking_id):
-    """Worker accepts a pending booking."""
     if 'user_id' not in session or session.get('role') != 'worker':
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
@@ -1274,10 +1499,7 @@ def accept_booking(booking_id):
             return jsonify({'error': 'Unauthorized'}), 403
         if booking['status'] != 'Pending':
             return jsonify({'error': f"Cannot accept. Current status: {booking['status']}"}), 400
-        supabase.table("bookings").update({
-            "status": "Booked",
-            "updated_at": datetime.utcnow().isoformat()
-        }).eq("id", booking_id).execute()
+        supabase.table("bookings").update({"status": "Booked"}).eq("id", booking_id).execute()
         return jsonify({'message': 'Booking accepted!', 'status': 'Booked'}), 200
     except Exception as e:
         print(traceback.format_exc())
@@ -1286,7 +1508,6 @@ def accept_booking(booking_id):
 
 @app.route('/api/bookings/<int:booking_id>/decline', methods=['POST'])
 def decline_booking(booking_id):
-    """Worker declines a pending booking."""
     if 'user_id' not in session or session.get('role') != 'worker':
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
@@ -1299,10 +1520,7 @@ def decline_booking(booking_id):
             return jsonify({'error': 'Unauthorized'}), 403
         if booking['status'] != 'Pending':
             return jsonify({'error': 'Cannot decline a booking that is not pending'}), 400
-        supabase.table("bookings").update({
-            "status": "Cancelled",
-            "updated_at": datetime.utcnow().isoformat()
-        }).eq("id", booking_id).execute()
+        supabase.table("bookings").update({"status": "Cancelled"}).eq("id", booking_id).execute()
         return jsonify({'message': 'Booking declined.', 'status': 'Cancelled'}), 200
     except Exception as e:
         print(traceback.format_exc())
