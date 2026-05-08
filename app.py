@@ -13,7 +13,7 @@ from translations import get_translation
 
 load_dotenv()
 
-app = Flask(__name__)
+app = Flask(__name__, template_folder='voicehire frontend/template')
 app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_voicehire_key')
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024
 CORS(app, resources={r"/api/*": {"origins": "*"}})
@@ -88,6 +88,46 @@ def index():
 def set_lang(lang_code):
     session['lang'] = lang_code
     return redirect(url_for('gateway'))
+
+@app.route('/gateway')
+def gateway():
+    if 'user_id' in session:
+        role = session.get('role')
+        return redirect(url_for('user_dashboard' if role == 'user' else 'worker_dashboard'))
+    return render_template('gateway.html') 
+
+
+@app.route('/home')
+def home():
+    if 'user_id' in session:
+        if session.get('role') == 'user':
+            return redirect(url_for('user_dashboard'))
+        return redirect(url_for('worker_dashboard'))
+    return render_template('gateway.html')
+
+@app.route('/home')
+def home():
+    if 'user_id' in session:
+        if session.get('role') == 'user':
+            return redirect(url_for('user_dashboard'))
+        return redirect(url_for('worker_dashboard'))
+    return render_template('gateway.html')
+
+@app.route('/welcome')
+def welcome():
+    if 'user_id' in session:
+        role = session.get('role')
+        return redirect(url_for('user_dashboard' if role == 'user' else 'worker_dashboard'))
+    return render_template('gateway.html')
+
+@app.route('/role')
+def role_selection():
+    return render_template('role.html')
+
+@app.route('/login')
+def login_page():
+    role = request.args.get('role', 'user')
+    return render_template('login.html', role=role)
 
 
 from flask import Flask
