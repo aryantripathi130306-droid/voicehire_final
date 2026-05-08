@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>VoiceHire — Choose Your Language</title>
+    <meta name="description" content="Select your preferred language to continue on VoiceHire.">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#000000", "secondary": "#00668a", "background": "#f7f9fb",
+                        "surface": "#ffffff", "on-surface": "#191c1e"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .lang-card {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            border: 1.5px solid #f1f5f9;
+        }
+
+        .lang-card:hover {
+            transform: scale(1.04);
+            border-color: #00668a;
+            box-shadow: 0 15px 30px -10px rgba(0, 102, 138, 0.15);
+            z-index: 10;
+        }
+
+        .lang-card.active {
+            background: #000;
+            color: white;
+            border-color: #000;
+            box-shadow: 0 15px 30px -10px rgba(0, 0, 0, 0.2);
+        }
+
+        .decorative-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+
+        .blob {
+            position: absolute;
+            border-radius: 50%;
+            filter: blur(60px);
+            opacity: 0.15;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background text-on-surface min-h-screen flex flex-col items-center justify-center p-6 selection:bg-blue-100">
+
+    <div class="decorative-bg">
+        <div class="blob bg-secondary w-96 h-96 -top-20 -left-20"></div>
+        <div class="blob bg-blue-400 w-80 h-80 bottom-20 right-20" style="animation-delay: 1s;"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-4xl animate-in fade-in zoom-in duration-700">
+
+        <!-- Logo & Header -->
+        <div class="text-center mb-12">
+            <div
+                class="inline-flex items-center justify-center w-20 h-20 bg-primary rounded-[24px] shadow-2xl mb-6 text-white border-2 border-white/20 backdrop-blur-md">
+                <span class="material-symbols-outlined text-4xl"
+                    style="font-variation-settings:'FILL' 1">settings_voice</span>
+            </div>
+            <h1 class="text-5xl font-black tracking-tighter text-slate-900 mb-3 uppercase">VoiceHire</h1>
+            <p class="text-slate-500 font-bold text-lg tracking-wide">{{ t('Select Your Language') }}</p>
+            <p class="text-slate-400 font-medium text-sm mt-1 uppercase tracking-[0.2em]">अपनी भाषा चुनें</p>
+        </div>
+
+        <!-- Language Grid -->
+        <div class="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-4 sm:gap-6">
+            <!-- English -->
+            <a href="/set_lang/en"
+                class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3 active">
+                <span class="text-2xl font-black">English</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">International</span>
+            </a>
+            <!-- Hindi -->
+            <a href="/set_lang/hi" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">हिन्दी</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Hindi</span>
+            </a>
+            <!-- Marathi -->
+            <a href="/set_lang/mr" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">मराठी</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Marathi</span>
+            </a>
+            <!-- Tamil -->
+            <a href="/set_lang/ta" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">தமிழ்</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Tamil</span>
+            </a>
+            <!-- Telugu -->
+            <a href="/set_lang/te" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">తెలుగు</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Telugu</span>
+            </a>
+            <!-- Kannada -->
+            <a href="/set_lang/kn" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">ಕನ್ನಡ</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Kannada</span>
+            </a>
+            <!-- Bengali -->
+            <a href="/set_lang/bn" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">বাংলা</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Bengali</span>
+            </a>
+            <!-- Gujarati -->
+            <a href="/set_lang/gu" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">ગુજરાતી</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Gujarati</span>
+            </a>
+            <!-- Malayalam -->
+            <a href="/set_lang/ml" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">മലയാളം</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Malayalam</span>
+            </a>
+            <!-- Punjabi -->
+            <a href="/set_lang/pa" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">ਪੰਜਾਬੀ</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Punjabi</span>
+            </a>
+            <!-- Odia -->
+            <a href="/set_lang/or" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">ଓଡ଼ିଆ</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Odia</span>
+            </a>
+            <!-- Urdu -->
+            <a href="/set_lang/ur" class="lang-card rounded-3xl p-6 flex flex-col items-center justify-center gap-3">
+                <span class="text-2xl font-black">اردو</span>
+                <span class="text-[10px] font-bold uppercase tracking-widest opacity-60">Urdu</span>
+            </a>
+        </div>
+
+        <!-- Footer -->
+        <div class="mt-16 text-center">
+            <p class="text-slate-400 text-xs font-black uppercase tracking-[0.3em]">Built for Bharat • {{ t('AI Driven')
+                }}</p>
+        </div>
+    </div>
+
+</body>
+
+</html>
