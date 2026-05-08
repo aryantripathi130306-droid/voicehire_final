@@ -1,0 +1,145 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>VoiceHire — Select Your Role</title>
+    <meta name="description" content="Select whether you want to hire or find work on VoiceHire.">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#000000", "secondary": "#00668a", "background": "#f7f9fb",
+                        "surface": "#ffffff", "on-surface": "#191c1e"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .role-card {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+            background: white;
+            border: 1.5px solid #f1f5f9;
+            overflow: hidden;
+            position: relative;
+        }
+
+        .role-card:hover {
+            transform: translateY(-8px);
+            border-color: #00668a;
+            box-shadow: 0 25px 50px -12px rgba(0, 102, 138, 0.15);
+        }
+
+        .role-card:hover .role-icon {
+            transform: scale(1.1) rotate(-5deg);
+        }
+
+        .role-icon {
+            transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+
+        .decorative-bg {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            z-index: -1;
+            overflow: hidden;
+            background: #f8fafc;
+        }
+    </style>
+</head>
+
+<body
+    class="bg-background text-on-surface min-h-screen flex flex-col items-center justify-center p-6 selection:bg-blue-100">
+
+    <div class="decorative-bg">
+        <div class="absolute w-full h-full opacity-[0.03]"
+            style="background-image: radial-gradient(#00668a 1px, transparent 1px); background-size: 40px 40px;"></div>
+    </div>
+
+    <!-- Main Container -->
+    <div class="w-full max-w-4xl animate-in fade-in slide-in-from-bottom-8 duration-700">
+
+        <!-- Logo -->
+        <div class="text-center mb-16">
+            <div
+                class="inline-flex items-center justify-center w-16 h-16 bg-primary rounded-[20px] shadow-2xl mb-6 text-white border border-white/10 backdrop-blur-md">
+                <span class="material-symbols-outlined text-3xl"
+                    style="font-variation-settings:'FILL' 1">settings_voice</span>
+            </div>
+            <h1 class="text-4xl font-black tracking-tighter text-slate-900 mb-2 uppercase">{{ t('Join VoiceHire') }}
+            </h1>
+            <p class="text-slate-500 font-bold tracking-wide">{{ t('Select how you would like to use the platform') }}
+            </p>
+        </div>
+
+        <!-- Role Options -->
+        <div class="grid grid-cols-1 md:grid-cols-2 gap-8 px-4 sm:px-0">
+
+            <!-- Customer Role -->
+            <a href="{{ url_for('login_page', role='user') }}"
+                class="role-card rounded-[40px] p-10 flex flex-col items-center text-center group">
+                <div
+                    class="role-icon w-24 h-24 rounded-3xl bg-slate-50 text-slate-800 flex items-center justify-center mb-8 border border-slate-100 group-hover:bg-slate-900 group-hover:text-white group-hover:shadow-xl transition-all duration-300">
+                    <span class="material-symbols-outlined text-5xl"
+                        style="font-variation-settings:'FILL' 1">person_search</span>
+                </div>
+                <h2 class="text-3xl font-black text-slate-900 mb-4 tracking-tight">{{ t('I want to Hire') }}</h2>
+                <p class="text-slate-500 font-medium leading-relaxed mb-8">
+                    {{ t('Find reliable local experts for cleaning, repairs, and daily household tasks in seconds.') }}
+                </p>
+                <div
+                    class="mt-auto px-8 h-12 bg-slate-100 rounded-full flex items-center justify-center text-xs font-black uppercase tracking-[0.2em] text-slate-500 group-hover:bg-slate-900 group-hover:text-white transition-all">
+                    {{ t('Enter as Customer') }}
+                </div>
+            </a>
+
+            <!-- Worker Role -->
+            <a href="{{ url_for('login_page', role='worker') }}"
+                class="role-card rounded-[40px] p-10 flex flex-col items-center text-center group border-2 border-secondary/5">
+                <div
+                    class="role-icon w-24 h-24 rounded-3xl bg-secondary/10 text-secondary flex items-center justify-center mb-8 border border-secondary/20 group-hover:bg-secondary group-hover:text-white group-hover:shadow-xl transition-all duration-300">
+                    <span class="material-symbols-outlined text-5xl"
+                        style="font-variation-settings:'FILL' 1">handyman</span>
+                </div>
+                <h2 class="text-3xl font-black text-slate-900 mb-4 tracking-tight">{{ t('I want to Work') }}</h2>
+                <p class="text-slate-500 font-medium leading-relaxed mb-8">
+                    {{ t('Join India\'s premier network for service professionals and grow your business locally.') }}
+                </p>
+                <div
+                    class="mt-auto px-8 h-12 bg-secondary/10 rounded-full flex items-center justify-center text-xs font-black uppercase tracking-[0.2em] text-secondary group-hover:bg-secondary group-hover:text-white transition-all">
+                    {{ t('Enter as Worker') }}
+                </div>
+            </a>
+
+        </div>
+
+        <!-- Language link -->
+        <div class="mt-16 text-center">
+            <a href="{{ url_for('index') }}"
+                class="inline-flex items-center gap-2 text-xs font-black uppercase tracking-[0.3em] text-slate-400 hover:text-secondary transition-colors">
+                <span class="material-symbols-outlined text-lg">language</span>
+                {{ t('Change Language') }}
+            </a>
+        </div>
+    </div>
+
+</body>
+
+</html>

@@ -1,0 +1,261 @@
+<!DOCTYPE html>
+<html class="light" lang="en">
+
+<head>
+    <meta charset="utf-8" />
+    <meta content="width=device-width, initial-scale=1.0" name="viewport" />
+    <title>Login - VoiceHire</title>
+    <meta name="description" content="Login to VoiceHire to find local workers or job opportunities.">
+    <script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700;800;900&display=swap"
+        rel="stylesheet" />
+    <link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&display=swap"
+        rel="stylesheet" />
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}" />
+    <script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    colors: {
+                        "primary": "#000000", "secondary": "#00668a", "background": "#f7f9fb",
+                        "surface": "#ffffff", "on-surface": "#191c1e",
+                        "on-surface-variant": "#45464d", "outline-variant": "#c6c6cd",
+                        "outline": "#76777d"
+                    }
+                }
+            }
+        }
+    </script>
+    <style>
+        * {
+            font-family: 'Inter', sans-serif;
+        }
+
+        .glass-panel {
+            background: rgba(255, 255, 255, 0.85);
+            backdrop-filter: blur(24px);
+            -webkit-backdrop-filter: blur(24px);
+            border: 1.5px solid rgba(226, 232, 240, 0.6);
+            box-shadow: 0 10px 40px rgba(0, 0, 0, 0.04);
+        }
+
+        .custom-input {
+            border: none;
+            border-bottom: 2px solid #e2e8f0;
+            background: transparent;
+            transition: all 0.3s ease;
+            width: 100%;
+            height: 3.5rem;
+            font-size: 1.125rem;
+            outline: none;
+            padding: 0.5rem 0;
+            font-weight: 500;
+        }
+
+        .custom-input:focus {
+            border-bottom-color: #00668a;
+        }
+
+        .custom-input::placeholder {
+            color: #94a3b8;
+            font-weight: 400;
+        }
+
+        .role-tab {
+            flex: 1;
+            text-align: center;
+            padding: 0.75rem;
+            border-radius: 9999px;
+            font-size: 0.875rem;
+            font-weight: 700;
+            transition: all 0.25s;
+            border: 1.5px solid transparent;
+        }
+
+        .role-tab.active-user {
+            background: #000;
+            color: #fff;
+        }
+
+        .role-tab.active-worker {
+            background: #00668a;
+            color: #fff;
+        }
+
+        .role-tab.inactive {
+            color: #64748b;
+            border-color: #e2e8f0;
+        }
+
+        .role-tab.inactive:hover {
+            border-color: #cbd5e1;
+            background: #f8fafc;
+        }
+
+        /* Brand panel decorative circles */
+        .brand-circle {
+            position: absolute;
+            border-radius: 50%;
+            background: rgba(255, 255, 255, 0.08);
+            filter: blur(40px);
+        }
+    </style>
+</head>
+
+<body class="bg-background text-on-surface min-h-screen selection:bg-blue-100">
+
+    <div class="vh-split-screen">
+
+        <!-- ═══ LEFT — Brand Panel (desktop only) ═══ -->
+        <div class="vh-brand-panel">
+            <div class="brand-circle" style="width:500px;height:500px;top:-150px;left:-150px;"></div>
+            <div class="brand-circle" style="width:400px;height:400px;bottom:-100px;right:-100px;"></div>
+
+            <div style="position:relative; z-index: 10;">
+                <!-- Logo -->
+                <div class="flex items-center gap-3 mb-12">
+                    <div
+                        class="w-14 h-14 rounded-2xl bg-white/10 flex items-center justify-center border border-white/20 backdrop-blur-md shadow-xl">
+                        <span class="material-symbols-outlined text-white text-3xl"
+                            style="font-variation-settings:'FILL' 1">settings_voice</span>
+                    </div>
+                    <span class="text-2xl font-black tracking-tighter text-white">VoiceHire</span>
+                </div>
+
+                <h2 class="brand-title text-5xl lg:text-6xl">{{ t('Welcome') }}<br />{{ t('Back.') }}</h2>
+                <p class="brand-subtitle max-w-md mt-6 opacity-80 font-medium">
+                    {{ t("Log in to connect with your community, manage your tasks, and find work that matters.") }}
+                </p>
+
+                <div class="mt-12 space-y-5">
+                    <div class="brand-feature">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
+                            <span class="material-symbols-outlined text-white"
+                                style="font-variation-settings:'FILL' 1">mic</span>
+                        </div>
+                        <span class="font-semibold">{{ t('Voice-guided registration in any language') }}</span>
+                    </div>
+                    <div class="brand-feature">
+                        <div
+                            class="w-10 h-10 rounded-xl bg-white/10 flex items-center justify-center border border-white/10">
+                            <span class="material-symbols-outlined text-white"
+                                style="font-variation-settings:'FILL' 1">location_on</span>
+                        </div>
+                        <span class="font-semibold">{{ t('Hyper-local matching for your area') }}</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ═══ RIGHT — Form Panel ═══ -->
+        <div class="vh-form-panel">
+            <div class="w-full max-w-[420px]">
+
+                <!-- Mobile logo (hidden on desktop) -->
+                <div class="flex flex-col items-center mb-10 lg:hidden">
+                    <div class="w-16 h-16 bg-primary rounded-2xl flex items-center justify-center mb-4 shadow-2xl">
+                        <span class="material-symbols-outlined text-white text-4xl"
+                            style="font-variation-settings:'FILL' 1">settings_voice</span>
+                    </div>
+                    <h1 class="text-4xl font-black tracking-tighter text-primary">VoiceHire</h1>
+                </div>
+
+                <!-- Form header -->
+                <div class="mb-8">
+                    <h2 class="text-3xl font-black text-primary tracking-tight">{{ t('Sign In') }}</h2>
+                    <p class="text-slate-500 mt-2 font-medium">
+                        {{ t('Log in as a') }} <span class="font-bold text-secondary">{{ t(role.capitalize()) }}</span>
+                        {{ t('to continue') }}
+                    </p>
+                </div>
+
+                <!-- Role chips -->
+                <div class="flex gap-2 mb-8 bg-slate-100 p-1.5 rounded-full border border-slate-200 shadow-inner">
+                    <a href="{{ url_for('login_page', role='user') }}"
+                        class="role-tab {% if role == 'user' %}active-user shadow-lg{% else %}inactive{% endif %}">
+                        {{ t('Customer') }}
+                    </a>
+                    <a href="{{ url_for('login_page', role='worker') }}"
+                        class="role-tab {% if role == 'worker' %}active-worker shadow-lg{% else %}inactive{% endif %}">
+                        {{ t('Worker') }}
+                    </a>
+                </div>
+
+                <!-- Login form -->
+                <form id="login-form" class="glass-panel rounded-3xl p-8 flex flex-col gap-8">
+                    <!-- Phone -->
+                    <div class="relative group">
+                        <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest" for="l-phone">{{
+                            t('Phone Number') }}</label>
+                        <div class="flex items-center gap-3">
+                            <input class="custom-input flex-1" id="l-phone" name="phone"
+                                placeholder="{{ t('10-digit mobile number') }}" required type="tel" />
+                            <button type="button" aria-label="Voice input"
+                                class="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary hover:bg-slate-100 transition-all flex-shrink-0 border border-slate-200">
+                                <span class="material-symbols-outlined">mic</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Password -->
+                    <div class="relative group">
+                        <label class="text-[11px] font-black text-slate-400 uppercase tracking-widest"
+                            for="l-password">{{ t('Password') }}</label>
+                        <div class="flex items-center gap-3">
+                            <input class="custom-input flex-1" id="l-password" name="password" placeholder="••••••••"
+                                required type="password" />
+                            <button type="button" aria-label="Toggle password" id="btn-toggle-pw"
+                                class="w-12 h-12 flex items-center justify-center rounded-xl bg-slate-50 text-slate-400 hover:text-secondary hover:bg-slate-100 transition-all flex-shrink-0 border border-slate-200">
+                                <span class="material-symbols-outlined">visibility</span>
+                            </button>
+                        </div>
+                    </div>
+                    <!-- Submit -->
+                    <button type="submit"
+                        class="w-full h-15 py-4 bg-primary text-white rounded-2xl font-black text-lg flex items-center justify-center gap-2 hover:opacity-90 active:scale-[0.98] transition-all shadow-2xl shadow-slate-200">
+                        <span>{{ t('Continue') }}</span>
+                        <span class="material-symbols-outlined font-bold">arrow_forward</span>
+                    </button>
+                </form>
+
+                <!-- Footer links -->
+                <div class="mt-8 text-center space-y-4">
+                    <p class="text-sm text-slate-500 font-medium">
+                        {{ t("Don't have an account?") }}
+                        {% if role == 'user' %}
+                        <a class="font-bold text-secondary hover:underline ml-1"
+                            href="{{ url_for('user_signup_page') }}">{{ t('Join as Customer') }}</a>
+                        {% else %}
+                        <a class="font-bold text-secondary hover:underline ml-1"
+                            href="{{ url_for('worker_signup_page') }}">{{ t('Join as Worker') }}</a>
+                        {% endif %}
+                    </p>
+
+                    <a href="{{ url_for('role_selection') }}"
+                        class="text-xs text-slate-400 hover:text-secondary transition-colors font-bold uppercase tracking-widest flex items-center justify-center gap-2">
+                        <span class="material-symbols-outlined text-sm">arrow_back</span>{{ t('Back to home') }}
+                    </a>
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <input type="hidden" id="login-role" value="{{ role }}">
+
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
+    <script>
+        // Toggle password visibility
+        const togglePw = document.getElementById('btn-toggle-pw');
+        const pwField = document.getElementById('l-password');
+        if (togglePw && pwField) {
+            togglePw.addEventListener('click', () => {
+                const isText = pwField.type === 'text';
+                pwField.type = isText ? 'password' : 'text';
+                togglePw.querySelector('.material-symbols-outlined').textContent = isText ? 'visibility' : 'visibility_off';
+            });
+        }
+    </script>
+</body>
+
+</html>

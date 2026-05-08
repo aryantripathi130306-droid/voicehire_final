@@ -1,0 +1,107 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('lang', 'en') }}">
+
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>VoiceHire — {{ t('Scan QR') }}</title>
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+  <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
+  <style>
+    * {
+      font-family: 'Inter', sans-serif;
+    }
+
+    #reader {
+      width: 100%;
+      border-radius: 16px;
+      overflow: hidden;
+    }
+  </style>
+</head>
+
+<body class="min-h-screen bg-slate-900 flex flex-col items-center justify-center p-6">
+  <div class="w-full max-w-sm text-center">
+    <div class="mb-8">
+      <h1 class="text-3xl font-black text-white mb-2">{{ t('Scan QR Code') }}</h1>
+      <p class="text-slate-400 text-sm">{{ t('Point camera at the customer\'s screen') }}</p>
+    </div>
+
+    <div class="relative bg-black rounded-3xl overflow-hidden mb-8 shadow-2xl" style="aspect-ratio:1">
+      <div id="reader"></div>
+      <!-- Corner guides -->
+      <div class="absolute inset-0 pointer-events-none border-[16px] border-black/20">
+        <div class="absolute top-4 left-4 w-12 h-12 border-t-8 border-l-8 border-secondary rounded-tl-2xl"></div>
+        <div class="absolute top-4 right-4 w-12 h-12 border-t-8 border-r-8 border-secondary rounded-tr-2xl"></div>
+        <div class="absolute bottom-4 left-4 w-12 h-12 border-b-8 border-l-8 border-secondary rounded-bl-2xl"></div>
+        <div class="absolute bottom-4 right-4 w-12 h-12 border-b-8 border-r-8 border-secondary rounded-br-2xl"></div>
+      </div>
+      <div class="absolute top-1/2 left-0 w-full h-0.5 bg-secondary/30 animate-pulse translate-y-[-50%]"></div>
+    </div>
+
+    <p id="scan-status" class="text-slate-400 text-base mb-8 font-medium italic">
+      {{ t('Waiting for QR code...') }}
+    </p>
+
+    <div class="grid grid-cols-1 gap-3">
+      <a href="/dashboard/worker"
+        class="block w-full text-center bg-slate-800 text-white font-black py-4 rounded-2xl border border-white/5">
+        {{ t('Back to Dashboard') }}
+      </a>
+    </div>
+  </div>
+
+  <script>
+    const scanner = new Html5Qrcode("reader");
+    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+
+    async function onScanSuccess(decodedText) {
+      try {
+        const payload = JSON.parse(decodedText);
+        if (payload.bid && payload.tok) {
+          // It's a booking QR!
+          await scanner.stop();
+          document.getElementById('scan-status').textContent = "{{ t('Booking detected! Verifying...') }}";
+          
+          const res = await fetch(`/api/bookings/${payload.bid}/checkin`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ token: payload.tok })
+          });
+          const data = await res.json();
+          
+          if (res.ok) {
+            document.getElementById('scan-status').className = "text-green-400 font-bold mb-8";
+            document.getElementById('scan-status').textContent = "✓ " + data.message;
+            setTimeout(() => window.location.href = '/dashboard/worker', 2000);
+          } else {
+            document.getElementById('scan-status').className = "text-red-400 font-bold mb-8";
+            document.getElementById('scan-status').textContent = "⚠ " + (data.error || 'Verification failed');
+            setTimeout(() => scanner.start({ facingMode: "environment" }, config, onScanSuccess), 3000);
+          }
+          return;
+        }
+      } catch (e) {
+        // Not JSON, continue to old URL check
+      }
+
+      scanner.stop().then(() => {
+        document.getElementById('scan-status').textContent = "{{ t('QR detected! Opening...') }}";
+        if (decodedText.includes('/complete-job/')) {
+          window.location.href = decodedText;
+        } else {
+          document.getElementById('scan-status').textContent = "{{ t('Wrong QR code. Try again.') }}";
+          setTimeout(() => scanner.start({ facingMode: "environment" }, config, onScanSuccess), 2000);
+        }
+      });
+    }
+
+    scanner.start({ facingMode: "environment" }, config, onScanSuccess)
+      .catch(err => {
+        document.getElementById('scan-status').textContent = "{{ t('Camera access denied. Please enable and reload.') }}";
+      });
+  </script>
+</body>
+
+</html>
