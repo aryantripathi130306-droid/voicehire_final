@@ -1423,13 +1423,13 @@ def review_booking(booking_id):
         if booking['status'] != 'Completed':
             return jsonify({'error': 'Booking must be completed to leave a review'}), 400
             
-        # For direct bookings, we cannot use job_id due to foreign key constraints on the jobs table.
-        # We will prevent duplicate reviews by checking if the user has already reviewed this worker.
-        dup_resp = supabase.table("reviews").select("id").eq("worker_id", booking['worker_id']).eq("user_id", uid).execute()
+        # Check for duplicate review per booking (1 review per booking, not per worker)
+        dup_resp = supabase.table("reviews").select("id").eq("booking_id", booking_id).eq("user_id", uid).execute()
         if dup_resp.data:
-            return jsonify({'error': 'You have already submitted a review for this worker'}), 400
+            return jsonify({'error': 'You have already submitted a review for this booking'}), 400
             
         supabase.table("reviews").insert({
+            "booking_id": booking_id,
             "worker_id": booking['worker_id'],
             "user_id": uid,
             "rating": rating,
