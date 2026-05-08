@@ -1,0 +1,425 @@
+<!DOCTYPE html>
+<html lang="{{ session.get('lang', 'en') }}">
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>VoiceHire — Voice Assistant</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;700;900&display=swap" rel="stylesheet" />
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:opsz,wght,FILL,GRAD@24,400,0,0" />
+    <style>
+        * { font-family: 'Inter', sans-serif; }
+
+        body {
+            background: #f7f9fb;
+            min-height: 100dvh;
+        }
+
+        .blob {
+            position: fixed;
+            border-radius: 50%;
+            filter: blur(80px);
+            z-index: 0;
+            pointer-events: none;
+        }
+
+        .speech-bubble {
+            position: relative;
+            background: rgba(255,255,255,0.97);
+            backdrop-filter: blur(20px);
+            border-radius: 24px;
+            box-shadow: 0 25px 60px -12px rgba(0,0,0,0.5);
+        }
+        .speech-bubble::before {
+            content: '';
+            position: absolute;
+            top: -10px;
+            left: 50%;
+            transform: translateX(-50%) rotate(45deg);
+            width: 20px; height: 20px;
+            background: rgba(255,255,255,0.97);
+        }
+
+        .choice-btn {
+            transition: all 0.25s cubic-bezier(0.4, 0, 0.2, 1);
+        }
+        .choice-btn:hover { transform: translateY(-3px); box-shadow: 0 24px 48px -12px rgba(0,0,0,0.4); }
+        .choice-btn:active { transform: scale(0.97); }
+
+        @keyframes mic-pulse {
+            0% { transform: scale(1); opacity: 0.7; }
+            100% { transform: scale(1.6); opacity: 0; }
+        }
+        .mic-pulsing { animation: mic-pulse 1.4s ease-out infinite; }
+
+        @keyframes fade-slide-up {
+            from { opacity: 0; transform: translateY(16px); }
+            to   { opacity: 1; transform: translateY(0); }
+        }
+        .animate-in { animation: fade-slide-up 0.4s ease forwards; }
+
+        #phase-2 { display: none; }
+    </style>
+</head>
+
+<body class="flex flex-col items-center justify-center p-6 overflow-hidden relative">
+
+    <!-- Background blobs (softened for light theme) -->
+    <div class="blob w-96 h-96 bg-indigo-200 opacity-30 -top-32 -right-32"></div>
+    <div class="blob w-80 h-80 bg-pink-200 opacity-20 -bottom-24 -left-24"></div>
+    <div class="blob w-64 h-64 bg-blue-100 opacity-20 top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2"></div>
+
+    <div class="relative z-10 w-full max-w-sm text-center">
+
+        <!-- Logo & Mic -->
+        <div class="mb-8">
+            <div class="relative w-28 h-28 mx-auto mb-5 flex items-center justify-center">
+                <div id="pulse-ring"
+                    class="absolute inset-0 border-4 border-indigo-400 rounded-full opacity-0"></div>
+                <div class="w-28 h-28 bg-white border border-slate-200 rounded-full flex items-center justify-center shadow-xl">
+                    <span id="mic-icon" class="material-symbols-outlined text-indigo-600 text-5xl"
+                        style="font-variation-settings:'FILL' 1">mic</span>
+                </div>
+            </div>
+            <h1 class="text-2xl font-black text-slate-900 tracking-tight">VoiceHire</h1>
+            <p id="step-label" class="text-indigo-600 text-[11px] font-bold uppercase tracking-widest mt-1">
+                Voice Assistant
+            </p>
+        </div>
+
+        <!-- Step dots -->
+        <div class="flex justify-center gap-2 mb-6">
+            <div id="dot-1" class="w-2 h-2 rounded-full bg-indigo-600 transition-all duration-300"></div>
+            <div id="dot-2" class="w-2 h-2 rounded-full bg-slate-300 transition-all duration-300"></div>
+        </div>
+
+        <!-- Speech Bubble -->
+        <div class="speech-bubble p-7 mb-5">
+            <p id="ai-bubble"
+                class="text-base font-bold text-slate-800 leading-snug min-h-[52px] flex items-center justify-center">
+                ...
+            </p>
+        </div>
+
+        <!-- Transcript -->
+        <div id="transcript-box" class="text-indigo-400 text-sm italic h-5 mb-6 truncate"></div>
+
+        <!-- PHASE 1: Worker or Hirer -->
+        <div id="phase-1" class="flex flex-col gap-3 w-full animate-in">
+            <button onclick="selectRole('worker')"
+                class="choice-btn bg-white text-slate-900 font-black py-4 px-6 rounded-2xl shadow-xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-indigo-100 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-indigo-600 text-2xl"
+                        style="font-variation-settings:'FILL' 1">handyman</span>
+                </div>
+                <div class="text-left">
+                    <div class="text-sm font-black">{{ t("I'm a Worker") }}</div>
+                    <div class="text-xs font-medium text-slate-400">{{ t("Looking for jobs") }}</div>
+                </div>
+                <span class="material-symbols-outlined text-slate-300 ml-auto">arrow_forward_ios</span>
+            </button>
+
+            <button onclick="selectRole('hirer')"
+                class="choice-btn bg-white text-slate-900 font-black py-4 px-6 rounded-2xl shadow-xl border border-slate-100 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-pink-50 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-pink-600 text-2xl"
+                        style="font-variation-settings:'FILL' 1">person_search</span>
+                </div>
+                <div class="text-left">
+                    <div class="text-sm font-black">{{ t("I want to Hire") }}</div>
+                    <div class="text-xs font-medium text-slate-400">{{ t("Find local experts") }}</div>
+                </div>
+                <span class="material-symbols-outlined text-slate-300 ml-auto">arrow_forward_ios</span>
+            </button>
+        </div>
+
+        <!-- PHASE 2: Create or Login -->
+        <div id="phase-2" class="flex flex-col gap-3 w-full animate-in">
+            <!-- Selected role badge -->
+            <div class="flex justify-center mb-1">
+                <span id="role-badge"
+                    class="inline-flex items-center gap-2 bg-indigo-50 text-indigo-700 text-[11px] font-black uppercase tracking-widest px-4 py-2 rounded-full border border-indigo-100">
+                    <span class="material-symbols-outlined text-sm text-green-600"
+                        style="font-variation-settings:'FILL' 1">check_circle</span>
+                    <span id="role-badge-text">Worker</span>
+                </span>
+            </div>
+
+            <button onclick="selectAuth('new')"
+                class="choice-btn bg-white text-slate-900 font-black py-4 px-6 rounded-2xl shadow-xl flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-green-100 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-green-600 text-2xl"
+                        style="font-variation-settings:'FILL' 1">person_add</span>
+                </div>
+                <div class="text-left">
+                    <div class="text-sm font-black">{{ t("Create New Profile") }}</div>
+                    <div class="text-xs font-medium text-slate-400">{{ t("I'm new here") }}</div>
+                </div>
+                <span class="material-symbols-outlined text-slate-300 ml-auto">arrow_forward_ios</span>
+            </button>
+
+            <button onclick="selectAuth('login')"
+                class="choice-btn bg-white text-slate-900 font-black py-4 px-6 rounded-2xl shadow-xl border border-slate-100 flex items-center gap-4">
+                <div class="w-12 h-12 rounded-xl bg-blue-50 flex items-center justify-center flex-shrink-0">
+                    <span class="material-symbols-outlined text-blue-600 text-2xl"
+                        style="font-variation-settings:'FILL' 1">login</span>
+                </div>
+                <div class="text-left">
+                    <div class="text-sm font-black">{{ t("Log In") }}</div>
+                    <div class="text-xs font-medium text-slate-400">{{ t("I have an account") }}</div>
+                </div>
+                <span class="material-symbols-outlined text-slate-300 ml-auto">arrow_forward_ios</span>
+            </button>
+
+            <button onclick="goBack()"
+                class="mt-1 text-slate-500 hover:text-slate-300 text-xs font-bold uppercase tracking-widest flex items-center justify-center gap-1 transition-colors">
+                <span class="material-symbols-outlined text-sm">arrow_back</span>
+                {{ t("Change role") }}
+            </button>
+        </div>
+
+        <p class="text-slate-600 text-xs mt-8">{{ t("Tap a button or speak your answer") }}</p>
+    </div>
+
+    <!-- Hidden translated strings (avoids Jinja2 &#39; entity encoding bug in JS) -->
+    <div style="display:none">
+        <span id="str-q1">{{ t("Welcome to VoiceHire! Are you a worker looking for jobs, or are you looking to hire someone?") }}</span>
+        <span id="str-q2-worker">{{ t("Got it! Would you like to create a new worker profile, or log in to your existing account?") }}</span>
+        <span id="str-q2-hirer">{{ t("Great! Would you like to create a customer account, or log in to your existing account?") }}</span>
+        <span id="str-ok-worker-new">{{ t("Perfect! Taking you to worker registration.") }}</span>
+        <span id="str-ok-worker-login">{{ t("Welcome back! Taking you to the worker login page.") }}</span>
+        <span id="str-ok-hirer-new">{{ t("Excellent! Setting up your customer account now.") }}</span>
+        <span id="str-ok-hirer-login">{{ t("Welcome back! Taking you to login.") }}</span>
+        <span id="str-retry-role">{{ t("Sorry, I did not catch that. Please say Worker or Hirer.") }}</span>
+        <span id="str-retry-auth">{{ t("Please say Create or Login.") }}</span>
+        <span id="str-label-worker">{{ t("Worker") }}</span>
+        <span id="str-label-hirer">{{ t("Customer") }}</span>
+    </div>
+
+    <script>
+        const lang = "{{ session.get('lang', 'en') }}";
+        const speechLang = ({
+            hi: 'hi-IN', bn: 'bn-IN', te: 'te-IN', mr: 'mr-IN', ta: 'ta-IN',
+            gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', pa: 'pa-IN', ur: 'ur-IN',
+            or: 'or-IN', as: 'as-IN', en: 'en-IN'
+        })[lang] || 'en-IN';
+
+        let voiceState = 'idle';
+        let selectedRole = null;
+
+        // ---------- Keyword banks ----------
+        const WORKER_KW = [
+            'worker', 'work', 'job', 'labour', 'labor', 'maid', 'plumber', 'electrician',
+            'carpenter', 'painter', 'handyman', 'professional', 'service provider',
+            'काम', 'मज़दूर', 'वर्कर', 'कामगार', 'श्रमिक',
+            'কাজ', 'মজুর', 'কর্মী',
+            'కార్మికుడు', 'పని',
+            'தொழிலாளி',
+            'ਕਾਮਗਾਰ', 'ਕੰਮ',
+            'ಕಾರ್ಮಿಕ',
+            'തൊഴിലാളി',
+            'مزدور'
+        ];
+        const HIRER_KW = [
+            'hire', 'hirer', 'customer', 'client', 'user', 'need', 'find', 'want', 'looking', 'employ',
+            'ग्राहक', 'चाहिए', 'हायर', 'किराया',
+            'নিয়োগ', 'ভাড়া',
+            'నియమించు', 'కావాలి',
+            'வேலை தேடு',
+            'ਗਾਹਕ', 'ਚਾਹੀਦਾ',
+            'ಗ್ರಾಹಕ',
+            'ഉപഭോക്താവ്',
+            'گاہک'
+        ];
+        const CREATE_KW = [
+            'create', 'new', 'register', 'signup', 'sign up', 'fresh', 'make',
+            'नया', 'बनाओ', 'नई', 'रजिस्टर',
+            'নতুন', 'তৈরি',
+            'కొత్త', 'నమోదు',
+            'புதிய', 'பதிவு',
+            'ਨਵਾਂ', 'ਰਜਿਸਟਰ',
+            'ಹೊಸ',
+            'പുതിയ',
+            'رجسٹر', 'نیا'
+        ];
+        const LOGIN_KW = [
+            'login', 'log in', 'existing', 'account', 'signin', 'sign in', 'already',
+            'लॉगिन', 'पुराना', 'अकाउंट',
+            'লগইন', 'পুরনো',
+            'లాగిన్',
+            'உள்நுழை',
+            'ਲੌਗਿਨ',
+            'ಲಾಗಿನ್',
+            'ലോഗിൻ',
+            'لاگ ان'
+        ];
+
+        // ---------- Helpers ----------
+        function g(id) { return document.getElementById(id).textContent.trim(); }
+
+        function setBubble(text) {
+            document.getElementById('ai-bubble').textContent = text;
+        }
+
+        function setPulse(on) {
+            const r = document.getElementById('pulse-ring');
+            r.style.opacity = on ? '0.8' : '0';
+            r.classList.toggle('mic-pulsing', on);
+        }
+
+        function setMicColor(listening) {
+            const ic = document.getElementById('mic-icon');
+            ic.style.color = listening ? '#818cf8' : 'white';
+        }
+
+        function speak(text, onEnd) {
+            window.speechSynthesis.cancel();
+            const u = new SpeechSynthesisUtterance(text);
+            u.lang = speechLang;
+            u.rate = 0.88;
+            u.pitch = 1.05;
+            u.onstart = () => setPulse(true);
+            u.onend = () => { setPulse(false); if (onEnd) onEnd(); };
+            u.onerror = () => { setPulse(false); if (onEnd) onEnd(); };
+            window.speechSynthesis.speak(u);
+        }
+
+        function listenOnce(onResult) {
+            const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SR) return; // voice unavailable — user must tap buttons
+            const rec = new SR();
+            rec.lang = speechLang;
+            rec.interimResults = false;
+            rec.maxAlternatives = 3;
+            rec.onstart = () => setMicColor(true);
+            rec.onresult = (e) => {
+                const said = Array.from(e.results[0]).map(r => r.transcript).join(' ').toLowerCase();
+                document.getElementById('transcript-box').textContent = '"' + said + '"';
+                onResult(said);
+            };
+            rec.onend = () => setMicColor(false);
+            rec.onerror = () => setMicColor(false);
+            rec.start();
+        }
+
+        function setDot(step) {
+            document.getElementById('dot-1').className =
+                'w-2 h-2 rounded-full transition-all duration-300 ' + (step === 1 ? 'bg-indigo-400 scale-125' : 'bg-white/20');
+            document.getElementById('dot-2').className =
+                'w-2 h-2 rounded-full transition-all duration-300 ' + (step === 2 ? 'bg-indigo-400 scale-125' : 'bg-white/20');
+        }
+
+        // ---------- Step 1: Ask Role ----------
+        function askRole() {
+            voiceState = 'askRole';
+            setDot(1);
+            document.getElementById('step-label').textContent = 'Step 1 of 2';
+            const q = g('str-q1');
+            setBubble(q);
+            speak(q, () => {
+                listenOnce((said) => {
+                    if (WORKER_KW.some(k => said.includes(k))) {
+                        selectRole('worker');
+                    } else if (HIRER_KW.some(k => said.includes(k))) {
+                        selectRole('hirer');
+                    } else {
+                        const retry = g('str-retry-role');
+                        setBubble(retry);
+                        speak(retry, askRole);
+                    }
+                });
+            });
+        }
+
+        // ---------- Step 1 → Step 2 ----------
+        function selectRole(role) {
+            selectedRole = role;
+            voiceState = 'askAuth';
+
+            // Update UI
+            document.getElementById('phase-1').style.display = 'none';
+            document.getElementById('phase-2').style.display = 'flex';
+            document.getElementById('role-badge-text').textContent = g(role === 'worker' ? 'str-label-worker' : 'str-label-hirer');
+            setDot(2);
+            document.getElementById('step-label').textContent = 'Step 2 of 2';
+            document.getElementById('transcript-box').textContent = '';
+
+            const q = g(role === 'worker' ? 'str-q2-worker' : 'str-q2-hirer');
+            setBubble(q);
+            speak(q, () => {
+                listenOnce((said) => {
+                    if (CREATE_KW.some(k => said.includes(k))) {
+                        selectAuth('new');
+                    } else if (LOGIN_KW.some(k => said.includes(k))) {
+                        selectAuth('login');
+                    } else {
+                        const retry = g('str-retry-auth');
+                        setBubble(retry);
+                        speak(retry, () => {
+                            listenOnce((said2) => {
+                                if (CREATE_KW.some(k => said2.includes(k))) selectAuth('new');
+                                else if (LOGIN_KW.some(k => said2.includes(k))) selectAuth('login');
+                                else selectAuth('new'); // graceful fallback: go to create
+                            });
+                        });
+                    }
+                });
+            });
+        }
+
+        // ---------- Step 2 → Redirect ----------
+        function selectAuth(authType) {
+            voiceState = 'redirecting';
+            document.getElementById('transcript-box').textContent = '';
+
+            const routes = {
+                'worker-new':   '/signup/worker',
+                'worker-login': '/login?role=worker',
+                'hirer-new':    '/signup/user',
+                'hirer-login':  '/login?role=user'
+            };
+            const msgs = {
+                'worker-new':   'str-ok-worker-new',
+                'worker-login': 'str-ok-worker-login',
+                'hirer-new':    'str-ok-hirer-new',
+                'hirer-login':  'str-ok-hirer-login'
+            };
+
+            const key = selectedRole + '-' + authType;
+            const msg = g(msgs[key]);
+            setBubble(msg);
+
+            // Disable buttons to prevent double-tap
+            document.querySelectorAll('.choice-btn').forEach(b => b.disabled = true);
+
+            speak(msg, () => {
+                window.location.href = routes[key];
+            });
+
+            // Fallback redirect in case speech fails
+            setTimeout(() => { window.location.href = routes[key]; }, 3500);
+        }
+
+        // ---------- Go Back ----------
+        function goBack() {
+            selectedRole = null;
+            voiceState = 'idle';
+            document.getElementById('phase-2').style.display = 'none';
+            document.getElementById('phase-1').style.display = 'flex';
+            document.querySelectorAll('.choice-btn').forEach(b => b.disabled = false);
+            document.getElementById('transcript-box').textContent = '';
+            setDot(1);
+            askRole();
+        }
+
+        // ---------- Init ----------
+        window.onload = () => {
+            setTimeout(askRole, 600);
+        };
+    </script>
+
+</body>
+
+</html>
