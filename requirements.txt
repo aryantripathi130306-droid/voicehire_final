@@ -5,3 +5,4 @@ python-dotenv==1.2.2
 Werkzeug
 gunicorn
 qrcode[pil]
+Pillow

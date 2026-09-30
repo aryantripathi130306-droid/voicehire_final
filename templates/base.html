@@ -1,59 +1,91 @@
 <!DOCTYPE html>
-<html lang="en">
-
+<html lang="{{ session.get('lang', 'en') }}">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>VoiceHire - AI Local Worker Platform</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>VoiceHire | {{ t('Connecting Bharat') }}</title>
+    
+    <!-- Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    
+    <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    {% block extra_head %}{% endblock %}
-    <style>
-    </style>
+    
+    <!-- CSS -->
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
+    
+    {% block head %}{% endblock %}
 </head>
-
-<body>
+<body class="{% block body_class %}{% endblock %}">
     <div class="app-container">
-        <!-- Header -->
-        <header>
-            <div class="logo">
-                <i class="fa-solid fa-microphone-lines"></i>
-                <a href="{{ url_for('index') }}" style="text-decoration: none; color: inherit;">VoiceHire</a>
-            </div>
-            <div class="header-right">
-
-                {% if session.get('user_id') %}
-                <button id="btn-logout" class="logout-btn" onclick="app.logout()">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                </button>
-                {% endif %}
+        <!-- Modern Header -->
+        <header class="main-header">
+            <div class="header-container">
+                <a href="{{ url_for('index') }}" class="logo">
+                    <div class="logo-icon">
+                        <i class="fa-solid fa-microphone-lines"></i>
+                    </div>
+                    <span class="logo-text">VoiceHire</span>
+                </a>
+                
+                <div class="header-actions">
+                    {% if session.get('user_id') %}
+                    <a href="{{ url_for('logout') }}" class="btn-icon btn-logout" title="{{ t('Logout') }}">
+                        <i class="fa-solid fa-right-from-bracket"></i>
+                    </a>
+                    {% endif %}
+                </div>
             </div>
         </header>
 
         <!-- Main Content Area -->
-        <main id="main-content" style="padding: 2rem 1.5rem; position: relative;">
+        <main id="main-content">
             {% block content %}{% endblock %}
         </main>
     </div>
 
     <!-- Hidden AI Prompts for DOM Translation -->
     <div id="ai-prompts" style="display: none;">
-        <span id="ai-p0">What is your full name?</span>
-        <span id="ai-p1">What type of work do you do?</span>
-        <span id="ai-p2">In which city or area do you live?</span>
-        <span id="ai-p3">Please tell me your ten digit phone number.</span>
-        <span id="ai-p4">Great! Your details are saved. Your password is your phone number. You can upload a voice note
-            or video below, then click Register Profile.</span>
-        <span id="ai-retry">Sorry, I didn't catch that. Please repeat.</span>
+        <span id="ai-p0">{{ t('What is your full name?') }}</span>
+        <span id="ai-p1">{{ t('What type of work do you do?') }}</span>
+        <span id="ai-p2">{{ t('In which city or area do you live?') }}</span>
+        <span id="ai-p3">{{ t('Please say your 10 digit phone number.') }}</span>
+        <span id="ai-retry">{{ t('I did not understand. Please say Create or Login.') }}</span>
     </div>
 
+    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     <script>
-        window.flaskSessionRole = "{{ session.get('role') }}";
+        window.flaskSessionRole = "{{ session.get('role', '') }}";
+        window.flaskSessionLang = "{{ session.get('lang', 'en') }}";
+        
+        // Pass translations to JS
+        app.translations = {
+            'No workers found': "{{ t('No workers found') }}",
+            'No jobs found': "{{ t('No jobs found') }}",
+            'Book Now': "{{ t('Book Now') }}",
+            'View Profile': "{{ t('View Profile') }}",
+            'Contact': "{{ t('Contact') }}",
+            'Listen Bio': "{{ t('Listen Bio') }}",
+            'No bookings found': "{{ t('No bookings found') }}",
+            'Book a Worker': "{{ t('Book a Worker') }}",
+            'View Details': "{{ t('View Details') }}",
+            'Pending': "{{ t('Pending') }}",
+            'Confirmed': "{{ t('Confirmed') }}",
+            'In Progress': "{{ t('In Progress') }}",
+            'Completed': "{{ t('Completed') }}",
+            'Cancel': "{{ t('Cancel') }}",
+            'What is your full name?': "{{ t('What is your full name?') }}",
+            'What type of work do you do?': "{{ t('What type of work do you do?') }}",
+            'In which city or area do you live?': "{{ t('In which city or area do you live?') }}",
+            'Please say your 10 digit phone number.': "{{ t('Please say your 10 digit phone number.') }}",
+            'Now, please say a password you would like to use.': "{{ t('Now, please say a password you would like to use.') }}",
+            "Sorry, I didn't catch that. Please repeat.": "{{ t("Sorry, I didn't catch that. Please repeat.") }}"
+        };
     </script>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
     {% block extra_scripts %}{% endblock %}
 </body>
-
 </html>

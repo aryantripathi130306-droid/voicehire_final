@@ -6,7 +6,31 @@ const SpeechRecognition = window.SpeechRecognition || window.webkitSpeechRecogni
 
 const app = {
     init() {
+        console.log("VoiceHire AI Core Initialized");
+        this.injectTranslateWidget();
         this.bindEvents();
+    },
+
+    // Dynamically inject Google Translate widget if missing
+    injectTranslateWidget() {
+        if (document.getElementById('google_translate_element')) return;
+        
+        const div = document.createElement('div');
+        div.id = 'google_translate_element';
+        div.style.display = 'none';
+        document.body.appendChild(div);
+
+        const script = document.createElement('script');
+        script.src = "//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit";
+        document.head.appendChild(script);
+
+        window.googleTranslateElementInit = () => {
+            new google.translate.TranslateElement({
+                pageLanguage: 'en',
+                includedLanguages: 'hi,bn,te,mr,ta,gu,kn,ml,pa,ur,or,as',
+                autoDisplay: false
+            }, 'google_translate_element');
+        };
     },
 
     bindEvents() {
@@ -39,8 +63,29 @@ const app = {
 
     // Get the current language selected by the Google Translate widget
     getCurrentLang() {
-        const match = document.cookie.match(/googtrans=\/en\/([a-z]{2})/);
-        return match ? match[1] : 'en';
+        // 1. Check Google Translate cookie (highest priority for real-time changes)
+        const match = document.cookie.match(/googtrans=\/en\/([a-z]{2,3})/);
+        if (match) {
+            console.log("Detected Lang via Cookie:", match[1]);
+            return match[1];
+        }
+
+        // 2. Check global variable
+        if (typeof PAGE_LANG !== 'undefined' && PAGE_LANG) {
+            console.log("Detected Lang via PAGE_LANG:", PAGE_LANG);
+            return PAGE_LANG;
+        }
+
+        // 3. Check HTML lang attribute
+        const htmlLang = document.documentElement.lang;
+        if (htmlLang && htmlLang.length >= 2) {
+            const l = htmlLang.substring(0, 2);
+            console.log("Detected Lang via HTML:", l);
+            return l;
+        }
+
+        console.log("Fallback to default lang: en");
+        return 'en';
     },
 
     // Map Google Translate code to BCP-47 for Web Speech API
@@ -192,7 +237,7 @@ const app = {
 
     // ---------------- AI CONVERSATIONAL ASSISTANT ---------------- //
 
-    startStepByStepAI() {
+    startStepByStepAI(role = 'worker') {
         if (!SpeechRecognition) {
             alert('Your browser does not support full AI features. Please use Google Chrome or a modern browser.');
             return;
@@ -200,12 +245,19 @@ const app = {
 
         aiActive = true;
         aiStep = 0;
+        this.aiRole = role;
 
         // Hide all parent containers of inputs
-        const inputs = ['w-name', 'w-work', 'w-location', 'w-phone', 'w-password'];
+        const inputs = role === 'worker' 
+            ? ['w-name', 'w-work', 'w-location', 'w-phone', 'w-password']
+            : ['us-name', 'us-phone', 'us-password'];
+            
         inputs.forEach(id => {
             const el = document.getElementById(id);
-            if (el) el.closest('.relative').style.display = 'none';
+            if (el) {
+                const parent = el.closest('.relative');
+                if (parent) parent.style.display = 'none';
+            }
         });
 
         document.getElementById('btn-start-ai').style.display = 'none';
@@ -224,7 +276,9 @@ const app = {
         anim.style.display = 'none';
         tBox.style.display = 'none';
 
-        if (aiStep < 5) {
+        const maxSteps = this.aiRole === 'worker' ? 5 : 3;
+
+        if (aiStep < maxSteps) {
             const promptStr = document.getElementById(`ai-p${aiStep}`).innerText;
             qText.innerText = promptStr;
             this.speak(promptStr, () => {
@@ -232,31 +286,71 @@ const app = {
                 this.listenForAnswer();
             });
         } else {
-            const finalPrompt = document.getElementById('ai-p5').innerText;
+            const finalPrompt = document.getElementById(`ai-p${maxSteps}`).innerText;
             qText.innerText = finalPrompt;
             this.speak(finalPrompt, () => {
-                const inputs = ['w-name', 'w-work', 'w-location', 'w-phone', 'w-password'];
+                const inputs = this.aiRole === 'worker'
+                    ? ['w-name', 'w-work', 'w-location', 'w-phone', 'w-password']
+                    : ['us-name', 'us-phone', 'us-password'];
                 inputs.forEach(id => {
                     const el = document.getElementById(id);
-                    if (el) el.closest('.relative').style.display = 'block';
+                    if (el) {
+                        const parent = el.closest('.relative');
+                        if (parent) parent.style.display = 'block';
+                    }
                 });
             });
         }
     },
 
     speak(text, onEndCallback) {
-        const lang = this.getCurrentLang();
+        const langCode = this.getCurrentLang();
+        const fullLangCode = this.getSpeechLangCode(langCode);
+
+        // For non-English/Hindi languages, native support is very poor, so we prefer Cloud TTS fallback
+        if (!['en', 'hi'].includes(langCode)) {
+            this.cloudSpeak(text, langCode, onEndCallback);
+            return;
+        }
+
+        // 1. Try Native SpeechSynthesis first (Better integration, works offline)
+        if (window.speechSynthesis) {
+            window.speechSynthesis.cancel(); // Stop any current speech
+            const utterance = new SpeechSynthesisUtterance(text);
+            utterance.lang = fullLangCode;
+            utterance.rate = 0.9;
+            utterance.pitch = 1.0;
+
+            utterance.onend = () => { if (onEndCallback) onEndCallback(); };
+            utterance.onerror = (e) => {
+                console.warn("Native SpeechSynthesis error, falling back to Cloud TTS:", e);
+                this.cloudSpeak(text, langCode, onEndCallback);
+            };
+
+            window.speechSynthesis.speak(utterance);
+
+            // Safety timeout for mobile browsers where onend might not fire
+            setTimeout(() => {
+                if (window.speechSynthesis.speaking === false && onEndCallback) {
+                    // Already handled or failed
+                }
+            }, 5000);
+        } else {
+            this.cloudSpeak(text, langCode, onEndCallback);
+        }
+    },
+
+    // Fallback Cloud TTS using Google Translate API
+    cloudSpeak(text, lang, onEndCallback) {
         const url = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${lang}&q=${encodeURIComponent(text)}`;
         const audio = new Audio(url);
-        audio.onended = () => {
-            if (onEndCallback) onEndCallback();
-        };
+        audio.onended = () => { if (onEndCallback) onEndCallback(); };
         audio.onerror = (e) => {
-            console.error("Cloud TTS failed, falling back to instant answer mode.", e);
+            console.error("Cloud TTS failed:", e);
             if (onEndCallback) onEndCallback();
         };
-        audio.play().catch(e => {
-            console.error("Audio play blocked by browser:", e);
+        audio.play().catch(err => {
+            console.error("Audio playback blocked:", err);
             if (onEndCallback) onEndCallback();
         });
     },
@@ -393,53 +487,71 @@ const app = {
         const trimmed = text.trim();
         const retryPrompt = document.getElementById('ai-retry').innerText;
 
-        if (aiStep === 0) {
-            if (trimmed) {
-                document.getElementById('w-name').value = this.capitalize(trimmed);
-                aiStep++;
-            } else {
-                this.speak(retryPrompt, () => { this.askNextQuestion(); });
-                return;
+        if (this.aiRole === 'worker') {
+            if (aiStep === 0) {
+                if (trimmed) {
+                    document.getElementById('w-name').value = this.capitalize(trimmed);
+                    aiStep++;
+                } else {
+                    this.speak(retryPrompt, () => { this.askNextQuestion(); });
+                    return;
+                }
             }
-        }
-        else if (aiStep === 1) {
-            if (trimmed) {
-                document.getElementById('w-work').value = this.capitalize(trimmed);
-                aiStep++;
-            } else {
-                this.speak(retryPrompt, () => { this.askNextQuestion(); });
-                return;
+            else if (aiStep === 1) {
+                if (trimmed) {
+                    document.getElementById('w-work').value = this.capitalize(trimmed);
+                    aiStep++;
+                } else {
+                    this.speak(retryPrompt, () => { this.askNextQuestion(); });
+                    return;
+                }
             }
-        }
-        else if (aiStep === 2) {
-            if (trimmed) {
-                document.getElementById('w-location').value = this.capitalize(trimmed);
-                aiStep++;
-            } else {
-                this.speak(retryPrompt, () => { this.askNextQuestion(); });
-                return;
+            else if (aiStep === 2) {
+                if (trimmed) {
+                    document.getElementById('w-location').value = this.capitalize(trimmed);
+                    aiStep++;
+                } else {
+                    this.speak(retryPrompt, () => { this.askNextQuestion(); });
+                    return;
+                }
             }
-        }
-        else if (aiStep === 3) {
-            // Convert spoken number words to digits (handles "nine eight seven six..." etc.)
-            const allDigits = this.wordToDigits(text);
-
-            if (allDigits.length >= 10) {
-                // Take the last 10 digits (handles "my number is 9876543210" etc.)
-                const p = allDigits.slice(-10);
-                document.getElementById('w-phone').value = p;
-                aiStep++;
-            } else {
-                // Show what was heard so user can understand the issue
-                const tBox = document.getElementById('ai-transcript');
-                if (tBox) tBox.innerText = `Heard: "${text}" — Please say all 10 digits clearly.`;
-                this.speak(retryPrompt, () => { this.listenForAnswer(); });
-                return;
+            else if (aiStep === 3) {
+                const allDigits = this.wordToDigits(text);
+                if (allDigits.length >= 10) {
+                    document.getElementById('w-phone').value = allDigits.slice(-10);
+                    aiStep++;
+                } else {
+                    this.speak(retryPrompt, () => { this.listenForAnswer(); });
+                    return;
+                }
             }
-        }
-        else if (aiStep === 4) {
-            // Password step removed for security and accessibility
-            aiStep++;
+            else if (aiStep === 4) {
+                aiStep++;
+            }
+        } else {
+            // User Signup Flow
+            if (aiStep === 0) {
+                if (trimmed) {
+                    document.getElementById('us-name').value = this.capitalize(trimmed);
+                    aiStep++;
+                } else {
+                    this.speak(retryPrompt, () => { this.askNextQuestion(); });
+                    return;
+                }
+            }
+            else if (aiStep === 1) {
+                const allDigits = this.wordToDigits(text);
+                if (allDigits.length >= 10) {
+                    document.getElementById('us-phone').value = allDigits.slice(-10);
+                    aiStep++;
+                } else {
+                    this.speak(retryPrompt, () => { this.listenForAnswer(); });
+                    return;
+                }
+            }
+            else if (aiStep === 2) {
+                aiStep++; // Password step placeholder
+            }
         }
 
         setTimeout(() => { this.askNextQuestion(); }, 1500);
@@ -498,79 +610,33 @@ const app = {
 
             jobs.forEach(j => {
                 const card = document.createElement('div');
-                card.className = 'glass-panel rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col gap-4';
+                card.className = 'card p-6 flex flex-col gap-4 animate-slide-up';
 
                 const dateStr = new Date(j.created_at).toLocaleDateString();
 
-                const topDiv = document.createElement('div');
-                topDiv.className = 'flex justify-between items-start';
-
-                const infoDiv = document.createElement('div');
-                const title = document.createElement('h4');
-                title.className = 'font-bold text-lg text-primary';
-                title.textContent = `Need: ${j.service_type}`;
-
-                const desc = document.createElement('p');
-                desc.className = 'text-slate-600 mt-1';
-                desc.textContent = `"${j.description}"`;
-
-                const loc = document.createElement('p');
-                loc.className = 'text-xs text-slate-500 mt-1';
-                loc.textContent = `📍 ${j.location || 'Unknown'}`;
-
-                infoDiv.appendChild(title);
-                infoDiv.appendChild(desc);
-                infoDiv.appendChild(loc);
-
-                const dateBadge = document.createElement('span');
-                dateBadge.className = 'bg-blue-100 text-blue-700 text-[10px] font-bold px-2 py-1 rounded-full uppercase tracking-widest';
-                dateBadge.textContent = dateStr;
-
-                topDiv.appendChild(infoDiv);
-                topDiv.appendChild(dateBadge);
-
-                const bottomDiv = document.createElement('div');
-                bottomDiv.className = 'flex items-center justify-between mt-2 pt-4 border-t border-slate-100';
-
-                const userDiv = document.createElement('div');
-                userDiv.className = 'flex items-center gap-2';
-                userDiv.innerHTML = `
-                    <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 overflow-hidden">
-                        ${j.user_profile_pic ? `<img src="/static/${j.user_profile_pic}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-sm">person</span>`}
-                    </div>`;
-                const userName = document.createElement('span');
-                userName.className = 'text-sm font-medium text-slate-700';
-                userName.textContent = j.user_name;
-                userDiv.appendChild(userName);
-
-                const actionsDiv = document.createElement('div');
-                actionsDiv.className = 'flex gap-2';
-
-                const callBtn = document.createElement('a');
-                callBtn.href = `tel:${j.user_phone}`;
-                callBtn.className = 'flex items-center gap-2 bg-slate-200 text-slate-800 px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-all';
-                callBtn.innerHTML = `<span class="material-symbols-outlined text-sm">call</span>Call`;
-
-                actionsDiv.appendChild(callBtn);
-
-                if (j.status === 'open') {
-                    const acceptBtn = document.createElement('button');
-                    acceptBtn.className = 'flex items-center gap-2 bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold hover:opacity-90 transition-all';
-                    acceptBtn.innerHTML = `<span class="material-symbols-outlined text-sm">check</span>Accept`;
-                    acceptBtn.onclick = () => this.acceptJob(j.id, workType);
-                    actionsDiv.appendChild(acceptBtn);
-                } else {
-                    const statusBadge = document.createElement('span');
-                    statusBadge.className = 'flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg text-sm font-bold';
-                    statusBadge.textContent = 'Accepted';
-                    actionsDiv.appendChild(statusBadge);
-                }
-
-                bottomDiv.appendChild(userDiv);
-                bottomDiv.appendChild(actionsDiv);
-
-                card.appendChild(topDiv);
-                card.appendChild(bottomDiv);
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="text-[10px] font-black text-secondary uppercase tracking-widest mb-1 block">${j.service_type}</span>
+                            <h4>${j.description}</h4>
+                            <p class="text-muted text-xs mt-1"><i class="fa-solid fa-location-dot mr-1"></i> ${j.location || 'Unknown'}</p>
+                        </div>
+                        <span class="badge sm">${dateStr}</span>
+                    </div>
+                    
+                    <div class="flex items-center justify-between pt-4 border-t border-slate-100">
+                        <div class="flex items-center gap-2">
+                            <div class="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center text-slate-500 overflow-hidden border">
+                                ${j.user_profile_pic ? `<img src="/static/${j.user_profile_pic}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user text-xs"></i>`}
+                            </div>
+                            <span class="text-xs font-bold">${j.user_name}</span>
+                        </div>
+                        <div class="flex gap-2">
+                            <a href="tel:${j.user_phone}" class="btn btn-outline sm"><i class="fa-solid fa-phone"></i></a>
+                            ${j.status === 'open' ? `<button onclick="app.acceptJob(${j.id}, '${workType}')" class="btn btn-primary sm">${app.translations ? (app.translations['Accept'] || 'Accept') : 'Accept'}</button>` : `<span class="badge sm success">Accepted</span>`}
+                        </div>
+                    </div>
+                `;
                 listDiv.appendChild(card);
             });
         } catch (error) {
@@ -596,52 +662,44 @@ const app = {
 
             jobs.forEach(j => {
                 const card = document.createElement('div');
-                card.className = 'glass-panel rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col gap-3';
+                card.className = 'card p-6 flex flex-col gap-4 animate-slide-up';
 
-                const title = document.createElement('h4');
-                title.className = 'font-bold text-lg text-primary';
-                title.textContent = j.service_type;
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div>
+                            <span class="badge sm ${j.status === 'open' ? 'warning' : 'success'}">${j.status}</span>
+                            <h4 class="mt-2">${j.service_type}</h4>
+                        </div>
+                        ${j.price ? `<span class="text-lg font-black text-primary">₹${j.price}</span>` : ''}
+                    </div>
 
-                const statusBadge = document.createElement('span');
-                statusBadge.className = `text-xs font-bold px-2 py-1 rounded-full uppercase tracking-widest self-start ${j.status === 'open' ? 'bg-yellow-100 text-yellow-800' : j.status === 'accepted' ? 'bg-blue-100 text-blue-800' : 'bg-green-100 text-green-800'}`;
-                statusBadge.textContent = j.status;
+                    ${j.worker_name ? `
+                        <div class="flex items-center gap-3 p-3 bg-slate-50 rounded-xl border border-slate-100">
+                            <div class="w-8 h-8 rounded-full bg-white flex items-center justify-center border text-muted overflow-hidden">
+                                <i class="fa-solid fa-user-gear text-xs"></i>
+                            </div>
+                            <div class="flex-1">
+                                <p class="text-xs font-bold">${j.worker_name}</p>
+                                <p class="text-[10px] text-muted">${j.worker_phone}</p>
+                            </div>
+                        </div>
+                    ` : ''}
 
-                card.appendChild(statusBadge);
-                card.appendChild(title);
-
-                if (j.worker_name) {
-                    const workerInfo = document.createElement('div');
-                    workerInfo.className = 'text-sm text-slate-600 bg-slate-50 p-3 rounded-lg border border-slate-100';
-                    workerInfo.textContent = `Worker: ${j.worker_name} (${j.worker_phone})`;
-                    card.appendChild(workerInfo);
-                }
-
-                const actions = document.createElement('div');
-                actions.className = 'flex gap-2 mt-2';
-
-                if (j.status === 'accepted') {
-                    const completeBtn = document.createElement('button');
-                    completeBtn.className = 'bg-green-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2';
-                    completeBtn.innerHTML = `<span class="material-symbols-outlined text-sm">qr_code_2</span> Complete`;
-                    completeBtn.onclick = () => this.showCompletionQR(j.completion_token);
-                    actions.appendChild(completeBtn);
-
-                    const trackBtn = document.createElement('button');
-                    trackBtn.className = 'bg-blue-500 text-white px-4 py-2 rounded-lg text-sm font-bold flex items-center gap-2';
-                    trackBtn.innerHTML = `<span class="material-symbols-outlined text-sm">location_on</span> Track`;
-                    trackBtn.onclick = () => this.trackWorker(j.id);
-                    actions.appendChild(trackBtn);
-                } else if (j.status === 'completed') {
-                    const reviewBtn = document.createElement('button');
-                    reviewBtn.className = 'bg-primary text-white px-4 py-2 rounded-lg text-sm font-bold';
-                    reviewBtn.textContent = 'Leave a Review';
-                    reviewBtn.onclick = () => this.showReviewModal(j.id, j.worker_id);
-                    actions.appendChild(reviewBtn);
-                }
-
-                if (actions.children.length > 0) {
-                    card.appendChild(actions);
-                }
+                    <div class="flex gap-2 mt-2">
+                        ${j.status === 'accepted' ? `
+                            <button onclick="app.showCompletionQR('${j.completion_token}')" class="btn btn-primary sm flex-1">
+                                <i class="fa-solid fa-qrcode mr-2"></i> ${app.translations ? (app.translations['Complete'] || 'Complete') : 'Complete'}
+                            </button>
+                            <button onclick="app.trackWorker(${j.id})" class="btn btn-outline sm">
+                                <i class="fa-solid fa-location-crosshairs"></i>
+                            </button>
+                        ` : j.status === 'completed' ? `
+                            <button onclick="app.showReviewModal(${j.id}, ${j.worker_id})" class="btn btn-outline sm w-full">
+                                ${app.translations ? (app.translations['Leave Review'] || 'Leave Review') : 'Leave Review'}
+                            </button>
+                        ` : ''}
+                    </div>
+                `;
                 listDiv.appendChild(card);
             });
         } catch (e) {
@@ -650,10 +708,17 @@ const app = {
     },
 
     async acceptJob(jobId, workType) {
+        const amount = prompt("Enter the amount for this job (in ₹):", "500");
+        if (amount === null) return; // Cancelled
+        
         try {
-            const res = await fetch(`/api/jobs/${jobId}/accept`, { method: 'POST' });
+            const res = await fetch(`/api/jobs/${jobId}/accept`, { 
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ price: amount })
+            });
             if (res.ok) {
-                alert("Job accepted! The user will be notified.");
+                alert("Job accepted! The user will be notified of your price.");
                 this.fetchJobsForWorker(workType);
             } else {
                 const data = await res.json();
@@ -748,19 +813,19 @@ const app = {
 
             const isWorker = window.location.pathname.includes('worker');
             container.innerHTML = upcoming.slice(0, 4).map(b => `
-                <a href="/bookings/${b.id}" class="glass-panel p-4 rounded-2xl border border-slate-100 flex items-center justify-between hover:border-secondary/30 transition-all">
+                <a href="/bookings/${b.id}" class="card p-4 flex items-center justify-between hover:border-primary transition-all animate-slide-up" style="text-decoration:none">
                     <div class="flex items-center gap-3">
-                        <div class="w-10 h-10 rounded-full bg-secondary/10 flex items-center justify-center text-secondary overflow-hidden">
+                        <div class="w-10 h-10 rounded-xl bg-slate-100 flex items-center justify-center text-muted overflow-hidden border">
                             ${(isWorker ? b.customer_profile_pic : b.worker_profile_pic) 
                                 ? `<img src="/static/${isWorker ? b.customer_profile_pic : b.worker_profile_pic}" class="w-full h-full object-cover">` 
-                                : `<span class="material-symbols-outlined text-xl">calendar_month</span>`}
+                                : `<i class="fa-solid fa-calendar-day"></i>`}
                         </div>
                         <div>
-                            <p class="font-black text-slate-800 text-sm">${isWorker ? b.customer_name : b.worker_name}</p>
-                            <p class="text-[10px] text-slate-400 font-bold uppercase tracking-wider">${b.date} • ${b.time_slot}</p>
+                            <p class="font-bold text-sm">${isWorker ? b.customer_name : b.worker_name}</p>
+                            <p class="text-[10px] text-muted font-bold uppercase tracking-wider">${b.date} • ${b.time_slot}</p>
                         </div>
                     </div>
-                    <span class="px-2 py-1 rounded-full text-[9px] font-black uppercase tracking-tighter ${b.status === 'Work Started' ? 'bg-green-100 text-green-700' : 'bg-blue-50 text-blue-600'}">
+                    <span class="badge sm ${b.status === 'Work Started' ? 'success' : 'primary'}">
                         ${b.status}
                     </span>
                 </a>
@@ -786,27 +851,27 @@ const app = {
 
             container.parentElement.style.display = 'block';
             container.innerHTML = pending.map(b => `
-                <div class="glass-panel p-6 rounded-[24px] border border-amber-100/50 hover:shadow-xl hover:shadow-amber-500/5 transition-all space-y-4 bg-white">
+                <div class="card p-6 border-coral/30 bg-coral/5 animate-slide-up space-y-4">
                     <div class="flex items-center gap-4">
-                        <div class="w-12 h-12 rounded-2xl bg-amber-50 flex items-center justify-center text-amber-600 border border-amber-100 shadow-sm overflow-hidden">
+                        <div class="w-12 h-12 rounded-2xl bg-white flex items-center justify-center text-coral border border-coral/20 shadow-sm overflow-hidden">
                             ${b.customer_profile_pic 
                                 ? `<img src="/static/${b.customer_profile_pic}" class="w-full h-full object-cover">` 
-                                : `<span class="material-symbols-outlined" style="font-variation-settings:'FILL' 1">person</span>`}
+                                : `<i class="fa-solid fa-user"></i>`}
                         </div>
                         <div class="flex-1 min-w-0">
-                            <p class="font-black text-slate-900 truncate">${b.customer_name}</p>
-                            <p class="text-[10px] text-slate-500 font-bold uppercase tracking-widest">${b.date} • ${b.time_slot}</p>
+                            <p class="font-black truncate">${b.customer_name}</p>
+                            <p class="text-[10px] text-muted font-bold uppercase tracking-widest">${b.date} • ${b.time_slot}</p>
                         </div>
                     </div>
                     
                     <div class="flex gap-2">
                         <button onclick="app.acceptBookingDirectly(${b.id})" 
-                            class="flex-1 h-11 bg-amber-600 text-white rounded-xl text-[10px] font-black uppercase tracking-widest shadow-lg shadow-amber-600/20 hover:bg-amber-700 transition-all active:scale-95">
-                            Accept Now
+                            class="btn btn-primary sm flex-1">
+                            ${app.translations ? (app.translations['Accept Now'] || 'Accept Now') : 'Accept Now'}
                         </button>
                         <button onclick="location.href='/bookings/${b.id}'" 
-                            class="flex-1 h-11 bg-slate-50 text-slate-500 rounded-xl text-[10px] font-black uppercase tracking-widest hover:bg-slate-100 transition-all border border-slate-100">
-                            Details
+                            class="btn btn-outline sm flex-1">
+                            ${app.translations ? (app.translations['Details'] || 'Details') : 'Details'}
                         </button>
                     </div>
                 </div>
@@ -946,6 +1011,9 @@ const app = {
                             <a href="https://wa.me/91${w.phone}" target="_blank" class="bg-green-500 text-white p-1 rounded-full flex items-center justify-center w-8 h-8">
                                 <img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-4 h-4 filter brightness-0 invert">
                             </a>
+                            <a href="/book/${w.id}" class="bg-[#00668a] text-white p-1 rounded-full flex items-center justify-center w-8 h-8" title="Book Now">
+                                <span class="material-symbols-outlined text-sm">calendar_month</span>
+                            </a>
                         </div>
                     </div>
                 `);
@@ -1024,106 +1092,55 @@ const app = {
 
             workers.forEach(w => {
                 const card = document.createElement('div');
-                card.className = 'glass-panel rounded-xl p-6 shadow-sm border border-slate-200 flex flex-col gap-4 hover:shadow-md transition-all';
+                card.className = 'card p-6 flex flex-col gap-6 hover:border-primary transition-all animate-slide-up';
 
-                const headerDiv = document.createElement('div');
-                headerDiv.className = 'flex justify-between items-start';
+                const ratingHtml = w.review_count > 0 ? `
+                    <div class="flex items-center gap-1">
+                        <span class="text-coral font-bold">★ ${parseFloat(w.avg_rating).toFixed(1)}</span>
+                        <span class="text-[10px] text-muted">(${w.review_count} ${app.translations ? (app.translations['reviews'] || 'reviews') : 'reviews'})</span>
+                    </div>
+                ` : `<span class="text-[10px] text-muted italic">${app.translations ? (app.translations['No reviews'] || 'No reviews') : 'No reviews'}</span>`;
 
-                const infoWrapper = document.createElement('div');
-                infoWrapper.className = 'flex items-center gap-4';
-                infoWrapper.innerHTML = `
-                    <div class="w-12 h-12 rounded-full bg-slate-100 flex items-center justify-center text-slate-400 overflow-hidden">
-                        ${w.profile_pic ? `<img src="/static/${w.profile_pic}" class="w-full h-full object-cover">` : `<span class="material-symbols-outlined text-3xl">person</span>`}
+                card.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <div class="flex items-center gap-4">
+                            <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center border-2 border-primary/10 overflow-hidden shadow-sm">
+                                ${w.profile_pic ? `<img src="/static/${w.profile_pic}" class="w-full h-full object-cover">` : `<i class="fa-solid fa-user-tie text-2xl text-muted"></i>`}
+                            </div>
+                            <div>
+                                <h4 class="flex items-center gap-2">
+                                    ${w.name}
+                                    ${w.is_verified ? '<i class="fa-solid fa-circle-check text-green-500 text-sm"></i>' : ''}
+                                </h4>
+                                ${ratingHtml}
+                                <div class="flex gap-2 mt-1">
+                                    <span class="text-[10px] font-bold text-secondary uppercase tracking-widest"><i class="fa-solid fa-briefcase mr-1"></i>${w.work}</span>
+                                    <span class="text-[10px] font-bold text-muted uppercase tracking-widest"><i class="fa-solid fa-location-dot mr-1"></i>${w.location}</span>
+                                </div>
+                            </div>
+                        </div>
+                        <div class="flex flex-col gap-2">
+                            <a href="tel:${w.phone}" class="btn btn-outline btn-icon sm"><i class="fa-solid fa-phone"></i></a>
+                            <a href="https://wa.me/91${w.phone}" target="_blank" class="btn btn-outline btn-icon sm" style="border-color: #25D366; color: #25D366;"><i class="fa-brands fa-whatsapp"></i></a>
+                        </div>
+                    </div>
+
+                    ${w.voice_resume ? `
+                        <div class="p-4 bg-slate-50 rounded-2xl border border-slate-100 italic text-xs text-muted">
+                            <i class="fa-solid fa-quote-left mr-2 opacity-20"></i>${w.voice_resume}
+                        </div>
+                    ` : ''}
+
+                    <div class="flex items-center justify-between pt-6 border-t border-slate-100">
+                        <div>
+                            <span class="text-[10px] font-black text-muted uppercase tracking-widest block">${app.translations ? (app.translations['Hourly Rate'] || 'Hourly Rate') : 'Hourly Rate'}</span>
+                            <span class="text-xl font-black text-primary">₹${w.price || 0}<span class="text-xs text-muted font-bold">/hr</span></span>
+                        </div>
+                        <a href="/book/${w.id}" class="btn btn-primary sm px-8">
+                            <i class="fa-solid fa-calendar-check mr-2"></i>${app.translations ? (app.translations['Book Now'] || 'Book Now') : 'Book Now'}
+                        </a>
                     </div>
                 `;
-
-                const textDiv = document.createElement('div');
-                const nameLabel = document.createElement('h4');
-                nameLabel.className = 'font-bold text-lg text-primary flex items-center gap-1';
-                nameLabel.innerHTML = `
-                    ${w.name}
-                    ${w.is_verified ? '<span class="material-symbols-outlined text-green-600 text-[20px]" title="Verified">verified</span>' : ''}
-                `;
-                textDiv.appendChild(nameLabel);
-
-                if (w.review_count > 0) {
-                    const ratingSpan = document.createElement('div');
-                    ratingSpan.className = 'text-sm mb-1 flex items-center gap-1';
-
-                    const avg = parseFloat(w.avg_rating);
-                    const stars = '★'.repeat(Math.round(avg)) + '☆'.repeat(5 - Math.round(avg));
-
-                    ratingSpan.innerHTML = `
-                        <span class="text-yellow-500 font-bold">${stars}</span>
-                        <span class="text-slate-600 font-medium">${avg.toFixed(1)}</span>
-                        <span class="text-slate-400 text-xs">(${w.review_count} reviews)</span>
-                    `;
-                    textDiv.appendChild(ratingSpan);
-                } else {
-                    const noRating = document.createElement('div');
-                    noRating.className = 'text-xs text-slate-400 italic mb-1';
-                    noRating.textContent = 'No reviews yet';
-                    textDiv.appendChild(noRating);
-                }
-
-                const tagsDiv = document.createElement('div');
-                tagsDiv.className = 'flex flex-wrap items-center gap-3 mt-1';
-
-                const workTag = document.createElement('span');
-                workTag.className = 'flex items-center gap-1 text-xs font-bold text-secondary uppercase tracking-wider';
-                workTag.innerHTML = `<span class="material-symbols-outlined text-[14px]">work</span>`;
-                workTag.appendChild(document.createTextNode(w.work));
-
-                const locTag = document.createElement('span');
-                locTag.className = 'flex items-center gap-1 text-xs font-medium text-slate-500';
-                locTag.innerHTML = `<span class="material-symbols-outlined text-[14px]">location_on</span>`;
-                locTag.appendChild(document.createTextNode(w.location));
-
-                tagsDiv.appendChild(workTag);
-                tagsDiv.appendChild(locTag);
-                textDiv.appendChild(tagsDiv);
-
-                infoWrapper.appendChild(textDiv);
-
-                const actionsWrapper = document.createElement('div');
-                actionsWrapper.className = 'flex items-center gap-2';
-
-                const waBtn = document.createElement('a');
-                waBtn.href = `https://wa.me/91${w.phone}`;
-                waBtn.target = '_blank';
-                waBtn.className = 'w-10 h-10 bg-green-500 text-white rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-sm';
-                waBtn.innerHTML = `<img src="https://upload.wikimedia.org/wikipedia/commons/6/6b/WhatsApp.svg" class="w-5 h-5 filter brightness-0 invert" alt="WA">`;
-
-                const callBtn = document.createElement('a');
-                callBtn.href = `tel:${w.phone}`;
-                callBtn.className = 'w-10 h-10 bg-primary text-white rounded-full flex items-center justify-center hover:opacity-90 active:scale-95 transition-all shadow-sm';
-                callBtn.innerHTML = `<span class="material-symbols-outlined">call</span>`;
-
-                actionsWrapper.appendChild(waBtn);
-                actionsWrapper.appendChild(callBtn);
-
-                headerDiv.appendChild(infoWrapper);
-                headerDiv.appendChild(actionsWrapper);
-                card.appendChild(headerDiv);
-
-                const portfolioBtn = document.createElement('a');
-                portfolioBtn.href = `/book/${w.id}#portfolio`;
-                portfolioBtn.className = 'mt-2 h-12 bg-white text-secondary border border-secondary/20 rounded-xl flex items-center justify-center gap-2 font-black text-sm hover:bg-secondary/5 active:scale-95 transition-all';
-                portfolioBtn.innerHTML = `<span class="material-symbols-outlined text-base">person_outline</span> View Portfolio`;
-                card.appendChild(portfolioBtn);
-
-                const bookBtn = document.createElement('a');
-                bookBtn.href = `/book/${w.id}`;
-                bookBtn.className = 'mt-2 h-12 bg-primary text-white rounded-xl flex items-center justify-center gap-2 font-black text-sm hover:opacity-90 active:scale-95 transition-all shadow-lg shadow-primary/10';
-                bookBtn.innerHTML = `<span class="material-symbols-outlined text-base">calendar_month</span> Book Now`;
-                card.appendChild(bookBtn);
-
-                if (w.voice_resume) {
-                    const vrDiv = document.createElement('div');
-                    vrDiv.className = 'mt-3 p-3 bg-blue-50 rounded-xl border border-blue-100 italic text-sm text-slate-700';
-                    vrDiv.innerHTML = `<span class="material-symbols-outlined text-xs align-middle mr-1">voice_chat</span> "${w.voice_resume}"`;
-                    card.appendChild(vrDiv);
-                }
 
                 if (w.voice_note || w.video) {
                     const mediaDiv = document.createElement('div');
@@ -1132,7 +1149,7 @@ const app = {
                     if (w.voice_note) {
                         const auDiv = document.createElement('div');
                         auDiv.className = 'flex flex-col gap-2';
-                        auDiv.innerHTML = `<span class="flex items-center gap-1 text-xs font-bold text-secondary uppercase tracking-wider"><span class="material-symbols-outlined text-sm">mic</span> Voice Note</span>`;
+                        auDiv.innerHTML = `<span class="text-[10px] font-bold text-muted uppercase tracking-widest"><i class="fa-solid fa-microphone mr-1"></i> Voice Note</span>`;
                         const audio = document.createElement('audio');
                         audio.controls = true;
                         audio.className = 'w-full';
@@ -1143,10 +1160,10 @@ const app = {
                     if (w.video) {
                         const vidDiv = document.createElement('div');
                         vidDiv.className = 'flex flex-col gap-2';
-                        vidDiv.innerHTML = `<span class="flex items-center gap-1 text-xs font-bold text-secondary uppercase tracking-wider"><span class="material-symbols-outlined text-sm">videocam</span> Video Portfolio</span>`;
+                        vidDiv.innerHTML = `<span class="text-[10px] font-bold text-muted uppercase tracking-widest"><i class="fa-solid fa-video mr-1"></i> Video Portfolio</span>`;
                         const video = document.createElement('video');
                         video.controls = true;
-                        video.className = 'w-full rounded-xl border border-slate-200 shadow-sm max-h-64';
+                        video.className = 'w-full rounded-2xl border shadow-sm max-h-64';
                         video.src = `/static/${w.video}`;
                         vidDiv.appendChild(video);
                         mediaDiv.appendChild(vidDiv);
