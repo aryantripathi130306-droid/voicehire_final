@@ -3,89 +3,144 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>VoiceHire | {{ t('Connecting Bharat') }}</title>
-    
+    <title>{% block title %}VoiceHire — Your Voice Can Work For You{% endblock %}</title>
+    <meta name="description" content="{% block meta_desc %}VoiceHire helps informal workers find local job opportunities using voice, regional languages, and simple mobile-first design.{% endblock %}">
+
     <!-- Fonts -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
-    
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+
     <!-- Icons -->
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
-    
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
+
     <!-- CSS -->
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
-    
+
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
-    <div class="app-container">
-        <!-- Modern Header -->
-        <header class="main-header">
-            <div class="header-container">
-                <a href="{{ url_for('index') }}" class="logo">
-                    <div class="logo-icon">
-                        <i class="fa-solid fa-microphone-lines"></i>
-                    </div>
-                    <span class="logo-text">VoiceHire</span>
-                </a>
-                
-                <div class="header-actions">
-                    {% if session.get('user_id') %}
-                    <a href="{{ url_for('logout') }}" class="btn-icon btn-logout" title="{{ t('Logout') }}">
-                        <i class="fa-solid fa-right-from-bracket"></i>
-                    </a>
-                    {% endif %}
-                </div>
+
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+{% block body %}
+<div class="app-container">
+    {% block content %}{% endblock %}
+</div>
+{% endblock %}
+
+<!-- AI Assistant Widget (shown on authenticated pages) -->
+{% if session.get('user_id') %}
+<div class="ai-widget" id="ai-widget">
+    <button class="ai-toggle-btn" id="ai-toggle-btn" title="VoiceHire Assistant">
+        <i class="fa-solid fa-robot"></i>
+    </button>
+    <div class="ai-panel" id="ai-panel">
+        <div class="ai-panel-header">
+            <div class="ai-panel-avatar"><i class="fa-solid fa-robot"></i></div>
+            <div>
+                <div class="ai-panel-title">VoiceHire Assistant</div>
+                <div class="ai-panel-status">● Online · Hindi/English</div>
             </div>
-        </header>
-
-        <!-- Main Content Area -->
-        <main id="main-content">
-            {% block content %}{% endblock %}
-        </main>
+            <button class="ai-close" id="ai-close"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="ai-messages" id="ai-messages">
+            <div class="ai-msg bot">
+                <div class="ai-msg-bubble">Namaste! Main VoiceHire Assistant hoon. Aapko kis cheez mein help chahiye? 😊</div>
+            </div>
+        </div>
+        <div class="ai-suggestions">
+            <span class="ai-sug" data-msg="Find jobs near me">Find Jobs</span>
+            <span class="ai-sug" data-msg="Check my applications">My Applications</span>
+            <span class="ai-sug" data-msg="Check my wallet">Wallet</span>
+            <span class="ai-sug" data-msg="Help me create voice profile">Voice Profile</span>
+        </div>
+        <div class="ai-input-row">
+            <input class="ai-input" id="ai-input" type="text" placeholder="Type a message...">
+            <button class="ai-mic-btn" id="ai-mic-btn" title="Voice input"><i class="fa-solid fa-microphone"></i></button>
+            <button class="ai-send-btn" id="ai-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+        </div>
     </div>
+</div>
+{% endif %}
 
-    <!-- Hidden AI Prompts for DOM Translation -->
-    <div id="ai-prompts" style="display: none;">
-        <span id="ai-p0">{{ t('What is your full name?') }}</span>
-        <span id="ai-p1">{{ t('What type of work do you do?') }}</span>
-        <span id="ai-p2">{{ t('In which city or area do you live?') }}</span>
-        <span id="ai-p3">{{ t('Please say your 10 digit phone number.') }}</span>
-        <span id="ai-retry">{{ t('I did not understand. Please say Create or Login.') }}</span>
-    </div>
+<!-- Hidden AI translation prompts -->
+<div id="ai-prompts" style="display:none;">
+    <span id="ai-p0">{{ t('What is your full name?') }}</span>
+    <span id="ai-p1">{{ t('What type of work do you do?') }}</span>
+    <span id="ai-p2">{{ t('In which city or area do you live?') }}</span>
+    <span id="ai-p3">{{ t('Please say your 10 digit phone number.') }}</span>
+    <span id="ai-p4">{{ t('Now, please say a password you would like to use.') }}</span>
+    <span id="ai-retry">{{ t("Sorry, I didn't catch that. Please repeat.") }}</span>
+</div>
 
-    <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-    <script>
-        window.flaskSessionRole = "{{ session.get('role', '') }}";
-        window.flaskSessionLang = "{{ session.get('lang', 'en') }}";
-        
-        // Pass translations to JS
-        app.translations = {
-            'No workers found': "{{ t('No workers found') }}",
-            'No jobs found': "{{ t('No jobs found') }}",
-            'Book Now': "{{ t('Book Now') }}",
-            'View Profile': "{{ t('View Profile') }}",
-            'Contact': "{{ t('Contact') }}",
-            'Listen Bio': "{{ t('Listen Bio') }}",
-            'No bookings found': "{{ t('No bookings found') }}",
-            'Book a Worker': "{{ t('Book a Worker') }}",
-            'View Details': "{{ t('View Details') }}",
-            'Pending': "{{ t('Pending') }}",
-            'Confirmed': "{{ t('Confirmed') }}",
-            'In Progress': "{{ t('In Progress') }}",
-            'Completed': "{{ t('Completed') }}",
-            'Cancel': "{{ t('Cancel') }}",
-            'What is your full name?': "{{ t('What is your full name?') }}",
-            'What type of work do you do?': "{{ t('What type of work do you do?') }}",
-            'In which city or area do you live?': "{{ t('In which city or area do you live?') }}",
-            'Please say your 10 digit phone number.': "{{ t('Please say your 10 digit phone number.') }}",
-            'Now, please say a password you would like to use.': "{{ t('Now, please say a password you would like to use.') }}",
-            "Sorry, I didn't catch that. Please repeat.": "{{ t("Sorry, I didn't catch that. Please repeat.") }}"
-        };
-    </script>
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<script>
+    window.VH = {
+        role: "{{ session.get('role', '') }}",
+        lang: "{{ session.get('lang', 'en') }}",
+        userId: "{{ session.get('user_id', '') }}",
+        userName: "{{ session.get('name', '') }}"
+    };
 
-    {% block extra_scripts %}{% endblock %}
+    // Toast utility
+    function showToast(msg, type = 'info') {
+        const icons = { success: 'fa-check', error: 'fa-xmark', info: 'fa-circle-info', warning: 'fa-triangle-exclamation' };
+        const c = document.getElementById('toast-container');
+        const t = document.createElement('div');
+        t.className = `toast toast-${type}`;
+        t.innerHTML = `<div class="toast-icon"><i class="fa-solid ${icons[type]||icons.info}"></i></div><p>${msg}</p><button class="toast-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>`;
+        c.appendChild(t);
+        setTimeout(() => t.remove(), 4000);
+    }
+
+    // AI Widget
+    const aiToggle = document.getElementById('ai-toggle-btn');
+    const aiPanel = document.getElementById('ai-panel');
+    const aiClose = document.getElementById('ai-close');
+    if (aiToggle) {
+        aiToggle.addEventListener('click', () => aiPanel.classList.toggle('open'));
+        aiClose && aiClose.addEventListener('click', () => aiPanel.classList.remove('open'));
+    }
+    document.querySelectorAll('.ai-sug').forEach(el => {
+        el.addEventListener('click', () => {
+            const msg = el.dataset.msg;
+            addAiMsg(msg, 'user');
+            setTimeout(() => addAiMsg(getAiReply(msg), 'bot'), 700);
+        });
+    });
+    const aiSend = document.getElementById('ai-send-btn');
+    const aiInput = document.getElementById('ai-input');
+    if (aiSend) {
+        aiSend.addEventListener('click', () => {
+            const v = aiInput.value.trim();
+            if (!v) return;
+            addAiMsg(v, 'user');
+            aiInput.value = '';
+            setTimeout(() => addAiMsg(getAiReply(v), 'bot'), 600);
+        });
+        aiInput && aiInput.addEventListener('keydown', e => { if (e.key === 'Enter') aiSend.click(); });
+    }
+    function addAiMsg(text, who) {
+        const msgs = document.getElementById('ai-messages');
+        if (!msgs) return;
+        const d = document.createElement('div');
+        d.className = `ai-msg ${who}`;
+        d.innerHTML = `<div class="ai-msg-bubble">${text}</div>`;
+        msgs.appendChild(d);
+        msgs.scrollTop = msgs.scrollHeight;
+    }
+    function getAiReply(msg) {
+        msg = msg.toLowerCase();
+        if (msg.includes('job') || msg.includes('kaam')) return 'Bilkul! Aapke area mein jobs dhundhne ke liye <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">yahan click karein</a>.';
+        if (msg.includes('wallet') || msg.includes('payment')) return 'Aapka wallet section mein aap apni earnings dekh sakte hain.';
+        if (msg.includes('profile') || msg.includes('voice')) return 'Voice profile banana bahut aasaan hai. Microphone icon click karein aur bol dein!';
+        if (msg.includes('application')) return 'Aapki applications "My Applications" section mein milegi.';
+        return 'Main samajh gaya. Koi aur help chahiye? Seedha Support se baat karein.';
+    }
+</script>
+{% block extra_scripts %}{% endblock %}
 </body>
 </html>

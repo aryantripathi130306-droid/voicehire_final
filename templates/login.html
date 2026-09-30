@@ -1,137 +1,181 @@
 {% extends 'base.html' %}
+{% block title %}Login — VoiceHire{% endblock %}
+{% block body_class %}{% endblock %}
 
-{% block head %}
-<style>
-    .login-container {
-        max-width: 400px;
-        margin: 2rem auto;
-    }
-    
-    .role-tabs {
-        display: flex;
-        background: var(--bg-main);
-        padding: 0.4rem;
-        border-radius: var(--radius-full);
-        margin-bottom: 2rem;
-        border: 1px solid var(--border);
-    }
-    
-    .role-tab {
-        flex: 1;
-        text-align: center;
-        padding: 0.6rem;
-        border-radius: var(--radius-full);
-        font-weight: 700;
-        font-size: 0.9rem;
-        text-decoration: none;
-        color: var(--text-muted);
-        transition: var(--transition-fast);
-    }
-    
-    .role-tab.active {
-        background: var(--secondary);
-        color: white;
-        box-shadow: var(--shadow-md);
-    }
-    
-    .login-card {
-        padding: 2rem;
-    }
-
-    .social-auth {
-        display: flex;
-        flex-direction: column;
-        gap: 1rem;
-        margin-top: 2rem;
-        padding-top: 2rem;
-        border-top: 1px solid var(--border);
-    }
-
-    .voice-login-btn {
-        background: #F1F5F9;
-        color: var(--secondary);
-        border: 1px solid var(--border);
-    }
-
-    .voice-login-btn:hover {
-        background: var(--border);
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="login-container animate-slide-up">
-    <div class="hero-header text-center mb-8">
-        <h1>{{ t('Welcome Back') }}</h1>
-        <p>{{ t('Sign in to your account') }}</p>
-    </div>
-
-    <div class="role-tabs">
-        <a href="{{ url_for('login_page', role='user') }}" class="role-tab {% if role == 'user' %}active{% endif %}">
-            {{ t('Customer') }}
+{% block body %}
+<div class="auth-page">
+    <!-- LEFT PANEL -->
+    <div class="auth-left">
+        <a href="/" class="logo">
+            <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+            <span class="logo-text">VoiceHire</span>
         </a>
-        <a href="{{ url_for('login_page', role='worker') }}" class="role-tab {% if role == 'worker' %}active{% endif %}">
-            {{ t('Worker') }}
-        </a>
-    </div>
-
-    <div class="card login-card">
-        <form id="login-form">
-            <input type="hidden" name="role" value="{{ role }}">
-            
-            <div class="form-group">
-                <label for="l-phone">{{ t('Phone Number') }}</label>
-                <input type="tel" id="l-phone" name="phone" class="form-control" placeholder="0000000000" required>
+        <div class="auth-left-content">
+            <div class="auth-ai-illus">
+                <i class="fa-solid fa-robot"></i>
             </div>
-
-            <div class="form-group">
-                <label for="l-password">{{ t('Password') }}</label>
-                <input type="password" id="l-password" name="password" class="form-control" placeholder="••••••••" required>
+            <h2>Welcome Back!</h2>
+            <p>Log in to continue your journey. Find work, manage bookings, and get paid — all in one place.</p>
+            <div class="auth-feature-list">
+                <div class="auth-feature-item">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Voice-based job search</span>
+                </div>
+                <div class="auth-feature-item">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Local jobs in your area</span>
+                </div>
+                <div class="auth-feature-item">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Works in 8 regional languages</span>
+                </div>
+                <div class="auth-feature-item">
+                    <i class="fa-solid fa-check-circle"></i>
+                    <span>Secure payments & QR check-in</span>
+                </div>
             </div>
-
-            <input type="hidden" id="login-role" value="{{ role }}">
-
-            <button type="submit" class="btn btn-primary mt-4">
-                {{ t('Sign In') }}
-                <i class="fa-solid fa-arrow-right ml-2"></i>
-            </button>
-        </form>
-
-        <div class="social-auth">
-            <button type="button" class="btn voice-login-btn" onclick="startVoiceLogin()">
-                <i class="fa-solid fa-microphone mr-2"></i>
-                {{ t('Sign in with Voice') }}
-            </button>
         </div>
     </div>
 
-    <div class="text-center mt-8">
-        <p class="text-muted">
-            {{ t("Don't have an account?") }}
-            {% if role == 'user' %}
-            <a href="{{ url_for('user_signup_page') }}" class="text-primary font-bold">{{ t('Join as Customer') }}</a>
-            {% else %}
-            <a href="{{ url_for('worker_signup_page') }}" class="text-primary font-bold">{{ t('Join as Worker') }}</a>
-            {% endif %}
-        </p>
-        
-        <a href="{{ url_for('role_selection') }}" class="btn-back-link mt-6">
-            <i class="fa-solid fa-arrow-left mr-2"></i>
-            {{ t('Back to home') }}
-        </a>
+    <!-- RIGHT PANEL -->
+    <div class="auth-right">
+        <div class="auth-form-box">
+            <h1>Login</h1>
+            <p class="auth-subtitle">Enter your details to access your account.</p>
+
+            <div class="auth-card">
+                <!-- Role selector -->
+                <div class="role-cards" id="role-select-row">
+                    <div class="role-card {% if role == 'user' %}selected{% endif %}" id="card-user" onclick="setRole('user')">
+                        <div class="role-icon"><i class="fa-solid fa-user-tie"></i></div>
+                        <h4>Employer</h4>
+                        <p>I hire workers</p>
+                    </div>
+                    <div class="role-card {% if role == 'worker' %}selected{% endif %}" id="card-worker" onclick="setRole('worker')">
+                        <div class="role-icon"><i class="fa-solid fa-hard-hat"></i></div>
+                        <h4>Worker</h4>
+                        <p>I find work</p>
+                    </div>
+                </div>
+
+                <form id="login-form" autocomplete="on">
+                    <input type="hidden" id="login-role" value="{{ role }}">
+
+                    <div class="form-group">
+                        <label class="form-label" for="phone">Mobile Number <span class="required">*</span></label>
+                        <div class="input-icon-wrap">
+                            <i class="fa-solid fa-mobile-screen input-icon"></i>
+                            <input type="tel" id="phone" name="phone" class="form-control" placeholder="Enter 10-digit mobile number" maxlength="10" required autocomplete="tel">
+                        </div>
+                    </div>
+
+                    <div class="form-group">
+                        <label class="form-label" for="password">Password <span class="required">*</span></label>
+                        <div class="input-icon-wrap">
+                            <i class="fa-solid fa-lock input-icon"></i>
+                            <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+                            <span class="input-icon-right" onclick="togglePwd('password', this)">
+                                <i class="fa-regular fa-eye"></i>
+                            </span>
+                        </div>
+                    </div>
+
+                    <div class="flex justify-between items-center mb-4">
+                        <label class="flex items-center gap-2 text-sm text-muted" style="cursor:pointer;">
+                            <input type="checkbox" id="remember"> Remember me
+                        </label>
+                        <a href="#" class="text-sm text-primary font-medium">Forgot Password?</a>
+                    </div>
+
+                    <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
+                        <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login
+                    </button>
+                </form>
+
+                <div class="divider-text mt-4"><span>OR</span></div>
+
+                <button class="btn-google">
+                    <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
+                        <path d="M17.64 9.2c0-.637-.057-1.251-.164-1.84H9v3.481h4.844a4.14 4.14 0 0 1-1.796 2.716v2.259h2.908c1.702-1.567 2.684-3.875 2.684-6.615Z" fill="#4285F4"/>
+                        <path d="M9 18c2.43 0 4.467-.806 5.956-2.18l-2.908-2.259c-.806.54-1.837.86-3.048.86-2.344 0-4.328-1.584-5.036-3.711H.957v2.332A8.997 8.997 0 0 0 9 18Z" fill="#34A853"/>
+                        <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
+                        <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
+                    </svg>
+                    Continue with Google
+                </button>
+            </div>
+
+            <div class="auth-footer">
+                Don't have an account?
+                <a href="{{ url_for('worker_signup_page') }}">Sign Up as Worker</a> ·
+                <a href="{{ url_for('user_signup_page') }}">Sign Up as Employer</a>
+            </div>
+        </div>
     </div>
 </div>
+{% endblock %}
 
+{% block extra_scripts %}
 <script>
-    function startVoiceLogin() {
-        alert('Voice login coming soon!');
-    }
-</script>
+let currentRole = '{{ role }}';
 
-<style>
-    .text-primary { color: var(--primary); }
-    .font-bold { font-weight: 700; }
-    .mr-2 { margin-right: 0.5rem; }
-    .ml-2 { margin-left: 0.5rem; }
-</style>
+function setRole(role) {
+    currentRole = role;
+    document.getElementById('login-role').value = role;
+    document.getElementById('card-user').classList.toggle('selected', role === 'user');
+    document.getElementById('card-worker').classList.toggle('selected', role === 'worker');
+}
+
+function togglePwd(inputId, btn) {
+    const inp = document.getElementById(inputId);
+    const ico = btn.querySelector('i');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        ico.className = 'fa-regular fa-eye-slash';
+    } else {
+        inp.type = 'password';
+        ico.className = 'fa-regular fa-eye';
+    }
+}
+
+document.getElementById('login-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('login-btn');
+    const phone = document.getElementById('phone').value.trim();
+    const password = document.getElementById('password').value.trim();
+    const role = document.getElementById('login-role').value;
+
+    if (!phone || !password) { showToast('Please fill all fields', 'error'); return; }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Logging in...';
+
+    try {
+        const fd = new FormData();
+        fd.append('phone', phone);
+        fd.append('password', password);
+        fd.append('role', role);
+
+        const res = await fetch('/api/auth/login', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ phone, password, role })
+        });
+        const data = await res.json();
+
+        if (data.redirect) {
+            showToast('Login successful! Welcome back.', 'success');
+            setTimeout(() => window.location.href = data.redirect, 800);
+        } else {
+            showToast(data.error || 'Login failed. Check your credentials.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login';
+        }
+    } catch (err) {
+        showToast('Server error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login';
+    }
+});
+</script>
 {% endblock %}

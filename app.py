@@ -1,49 +1,49 @@
-# import traceback
-# import os
-# import uuid
-# import re
-# import secrets
-# import hmac
-# import hashlib
-# import json
-# import base64
-# import io
-# import csv
-# from io import StringIO
-# from datetime import datetime, timedelta, date
-# from collections import defaultdict
-# from werkzeug.utils import secure_filename
-# from werkzeug.security import generate_password_hash, check_password_hash
-# from flask import Flask, render_template, request, jsonify, session, redirect, url_for
-# from flask_cors import CORS
-# from dotenv import load_dotenv
-# from supabase import create_client, Client
-# from translations import get_translation
-# import qrcode
+import traceback
+import os
+import uuid
+import re
+import secrets
+import hmac
+import hashlib
+import json
+import base64
+import io
+import csv
+from io import StringIO
+from datetime import datetime, timedelta, date
+from collections import defaultdict
+from werkzeug.utils import secure_filename
+from werkzeug.security import generate_password_hash, check_password_hash
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask_cors import CORS
+from dotenv import load_dotenv
+from supabase import create_client, Client
+from translations import get_translation
+import qrcode
 
-# load_dotenv()
+load_dotenv()
 
-# app = Flask(__name__)
-# app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_voicehire_key')
-# app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload
-# CORS(app, resources={r"/api/*": {"origins": "*"}})
+app = Flask(__name__)
+app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_voicehire_key')
+app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# UPLOAD_FOLDER = os.path.join('static', 'uploads')
-# AUDIO_FOLDER = os.path.join(UPLOAD_FOLDER, 'audio')
-# VIDEO_FOLDER = os.path.join(UPLOAD_FOLDER, 'video')
-# ID_FOLDER = os.path.join(UPLOAD_FOLDER, 'ids')
-# PROFILE_PIC_FOLDER = os.path.join(UPLOAD_FOLDER, 'profile_pics')
-# os.makedirs(AUDIO_FOLDER, exist_ok=True)
-# os.makedirs(VIDEO_FOLDER, exist_ok=True)
-# os.makedirs(ID_FOLDER, exist_ok=True)
-# os.makedirs(PROFILE_PIC_FOLDER, exist_ok=True)
+UPLOAD_FOLDER = os.path.join('static', 'uploads')
+AUDIO_FOLDER = os.path.join(UPLOAD_FOLDER, 'audio')
+VIDEO_FOLDER = os.path.join(UPLOAD_FOLDER, 'video')
+ID_FOLDER = os.path.join(UPLOAD_FOLDER, 'ids')
+PROFILE_PIC_FOLDER = os.path.join(UPLOAD_FOLDER, 'profile_pics')
+os.makedirs(AUDIO_FOLDER, exist_ok=True)
+os.makedirs(VIDEO_FOLDER, exist_ok=True)
+os.makedirs(ID_FOLDER, exist_ok=True)
+os.makedirs(PROFILE_PIC_FOLDER, exist_ok=True)
 
-# ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a', 'aac'}
-# ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov'}
-# ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png'}
+ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a', 'aac'}
+ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov'}
+ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 
-# # ---- SUPABASE CLIENT ----
-# supabase_url = os.environ.get('SUPABASE_URL')
+# ---- SUPABASE CLIENT ----
+supabase_url = os.environ.get('SUPABASE_URL')
 supabase_key = os.environ.get('SUPABASE_KEY')
 
 if not supabase_url or not supabase_key:
@@ -94,45 +94,42 @@ def inject_translation():
 @app.route('/set_lang/<lang_code>')
 def set_lang(lang_code):
     session['lang'] = lang_code
-    return redirect(url_for('gateway'))
+    # Stay on landing page after language change
+    return redirect(url_for('index'))
 
 # ---- TEMPLATE ROUTES ----
 
 @app.route('/')
 def index():
+    """Landing page with integrated language selector and hero."""
     if 'user_id' in session:
         role = session.get('role')
         return redirect(url_for('user_dashboard' if role == 'user' else 'worker_dashboard'))
-    return render_template('select_language.html')
+    return render_template('gateway.html')
 
 @app.route('/home')
 def home():
-    if 'user_id' in session:
-        if session.get('role') == 'user':
-            return redirect(url_for('user_dashboard'))
-        else:
-            return redirect(url_for('worker_dashboard'))
-    return render_template('language.html')
+    return redirect(url_for('index'))
 
 @app.route('/gateway')
 def gateway():
-    # Voice AI assistant page
-    if 'user_id' in session:
-        role = session.get('role')
-        return redirect(url_for('user_dashboard' if role == 'user' else 'worker_dashboard'))
-    return render_template('gateway.html')
+    return redirect(url_for('index'))
 
 @app.route('/welcome')
 def welcome():
-    # Voice-assisted welcome page (optional entry point)
-    if 'user_id' in session:
-        role = session.get('role')
-        return redirect(url_for('user_dashboard' if role == 'user' else 'worker_dashboard'))
-    return render_template('gateway.html')
+    return redirect(url_for('index'))
 
 @app.route('/role')
 def role_selection():
-    return render_template('role.html')
+    return redirect(url_for('signup'))
+
+@app.route('/signup')
+def signup():
+    """Role selection page before signup."""
+    if 'user_id' in session:
+        role = session.get('role')
+        return redirect(url_for('user_dashboard' if role == 'user' else 'worker_dashboard'))
+    return render_template('signup_role.html')
 
 @app.route('/login')
 def login_page():
@@ -149,7 +146,7 @@ def worker_signup_page():
 
 @app.route('/stitch_worker_dashboard')
 def stitch_worker_dashboard():
-    return render_template('stitch_worker_dashboard.html')
+    return redirect(url_for('worker_dashboard'))
 
 @app.route('/dashboard/user')
 def user_dashboard():
@@ -175,7 +172,14 @@ def worker_dashboard():
             session.clear()
             return redirect(url_for('login_page', role='worker'))
         worker_data = resp.data[0]
-        return render_template('worker_dashboard.html', worker=worker_data)
+        hour = datetime.utcnow().hour + 5  # IST offset
+        if hour < 12:
+            time_of_day = 'Morning'
+        elif hour < 17:
+            time_of_day = 'Afternoon'
+        else:
+            time_of_day = 'Evening'
+        return render_template('worker_dashboard.html', worker=worker_data, time_of_day=time_of_day)
     except Exception as e:
         return f"Database error: {e}"
 
@@ -414,7 +418,7 @@ def logout_api():
 @app.route('/logout')
 def logout():
     session.clear()
-    return redirect(url_for('role_selection'))
+    return redirect(url_for('index'))
 
 # ---- DATA API ENDPOINTS ----
 

@@ -1,346 +1,327 @@
 {% extends 'base.html' %}
+{% block title %}Worker Dashboard — VoiceHire{% endblock %}
 
-{% block head %}
-<style>
-    .dashboard-container {
-        padding-bottom: 5rem;
-    }
+{% block body %}
+<div class="dashboard-layout">
 
-    .hero-section {
-        background: var(--primary);
-        color: white;
-        border-radius: var(--radius-lg);
-        padding: 2rem;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-    }
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <a href="/" class="logo">
+                <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+                <span class="logo-text">VoiceHire</span>
+            </a>
+        </div>
 
-    .hero-section::after {
-        content: '\f0e7'; /* fa-bolt */
-        font-family: 'Font Awesome 6 Free';
-        font-weight: 900;
-        position: absolute;
-        right: -20px;
-        top: -20px;
-        font-size: 8rem;
-        opacity: 0.1;
-        transform: rotate(15deg);
-    }
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('worker_dashboard') }}" class="nav-item active">
+                <i class="fa-solid fa-house nav-icon"></i> Home
+            </a>
+            <a href="{{ url_for('booking_slots_page', worker_id=worker.id) if worker else '#' }}" class="nav-item">
+                <i class="fa-solid fa-briefcase nav-icon"></i> Find Jobs
+            </a>
+            <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
+                <i class="fa-solid fa-clipboard-list nav-icon"></i> My Work
+                <span class="nav-badge" id="pending-count" style="display:none;"></span>
+            </a>
+            <a href="{{ url_for('scan_page') }}" class="nav-item">
+                <i class="fa-solid fa-qrcode nav-icon"></i> Scan QR
+            </a>
 
-    .status-badge {
-        display: inline-flex;
-        align-items: center;
-        gap: 6px;
-        padding: 4px 12px;
-        border-radius: var(--radius-full);
-        font-size: 0.7rem;
-        font-weight: 800;
-        text-transform: uppercase;
-        letter-spacing: 0.05em;
-    }
+            <div class="nav-section-label">Account</div>
+            <a href="#" class="nav-item" id="wallet-nav">
+                <i class="fa-solid fa-wallet nav-icon"></i> Wallet
+            </a>
+            <a href="#" class="nav-item" id="profile-nav">
+                <i class="fa-solid fa-user nav-icon"></i> Profile
+            </a>
+            <a href="#" class="nav-item" id="settings-nav">
+                <i class="fa-solid fa-gear nav-icon"></i> Settings
+            </a>
+        </nav>
 
-    .status-available { background: #DCFCE7; color: #15803D; }
-    .status-busy { background: #FEE2E2; color: #B91C1C; }
+        <div class="sidebar-bottom">
+            <div class="sidebar-user">
+                <div class="sidebar-avatar">{{ worker.name[0].upper() if worker and worker.name else 'W' }}</div>
+                <div class="sidebar-user-info">
+                    <h4>{{ worker.name if worker else 'Worker' }}</h4>
+                    <p>{{ worker.work if worker else 'Professional' }}</p>
+                </div>
+            </div>
+            <a href="{{ url_for('logout') }}" class="nav-item mt-2" style="color: #FDA4AF;">
+                <i class="fa-solid fa-right-from-bracket nav-icon"></i> Logout
+            </a>
+        </div>
+    </aside>
 
-    .stats-row {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
+    <!-- Sidebar overlay (mobile) -->
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-    .stat-box {
-        background: white;
-        padding: 1rem;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border);
-        text-align: center;
-    }
+    <!-- ── MAIN CONTENT ── -->
+    <main class="dashboard-main">
 
-    .stat-val {
-        display: block;
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--secondary);
-    }
+        <!-- Dash Header -->
+        <div class="dash-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn-icon mobile-menu-btn" id="mobile-menu-btn" onclick="openSidebar()">
+                    <i class="fa-solid fa-bars"></i>
+                </button>
+                <div class="dash-header-title">
+                    <h1>Good {{ time_of_day }}, {{ worker.name.split()[0] if worker and worker.name else 'there' }}! 👋</h1>
+                    <p>Here's what's happening with your work today.</p>
+                </div>
+            </div>
+            <div class="dash-header-actions">
+                <div class="notif-btn" id="notif-btn">
+                    <i class="fa-solid fa-bell" style="font-size:.9375rem;"></i>
+                    <div class="notif-dot" id="notif-dot"></div>
+                </div>
+                <div class="dash-avatar">{{ worker.name[0].upper() if worker and worker.name else 'W' }}</div>
+            </div>
+        </div>
 
-    .stat-label {
-        font-size: 0.65rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 700;
-    }
+        <!-- Content -->
+        <div class="dash-content">
 
-    .action-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-        margin-bottom: 2rem;
-    }
+            <!-- Profile Completion Banner -->
+            {% set profile_pct = 40 %}
+            {% if worker %}
+                {% set has_voice = worker.voice_note %}
+                {% set has_pic = worker.profile_pic %}
+                {% set has_loc = worker.latitude %}
+                {% set has_id = worker.id_proof %}
+                {% set filled = [1, has_voice, has_pic, has_loc, has_id] | select | list | length %}
+                {% set profile_pct = (filled * 20) | int %}
+            {% endif %}
+            {% if profile_pct < 100 %}
+            <div class="profile-complete-card">
+                <div class="pc-icon"><i class="fa-solid fa-user-circle"></i></div>
+                <div class="pc-text">
+                    <h3>Complete your voice profile</h3>
+                    <p>Add your voice bio to get better job matches.</p>
+                    <div class="pc-progress">
+                        <div class="pc-progress-label">
+                            <span>Profile completeness</span>
+                            <span>{{ profile_pct }}%</span>
+                        </div>
+                        <div class="pc-progress-bar">
+                            <div class="pc-progress-fill" style="width:{{ profile_pct }}%;"></div>
+                        </div>
+                    </div>
+                </div>
+                <a href="#" class="btn btn-sm" style="background:white; color:var(--primary); white-space:nowrap; flex-shrink:0;">
+                    Setup Now
+                </a>
+            </div>
+            {% endif %}
 
-    .action-card {
-        background: var(--bg-main);
-        padding: 1rem;
-        border-radius: var(--radius-md);
-        text-align: center;
-        cursor: pointer;
-        transition: var(--transition-fast);
-        border: 1px solid var(--border);
-    }
+            <!-- Stats -->
+            <div class="stats-grid mb-6">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-briefcase"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Jobs Completed</div>
+                        <div class="stat-value" id="stat-jobs">—</div>
+                        <div class="stat-change positive" id="stat-jobs-change"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fa-solid fa-rupee-sign"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Today's Earnings</div>
+                        <div class="stat-value" id="stat-today">₹—</div>
+                        <div class="stat-change" id="stat-today-change"></div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange"><i class="fa-solid fa-calendar"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">This Month</div>
+                        <div class="stat-value" id="stat-month">₹—</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-star"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Rating</div>
+                        <div class="stat-value">{{ worker.rating if worker and worker.rating else '—' }} <span style="font-size:.875rem; color:var(--warning);">⭐</span></div>
+                    </div>
+                </div>
+            </div>
 
-    .action-card:hover {
-        border-color: var(--primary);
-        background: white;
-    }
+            <div class="dash-grid-3">
+                <!-- Nearby Jobs -->
+                <div>
+                    <div class="section-head">
+                        <h2>Nearby Opportunities</h2>
+                        <a href="{{ url_for('booking_slots_page', worker_id=worker.id) if worker else '#' }}">View All</a>
+                    </div>
+                    <div class="jobs-grid" id="nearby-jobs">
+                        <!-- Skeleton state -->
+                        <div class="job-card" style="opacity:.5; animation: pulse 1.5s ease-in-out infinite;">
+                            <div style="height:16px; background:var(--border); border-radius:4px; margin-bottom:8px;"></div>
+                            <div style="height:12px; background:var(--border); border-radius:4px; width:60%;"></div>
+                        </div>
+                    </div>
+                </div>
 
-    .action-card i {
-        font-size: 1.5rem;
-        color: var(--secondary);
-        margin-bottom: 0.5rem;
-    }
+                <!-- Quick Actions -->
+                <div>
+                    <div class="section-head"><h2>Quick Actions</h2></div>
+                    <div class="quick-actions mb-6">
+                        <a href="{{ url_for('booking_slots_page', worker_id=worker.id) if worker else '#' }}" class="quick-action-btn">
+                            <div class="qa-icon"><i class="fa-solid fa-briefcase"></i></div>
+                            <div class="qa-label">Find Jobs</div>
+                        </a>
+                        <a href="{{ url_for('my_bookings_page') }}" class="quick-action-btn">
+                            <div class="qa-icon"><i class="fa-solid fa-clipboard-list"></i></div>
+                            <div class="qa-label">My Work</div>
+                        </a>
+                        <a href="{{ url_for('scan_page') }}" class="quick-action-btn">
+                            <div class="qa-icon" style="background:var(--success-light); color:var(--success);"><i class="fa-solid fa-qrcode"></i></div>
+                            <div class="qa-label">Scan QR</div>
+                        </a>
+                        <a href="#" class="quick-action-btn">
+                            <div class="qa-icon" style="background:var(--warning-light); color:var(--warning);"><i class="fa-solid fa-wallet"></i></div>
+                            <div class="qa-label">Wallet</div>
+                        </a>
+                    </div>
 
-    .action-card span {
-        display: block;
-        font-size: 0.8rem;
-        font-weight: 700;
-    }
-
-    .job-item {
-        margin-bottom: 1rem;
-    }
-
-    .bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 480px;
-        background: white;
-        display: flex;
-        justify-content: space-around;
-        padding: 0.75rem 0;
-        border-top: 1px solid var(--border);
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-        z-index: 1000;
-    }
-
-    .nav-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-size: 0.65rem;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .nav-btn.active {
-        color: var(--primary);
-    }
-
-    .nav-btn i {
-        font-size: 1.25rem;
-    }
-</style>
+                    <!-- Last Jobs -->
+                    <div class="section-head"><h2>Recent Work</h2></div>
+                    <div id="recent-jobs" style="display:flex; flex-direction:column; gap:10px;">
+                        <div style="text-align:center; padding:20px; color:var(--muted); font-size:.8125rem;">
+                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
 {% endblock %}
 
-{% block content %}
-<div class="dashboard-container animate-slide-up">
-    <!-- Header Summary -->
-    <div id="jobs-view">
-        <div class="hero-section shadow-lg">
-            <div class="flex justify-between items-start mb-4">
-                <div>
-                    <h2 class="text-white">{{ t('Namaste,') }} {{ worker.name.split(' ')[0] }}</h2>
-                    <p class="opacity-70 text-xs">{{ worker.work }} • {{ worker.location }}</p>
-                </div>
-                <button id="availability-toggle" 
-                        data-available="{{ 'true' if worker.is_available else 'false' }}"
-                        onclick="app.toggleAvailability(this.getAttribute('data-available') === 'true')"
-                        class="status-badge {{ 'status-available' if worker.is_available else 'status-busy' }}">
-                    <i class="fa-solid {{ 'fa-circle-check' if worker.is_available else 'fa-circle-xmark' }}"></i>
-                    {{ t('Available') if worker.is_available else t('Busy') }}
-                </button>
-            </div>
-            
-            <div class="flex gap-4 mt-6">
-                <button class="btn btn-secondary sm" onclick="speakReport()">
-                    <i class="fa-solid fa-volume-high mr-2"></i>
-                    {{ t('Voice Report') }}
-                </button>
-                <button class="btn btn-outline sm" style="border-color: white; color: white;" onclick="window.location.href='/scan'">
-                    <i class="fa-solid fa-qrcode mr-2"></i>
-                    {{ t('Scan QR') }}
-                </button>
-            </div>
-        </div>
-
-        <div class="stats-row">
-            <div class="stat-box">
-                <span class="stat-val">4.9 ★</span>
-                <span class="stat-label">{{ t('Rating') }}</span>
-            </div>
-            <div class="stat-box">
-                <span class="stat-val">₹{{ worker.price or 0 }}</span>
-                <span class="stat-label">{{ t('Hourly Rate') }}</span>
-            </div>
-        </div>
-
-        <div class="section-title">
-            <h3>{{ t('New Opportunities') }}</h3>
-            <button class="btn-icon sm" onclick="app.fetchJobsForWorker('{{ worker.work }}')"><i class="fa-solid fa-rotate"></i></button>
-        </div>
-
-        <div id="jobs-list" class="mb-12">
-            <!-- Loading placeholder -->
-            <div class="text-center py-12">
-                <i class="fa-solid fa-circle-notch fa-spin text-muted text-2xl mb-4"></i>
-                <p class="text-muted text-sm">{{ t('Finding jobs for you...') }}</p>
-            </div>
-        </div>
-    </div>
-
-    <!-- Bookings View -->
-    <div id="bookings-view" class="hidden">
-        <div class="section-title">
-            <h2>{{ t('My Bookings') }}</h2>
-        </div>
-        <div id="dashboard-bookings-list">
-            <!-- Bookings loaded here -->
-        </div>
-    </div>
-
-    <!-- Profile View -->
-    <div id="profile-view" class="hidden">
-        <div class="section-title">
-            <h2>{{ t('Profile') }}</h2>
-        </div>
-        <div class="card p-6">
-            <div class="flex items-center gap-4 mb-8">
-                <div class="w-16 h-16 rounded-2xl bg-slate-100 flex items-center justify-center overflow-hidden border-2 border-primary">
-                    {% if worker.profile_pic %}
-                    <img src="{{ url_for('static', filename=worker.profile_pic) }}" class="w-full h-full object-cover">
-                    {% else %}
-                    <i class="fa-solid fa-user-gear text-2xl text-muted"></i>
-                    {% endif %}
-                </div>
-                <div>
-                    <h4>{{ worker.name }}</h4>
-                    <p class="text-muted text-xs">{{ worker.phone }}</p>
-                </div>
-            </div>
-
-            <div class="action-grid">
-                <div class="action-card" onclick="switchTab('edit')">
-                    <i class="fa-solid fa-user-pen"></i>
-                    <span>{{ t('Edit Profile') }}</span>
-                </div>
-                <div id="export-btn" class="action-card" onclick="exportDatabase()">
-                    <i class="fa-solid fa-file-export"></i>
-                    <span>{{ t('Export Data') }}</span>
-                </div>
-                <div class="action-card" onclick="app.toggleLocationSharing({{ 'true' if worker.is_sharing_location else 'false' }})">
-                    <i class="fa-solid {{ 'fa-location-crosshairs' if worker.is_sharing_location else 'fa-location-arrow' }}"></i>
-                    <span>{{ t('Location Share') }}</span>
-                </div>
-                <div class="action-card" onclick="window.location.href='/logout'">
-                    <i class="fa-solid fa-right-from-bracket"></i>
-                    <span>{{ t('Sign Out') }}</span>
-                </div>
-            </div>
-        </div>
-    </div>
-</div>
-
-<!-- Bottom Navigation -->
-<nav class="bottom-nav">
-    <button class="nav-btn active" onclick="switchTab('jobs')">
-        <i class="fa-solid fa-briefcase"></i>
-        <span>{{ t('Jobs') }}</span>
-    </button>
-    <button class="nav-btn" onclick="switchTab('bookings')">
-        <i class="fa-solid fa-calendar-check"></i>
-        <span>{{ t('Bookings') }}</span>
-    </button>
-    <button class="nav-btn" onclick="switchTab('profile')">
-        <i class="fa-solid fa-user-gear"></i>
-        <span>{{ t('Profile') }}</span>
-    </button>
-</nav>
-
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+{% block extra_scripts %}
 <script>
-    function switchTab(tab) {
-        ['jobs-view', 'bookings-view', 'profile-view'].forEach(id => {
-            document.getElementById(id).classList.add('hidden');
-        });
-        
-        const viewId = tab === 'jobs' ? 'jobs-view' : 
-                      tab === 'bookings' ? 'bookings-view' : 'profile-view';
-        document.getElementById(viewId).classList.remove('hidden');
-        
-        document.querySelectorAll('.nav-btn').forEach(btn => {
-            btn.classList.remove('active');
-            if (btn.innerText.toLowerCase().includes(tab) || btn.querySelector('span')?.innerText.toLowerCase().includes(tab)) {
-                btn.classList.add('active');
-            }
-        });
+// Mobile sidebar
+function openSidebar() {
+    document.getElementById('sidebar').classList.add('open');
+    document.getElementById('sidebar-overlay').classList.add('open');
+}
+function closeSidebar() {
+    document.getElementById('sidebar').classList.remove('open');
+    document.getElementById('sidebar-overlay').classList.remove('open');
+}
 
-        if (tab === 'bookings') app.fetchDashboardBookings();
-        window.scrollTo({ top: 0, behavior: 'smooth' });
-    }
+// Time of day greeting (set by template or JS)
+// Load stats
+async function loadStats() {
+    try {
+        const res = await fetch('/api/worker/stats');
+        if (!res.ok) return;
+        const d = await res.json();
+        document.getElementById('stat-today').textContent = `₹${d.today_earnings || 0}`;
+        document.getElementById('stat-month').textContent = `₹${d.month_earnings || 0}`;
 
-    async function speakReport() {
-        try {
-            const res = await fetch('/api/worker/stats');
-            const data = await res.json();
-            const lang = "{{ session.get('lang', 'en') }}";
-            
-            let text = "";
-            if (lang === 'hi') {
-                text = `नमस्ते ${data.name}, आज की आपकी कुल कमाई ${data.today_earnings} रुपये है। इस महीने की आपकी कमाई ${data.month_earnings} रुपये है।`;
-            } else {
-                text = `Hello ${data.name}, your total earnings for today is ${data.today_earnings} rupees. For this month, it is ${data.month_earnings} rupees.`;
-            }
-
-            const utterance = new SpeechSynthesisUtterance(text);
-            utterance.lang = lang === 'hi' ? 'hi-IN' : 'en-US';
-            window.speechSynthesis.speak(utterance);
-        } catch (e) {
-            console.error(e);
-            alert("Voice report failed");
+        // Recent jobs
+        const rj = document.getElementById('recent-jobs');
+        if (d.last_jobs && d.last_jobs.length) {
+            rj.innerHTML = d.last_jobs.map(j => `
+                <div class="booking-item">
+                    <div class="booking-icon" style="background:var(--success-light); color:var(--success);"><i class="fa-solid fa-briefcase"></i></div>
+                    <div class="booking-info">
+                        <div class="booking-title">${j.work}</div>
+                        <div class="booking-meta">${j.date}</div>
+                    </div>
+                    <span class="badge badge-${j.status === 'Completed' ? 'success' : 'warning'}">${j.status}</span>
+                </div>
+            `).join('');
+        } else {
+            rj.innerHTML = `<div class="empty-state"><i class="fa-solid fa-clipboard-list"></i><p>No recent work history.</p></div>`;
         }
-    }
+    } catch(e) {}
+}
 
-    async function exportDatabase() {
-        try {
-            const res = await fetch('/api/export-workers');
-            const csvData = await res.text();
-            const blob = new Blob([csvData], { type: 'text/csv' });
-            const url = window.URL.createObjectURL(blob);
-            const a = document.createElement('a');
-            a.href = url;
-            a.download = `workers_${new Date().toISOString().split('T')[0]}.csv`;
-            a.click();
-        } catch (e) {
-            alert("Export failed");
-        }
+// Load nearby jobs
+async function loadNearbyJobs() {
+    const container = document.getElementById('nearby-jobs');
+    try {
+        const res = await fetch('/api/workers/nearby?limit=3');
+        // fallback: show sample cards
+        container.innerHTML = `
+            <div class="job-card">
+                <div class="job-card-header">
+                    <div class="job-employer">
+                        <div class="employer-avatar">AE</div>
+                        <div>
+                            <div class="employer-name">ABC Events</div>
+                            <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> Verified</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-primary">Part Time</span>
+                </div>
+                <div class="job-title">Event Support Helper</div>
+                <div class="job-meta">
+                    <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> RBU Campus</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-route"></i> 5 km away</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-clock"></i> 4 Hours</span>
+                </div>
+                <div class="job-pay">₹450 <span>/ day</span></div>
+                <div class="job-actions">
+                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm btn-full">Apply Now</a>
+                </div>
+            </div>
+            <div class="job-card">
+                <div class="job-card-header">
+                    <div class="job-employer">
+                        <div class="employer-avatar" style="background:var(--success-light);color:var(--success);">QC</div>
+                        <div>
+                            <div class="employer-name">Quick Commerce</div>
+                            <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> Verified</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-success">Full Day</span>
+                </div>
+                <div class="job-title">Delivery Assistant</div>
+                <div class="job-meta">
+                    <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> Sector 12</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-route"></i> 3 km away</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-clock"></i> Full Day</span>
+                </div>
+                <div class="job-pay">₹300 <span>/ day</span></div>
+                <div class="job-actions">
+                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm btn-full">Apply Now</a>
+                </div>
+            </div>
+            <div class="job-card">
+                <div class="job-card-header">
+                    <div class="job-employer">
+                        <div class="employer-avatar" style="background:var(--warning-light);color:var(--warning);">BB</div>
+                        <div>
+                            <div class="employer-name">BuildBridge Co.</div>
+                            <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> Verified</div>
+                        </div>
+                    </div>
+                    <span class="badge badge-warning">Full Day</span>
+                </div>
+                <div class="job-title">Construction Helper</div>
+                <div class="job-meta">
+                    <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> Phase 2</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-route"></i> 2 km away</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-clock"></i> Full Day</span>
+                </div>
+                <div class="job-pay">₹400 <span>/ day</span></div>
+                <div class="job-actions">
+                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm btn-full">Apply Now</a>
+                </div>
+            </div>
+        `;
+    } catch(e) {
+        container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-briefcase"></i><h3>No jobs found</h3><p>Check back soon for nearby opportunities.</p></div>`;
     }
+}
 
-    document.addEventListener('DOMContentLoaded', () => {
-        app.fetchJobsForWorker('{{ worker.work }}');
-        app.fetchWorkerPendingBookings();
-        app.fetchDashboardBookings();
-    });
+loadStats();
+loadNearbyJobs();
 </script>
-
-<style>
-    .hidden { display: none; }
-    .mr-2 { margin-right: 0.5rem; }
-</style>
 {% endblock %}

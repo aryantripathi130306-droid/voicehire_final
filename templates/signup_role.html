@@ -1,0 +1,82 @@
+{% extends 'base.html' %}
+{% block title %}Get Started — VoiceHire{% endblock %}
+
+{% block body %}
+<div style="min-height:100vh; background:var(--bg); display:flex; flex-direction:column; align-items:center; justify-content:center; padding:40px 24px;">
+
+    <!-- Logo -->
+    <a href="{{ url_for('index') }}" class="logo" style="margin-bottom:48px; font-size:1.25rem;">
+        <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+        <span class="logo-text">VoiceHire</span>
+    </a>
+
+    <!-- Card -->
+    <div style="width:100%; max-width:560px; background:var(--card); border-radius:var(--radius-xl); border:1px solid var(--border); box-shadow:var(--shadow-md); padding:40px 36px; text-align:center;">
+
+        <div style="width:60px; height:60px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.5rem; margin:0 auto 20px;">
+            <i class="fa-solid fa-user-plus"></i>
+        </div>
+
+        <h1 style="font-size:1.625rem; margin-bottom:8px;">What are you looking for?</h1>
+        <p style="font-size:.9375rem; margin-bottom:32px;">Choose your role to get started with VoiceHire.</p>
+
+        <div class="role-cards" style="grid-template-columns:1fr 1fr; gap:16px; display:grid; margin-bottom:28px;">
+
+            <!-- Worker -->
+            <a href="{{ url_for('worker_signup_page') }}" class="role-card" style="text-decoration:none; display:block;">
+                <div class="role-icon" style="background:var(--primary-light); color:var(--primary);">
+                    <i class="fa-solid fa-hard-hat"></i>
+                </div>
+                <h4>I am a Worker</h4>
+                <p style="font-size:.75rem; color:var(--muted); margin-top:4px;">Find local jobs nearby</p>
+                <div style="margin-top:12px; font-size:.75rem; font-weight:600; color:var(--primary);">
+                    Sign Up as Worker →
+                </div>
+            </a>
+
+            <!-- Employer -->
+            <a href="{{ url_for('user_signup_page') }}" class="role-card" style="text-decoration:none; display:block;">
+                <div class="role-icon" style="background:var(--success-light); color:var(--success);">
+                    <i class="fa-solid fa-building"></i>
+                </div>
+                <h4>I am an Employer</h4>
+                <p style="font-size:.75rem; color:var(--muted); margin-top:4px;">Hire verified workers</p>
+                <div style="margin-top:12px; font-size:.75rem; font-weight:600; color:var(--success);">
+                    Sign Up as Employer →
+                </div>
+            </a>
+        </div>
+
+        <div class="divider-text"><span>Already have an account?</span></div>
+
+        <div style="display:flex; gap:12px; margin-top:16px;">
+            <a href="{{ url_for('login_page', role='worker') }}" class="btn btn-ghost btn-full">
+                <i class="fa-solid fa-hard-hat mr-2"></i> Worker Login
+            </a>
+            <a href="{{ url_for('login_page', role='user') }}" class="btn btn-ghost btn-full">
+                <i class="fa-solid fa-building mr-2"></i> Employer Login
+            </a>
+        </div>
+    </div>
+
+    <a href="{{ url_for('index') }}" class="back-link mt-6">
+        <i class="fa-solid fa-arrow-left"></i> Back to Home
+    </a>
+</div>
+
+<style>
+.role-card {
+    border: 2px solid var(--border); border-radius: var(--radius-xl);
+    padding: 24px 16px; text-align: center; cursor: pointer;
+    transition: all .18s ease; background: var(--card);
+}
+.role-card:hover { border-color: var(--primary); background: var(--primary-light); box-shadow: var(--shadow-md); transform: translateY(-3px); }
+.role-card:nth-child(2):hover { border-color: var(--success); background: var(--success-light); }
+.role-icon {
+    width: 52px; height: 52px; border-radius: var(--radius-lg);
+    margin: 0 auto 12px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 1.375rem; transition: all .18s ease;
+}
+</style>
+{% endblock %}

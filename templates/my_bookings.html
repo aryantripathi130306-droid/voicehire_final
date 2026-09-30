@@ -1,255 +1,178 @@
 {% extends 'base.html' %}
+{% block title %}My Bookings — VoiceHire{% endblock %}
 
-{% block head %}
-<style>
-    .bookings-container {
-        padding-bottom: 5rem;
-    }
+{% block body %}
+<div class="dashboard-layout">
+    <!-- ── SIDEBAR ── -->
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <a href="/" class="logo">
+                <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+                <span class="logo-text">VoiceHire</span>
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            {% if session.get('role') == 'worker' %}
+            <a href="{{ url_for('worker_dashboard') }}" class="nav-item">
+                <i class="fa-solid fa-house nav-icon"></i> Home
+            </a>
+            {% else %}
+            <a href="{{ url_for('user_dashboard') }}" class="nav-item">
+                <i class="fa-solid fa-house nav-icon"></i> Home
+            </a>
+            {% endif %}
+            <a href="{{ url_for('my_bookings_page') }}" class="nav-item active">
+                <i class="fa-solid fa-clipboard-list nav-icon"></i>
+                {% if session.get('role') == 'worker' %}My Work{% else %}My Bookings{% endif %}
+            </a>
+            {% if session.get('role') == 'worker' %}
+            <a href="{{ url_for('scan_page') }}" class="nav-item">
+                <i class="fa-solid fa-qrcode nav-icon"></i> Scan QR
+            </a>
+            {% endif %}
+            <div class="nav-section-label">Account</div>
+            <a href="#" class="nav-item"><i class="fa-solid fa-wallet nav-icon"></i> Wallet</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-user nav-icon"></i> Profile</a>
+            <a href="#" class="nav-item"><i class="fa-solid fa-gear nav-icon"></i> Settings</a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="{{ url_for('logout') }}" class="nav-item" style="color:#FDA4AF;">
+                <i class="fa-solid fa-right-from-bracket nav-icon"></i> Logout
+            </a>
+        </div>
+    </aside>
 
-    .filter-scroll {
-        display: flex;
-        gap: 0.5rem;
-        overflow-x: auto;
-        padding-bottom: 1rem;
-        margin-bottom: 1rem;
-    }
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-    .filter-chip {
-        background: white;
-        color: var(--text-muted);
-        padding: 0.5rem 1rem;
-        border-radius: var(--radius-full);
-        font-size: 0.75rem;
-        font-weight: 700;
-        white-space: nowrap;
-        border: 1px solid var(--border);
-        cursor: pointer;
-        transition: var(--transition-fast);
-    }
+    <main class="dashboard-main">
+        <div class="dash-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn-icon mobile-menu-btn" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div class="dash-header-title">
+                    <h1>{% if session.get('role') == 'worker' %}My Work History{% else %}My Bookings{% endif %}</h1>
+                    <p>Track your jobs, bookings and payment status</p>
+                </div>
+            </div>
+            <div class="dash-header-actions">
+                <div class="notif-btn"><i class="fa-solid fa-bell" style="font-size:.9375rem;"></i></div>
+            </div>
+        </div>
 
-    .filter-chip.active {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-    }
+        <div class="dash-content">
+            <!-- Summary Stats -->
+            <div class="stats-grid mb-6" style="grid-template-columns: repeat(3, 1fr);">
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-briefcase"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Total Jobs</div>
+                        <div class="stat-value" id="total-count">—</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon green"><i class="fa-solid fa-check-circle"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Completed</div>
+                        <div class="stat-value" id="completed-count">—</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon orange"><i class="fa-solid fa-clock"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Pending</div>
+                        <div class="stat-value" id="pending-count">—</div>
+                    </div>
+                </div>
+            </div>
 
-    .stats-summary {
-        display: grid;
-        grid-template-columns: repeat(2, 1fr);
-        gap: 0.75rem;
-        margin-bottom: 2rem;
-    }
+            <!-- Tabs -->
+            <div class="tabs" id="tab-bar">
+                <button class="tab-btn active" data-status="all" onclick="filterBookings('all', this)">All</button>
+                <button class="tab-btn" data-status="Pending" onclick="filterBookings('Pending', this)">Pending</button>
+                <button class="tab-btn" data-status="Booked" onclick="filterBookings('Booked', this)">Confirmed</button>
+                <button class="tab-btn" data-status="Completed" onclick="filterBookings('Completed', this)">Completed</button>
+                <button class="tab-btn" data-status="Cancelled" onclick="filterBookings('Cancelled', this)">Cancelled</button>
+            </div>
 
-    .stat-mini {
-        background: white;
-        padding: 0.75rem;
-        border-radius: var(--radius-md);
-        border: 1px solid var(--border);
-        text-align: center;
-    }
-
-    .stat-mini .val {
-        display: block;
-        font-size: 1.25rem;
-        font-weight: 800;
-        color: var(--secondary);
-    }
-
-    .stat-mini .label {
-        font-size: 0.6rem;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        font-weight: 700;
-    }
-
-    .booking-card {
-        margin-bottom: 1rem;
-    }
-
-    .progress-bar {
-        height: 4px;
-        background: var(--bg-main);
-        border-radius: 2px;
-        overflow: hidden;
-        margin-top: 0.5rem;
-    }
-
-    .progress-fill {
-        height: 100%;
-        background: var(--secondary);
-        transition: width 0.3s ease;
-    }
-
-    .bottom-nav {
-        position: fixed;
-        bottom: 0;
-        left: 50%;
-        transform: translateX(-50%);
-        width: 100%;
-        max-width: 480px;
-        background: white;
-        display: flex;
-        justify-content: space-around;
-        padding: 0.75rem 0;
-        border-top: 1px solid var(--border);
-        box-shadow: 0 -4px 12px rgba(0,0,0,0.05);
-        z-index: 1000;
-    }
-
-    .nav-btn {
-        display: flex;
-        flex-direction: column;
-        align-items: center;
-        gap: 4px;
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-size: 0.65rem;
-        font-weight: 700;
-        cursor: pointer;
-    }
-
-    .nav-btn.active {
-        color: var(--primary);
-    }
-
-    .nav-btn i {
-        font-size: 1.25rem;
-    }
-</style>
+            <!-- Booking List -->
+            <div class="booking-list" id="bookings-list">
+                <div style="text-align:center; padding:40px; color:var(--muted);">
+                    <i class="fa-solid fa-spinner fa-spin" style="font-size:1.5rem;"></i>
+                    <p class="mt-3">Loading your bookings...</p>
+                </div>
+            </div>
+        </div>
+    </main>
+</div>
 {% endblock %}
 
-{% block content %}
-<div class="bookings-container animate-slide-up">
-    <div class="section-title">
-        <h2>{{ t('My Bookings') }}</h2>
-        <button class="btn-icon sm" onclick="loadBookings()"><i class="fa-solid fa-rotate"></i></button>
-    </div>
-
-    <div class="stats-summary">
-        <div class="stat-mini">
-            <span class="val" id="stat-total">0</span>
-            <span class="label">{{ t('Total') }}</span>
-        </div>
-        <div class="stat-mini">
-            <span class="val" id="stat-active" style="color: var(--coral);">0</span>
-            <span class="label">{{ t('Active') }}</span>
-        </div>
-    </div>
-
-    <div class="filter-scroll no-scrollbar">
-        <span class="filter-chip active" onclick="setFilter('all', this)">{{ t('All') }}</span>
-        <span class="filter-chip" onclick="setFilter('Pending', this)">{{ t('Pending') }}</span>
-        <span class="filter-chip" onclick="setFilter('Booked', this)">{{ t('Confirmed') }}</span>
-        <span class="filter-chip" onclick="setFilter('Work Started', this)">{{ t('In Progress') }}</span>
-        <span class="filter-chip" onclick="setFilter('Completed', this)">{{ t('Completed') }}</span>
-    </div>
-
-    <div id="bookings-grid" class="flex flex-col gap-4 mb-12">
-        <div class="text-center py-20 text-muted">
-            <i class="fa-solid fa-circle-notch fa-spin text-2xl mb-4"></i>
-            <p class="text-sm">{{ t('Loading your bookings...') }}</p>
-        </div>
-    </div>
-</div>
-
-<!-- Bottom Navigation -->
-<nav class="bottom-nav">
-    <button class="nav-btn" onclick="window.location.href='/dashboard/{{ session.role }}'">
-        <i class="fa-solid fa-house"></i>
-        <span>{{ t('Home') }}</span>
-    </button>
-    <button class="nav-btn active">
-        <i class="fa-solid fa-calendar-days"></i>
-        <span>{{ t('Bookings') }}</span>
-    </button>
-    <button class="nav-btn" onclick="window.location.href='/dashboard/{{ session.role }}'">
-        <i class="fa-solid fa-user"></i>
-        <span>{{ t('Account') }}</span>
-    </button>
-</nav>
-
+{% block extra_scripts %}
 <script>
-    let allBookings = [];
-    let activeFilter = 'all';
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 
-    const STATUS_THEME = {
-        'Pending': 'warning',
-        'Booked': 'primary',
-        'Work Started': 'warning',
-        'Completed': 'success',
-        'Cancelled': 'muted'
-    };
+const role = "{{ session.get('role', '') }}";
+let allBookings = [];
 
-    function setFilter(filter, btn) {
-        activeFilter = filter;
-        document.querySelectorAll('.filter-chip').forEach(b => b.classList.remove('active'));
-        if (btn) btn.classList.add('active');
-        renderBookings();
+const statusConfig = {
+    Pending:   { badge: 'badge-warning', icon: 'fa-clock', color: 'var(--warning)' },
+    Booked:    { badge: 'badge-primary', icon: 'fa-calendar-check', color: 'var(--primary)' },
+    Completed: { badge: 'badge-success', icon: 'fa-check-circle', color: 'var(--success)' },
+    Cancelled: { badge: 'badge-danger', icon: 'fa-xmark-circle', color: 'var(--danger)' },
+    'In Progress': { badge: 'badge-primary', icon: 'fa-spinner', color: 'var(--primary)' },
+};
+
+function renderBookings(bookings) {
+    const list = document.getElementById('bookings-list');
+    if (!bookings.length) {
+        list.innerHTML = `<div class="empty-state"><i class="fa-solid fa-clipboard-list"></i><h3>No bookings found</h3><p>No bookings match this filter.</p></div>`;
+        return;
     }
+    list.innerHTML = bookings.map(b => {
+        const cfg = statusConfig[b.status] || { badge: 'badge-gray', icon: 'fa-question', color: 'var(--muted)' };
+        const titleParts = [b.work_type || b.work || 'Job'];
+        const meta = [b.date, b.worker_name || b.user_name].filter(Boolean).join(' · ');
+        const price = b.total_price ? `₹${b.total_price}` : (b.price ? `₹${b.price}/day` : '—');
+        return `
+        <div class="booking-item" onclick="window.location.href='/booking/${b.id}'">
+            <div class="booking-icon" style="background: ${cfg.color}18; color: ${cfg.color};">
+                <i class="fa-solid ${cfg.icon}"></i>
+            </div>
+            <div class="booking-info">
+                <div class="booking-title">${titleParts.join('')}</div>
+                <div class="booking-meta">${meta}</div>
+            </div>
+            <div class="booking-right">
+                <div class="booking-price">${price}</div>
+                <span class="badge ${cfg.badge}">${b.status}</span>
+            </div>
+        </div>`;
+    }).join('');
+}
 
-    function renderBookings() {
-        const grid = document.getElementById('bookings-grid');
-        const filtered = activeFilter === 'all'
-            ? allBookings
-            : allBookings.filter(b => b.status === activeFilter);
+function filterBookings(status, btn) {
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    const filtered = status === 'all' ? allBookings : allBookings.filter(b => b.status === status);
+    renderBookings(filtered);
+}
 
-        if (filtered.length === 0) {
-            grid.innerHTML = `
-                <div class="card p-12 text-center flex flex-col items-center gap-4">
-                    <i class="fa-solid fa-calendar-xmark text-4xl text-slate-200"></i>
-                    <p class="text-muted font-bold">${app.translations['No bookings found'] || 'No bookings found'}</p>
-                    <a href="/dashboard/user" class="btn btn-primary sm">${app.translations['Book a Worker'] || 'Book a Worker'}</a>
-                </div>`;
-            return;
-        }
+async function loadBookings() {
+    try {
+        const endpoint = role === 'worker' ? '/api/bookings/worker' : '/api/bookings/user';
+        const res = await fetch(endpoint);
+        const data = await res.json();
+        allBookings = Array.isArray(data) ? data : [];
 
-        const isWorker = window.location.pathname.includes('worker') || "{{ session.role }}" === 'worker';
+        document.getElementById('total-count').textContent = allBookings.length;
+        document.getElementById('completed-count').textContent = allBookings.filter(b => b.status === 'Completed').length;
+        document.getElementById('pending-count').textContent = allBookings.filter(b => b.status === 'Pending').length;
 
-        grid.innerHTML = filtered.map(b => {
-            const theme = STATUS_THEME[b.status] || 'muted';
-            const progress = b.status === 'Completed' ? '100%' : b.status === 'Work Started' ? '66%' : b.status === 'Booked' ? '33%' : '10%';
-
-            return `
-            <a href="/bookings/${b.id}" class="card p-5 flex flex-col gap-3 animate-slide-up" style="text-decoration:none;">
-                <div class="flex justify-between items-start">
-                    <div>
-                        <span class="badge sm ${theme}">${b.status}</span>
-                        <h4 class="mt-2">${isWorker ? b.customer_name : b.worker_name}</h4>
-                        <p class="text-[10px] text-muted font-bold uppercase tracking-widest">${b.worker_work || ''}</p>
-                    </div>
-                    <div class="text-right">
-                        <p class="text-xs font-black text-primary">${b.date}</p>
-                        <p class="text-[10px] text-muted font-bold">${b.time_slot}</p>
-                    </div>
-                </div>
-                
-                <div class="progress-bar">
-                    <div class="progress-fill" style="width: ${progress};"></div>
-                </div>
-                
-                <div class="flex justify-between items-center mt-2">
-                    <span class="text-[10px] text-muted font-black">#${b.id}</span>
-                    <span class="text-xs font-bold text-secondary">${app.translations['View Details'] || 'View Details'} <i class="fa-solid fa-arrow-right ml-1"></i></span>
-                </div>
-            </a>`;
-        }).join('');
+        renderBookings(allBookings);
+    } catch(e) {
+        document.getElementById('bookings-list').innerHTML = `<div class="empty-state"><i class="fa-solid fa-triangle-exclamation"></i><h3>Could not load bookings</h3><p>Please try again later.</p></div>`;
     }
+}
 
-    async function loadBookings() {
-        try {
-            const res = await fetch('/api/bookings');
-            allBookings = await res.json();
-            
-            document.getElementById('stat-total').textContent = allBookings.length;
-            document.getElementById('stat-active').textContent = allBookings.filter(b => ['Booked', 'Work Started'].includes(b.status)).length;
-            
-            renderBookings();
-        } catch(e) {
-            document.getElementById('bookings-grid').innerHTML = `<div class="card p-12 text-center text-red-400">Failed to load.</div>`;
-        }
-    }
-
-    document.addEventListener('DOMContentLoaded', loadBookings);
+loadBookings();
 </script>
 {% endblock %}

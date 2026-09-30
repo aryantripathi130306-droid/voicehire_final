@@ -1,153 +1,146 @@
 {% extends 'base.html' %}
+{% block title %}Scan QR Code — VoiceHire{% endblock %}
 
-{% block head %}
-<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
-<style>
-    .scanner-container {
-        max-width: 440px;
-        margin: 2rem auto;
-    }
+{% block body %}
+<div class="dashboard-layout">
+    <aside class="sidebar" id="sidebar">
+        <div class="sidebar-logo">
+            <a href="/" class="logo">
+                <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+                <span class="logo-text">VoiceHire</span>
+            </a>
+        </div>
+        <nav class="sidebar-nav">
+            <a href="{{ url_for('worker_dashboard') }}" class="nav-item">
+                <i class="fa-solid fa-house nav-icon"></i> Home
+            </a>
+            <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
+                <i class="fa-solid fa-clipboard-list nav-icon"></i> My Work
+            </a>
+            <a href="{{ url_for('scan_page') }}" class="nav-item active">
+                <i class="fa-solid fa-qrcode nav-icon"></i> Scan QR
+            </a>
+        </nav>
+        <div class="sidebar-bottom">
+            <a href="{{ url_for('logout') }}" class="nav-item" style="color:#FDA4AF;">
+                <i class="fa-solid fa-right-from-bracket nav-icon"></i> Logout
+            </a>
+        </div>
+    </aside>
 
-    #reader {
-        width: 100% !important;
-        border: none !important;
-        border-radius: var(--radius-lg);
-        overflow: hidden;
-    }
+    <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
-    #reader__scan_region {
-        background: black !important;
-    }
+    <main class="dashboard-main">
+        <div class="dash-header">
+            <div style="display:flex; align-items:center; gap:12px;">
+                <button class="btn-icon mobile-menu-btn" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <div class="dash-header-title">
+                    <h1>Scan QR Code</h1>
+                    <p>Scan the employer's QR code to check in or complete a job</p>
+                </div>
+            </div>
+        </div>
 
-    #reader__dashboard {
-        padding: 1rem !important;
-        background: var(--bg-main) !important;
-    }
+        <div class="dash-content">
+            <div style="max-width: 520px; margin: 0 auto;">
 
-    .scan-frame {
-        position: relative;
-        background: black;
-        border-radius: var(--radius-xl);
-        overflow: hidden;
-        aspect-ratio: 1;
-        box-shadow: 0 20px 40px rgba(0,0,0,0.3);
-    }
+                <div class="card mb-4">
+                    <div style="text-align:center; padding: 12px 0;">
+                        <div style="width:64px; height:64px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.75rem; margin:0 auto 16px;">
+                            <i class="fa-solid fa-qrcode"></i>
+                        </div>
+                        <h2 style="font-size:1.125rem; margin-bottom:6px;">Job QR Check-In</h2>
+                        <p style="font-size:.875rem; max-width:320px; margin:0 auto 20px;">Ask your employer for the QR code provided in their booking confirmation.</p>
 
-    .corner-guide {
-        position: absolute;
-        width: 3rem;
-        height: 3rem;
-        border-color: var(--primary);
-        border-style: solid;
-        z-index: 10;
-        pointer-events: none;
-    }
+                        <div class="scan-box" id="scan-box">
+                            <video id="qr-video" autoplay playsinline></video>
+                            <div class="scan-line"></div>
+                        </div>
 
-    .tl { top: 1.5rem; left: 1.5rem; border-width: 6px 0 0 6px; border-top-left-radius: 1rem; }
-    .tr { top: 1.5rem; right: 1.5rem; border-width: 6px 6px 0 0; border-top-right-radius: 1rem; }
-    .bl { bottom: 1.5rem; left: 1.5rem; border-width: 0 0 6px 6px; border-bottom-left-radius: 1rem; }
-    .br { bottom: 1.5rem; right: 1.5rem; border-width: 0 6px 6px 0; border-bottom-right-radius: 1rem; }
+                        <div id="scan-status" class="alert alert-info mt-4" style="text-align:left;">
+                            <i class="fa-solid fa-circle-info"></i>
+                            Point your camera at the employer's QR code.
+                        </div>
 
-    .scan-line {
-        position: absolute;
-        top: 50%;
-        left: 0;
-        width: 100%;
-        height: 2px;
-        background: var(--primary);
-        box-shadow: 0 0 15px var(--primary);
-        animation: scanMove 3s infinite ease-in-out;
-        z-index: 5;
-    }
+                        <div style="display:flex; gap:12px; justify-content:center; margin-top:16px;">
+                            <button class="btn btn-primary" id="start-scan-btn" onclick="startScan()">
+                                <i class="fa-solid fa-camera mr-2"></i> Start Camera
+                            </button>
+                            <button class="btn btn-ghost" id="stop-scan-btn" onclick="stopScan()" style="display:none;">
+                                <i class="fa-solid fa-stop mr-2"></i> Stop
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-    @keyframes scanMove {
-        0%, 100% { top: 20%; opacity: 0.2; }
-        50% { top: 80%; opacity: 1; }
-    }
-</style>
-{% endblock %}
-
-{% block content %}
-<div class="scanner-container animate-slide-up">
-    <div class="text-center mb-8">
-        <p class="badge badge-primary mb-2">{{ t('Verification') }}</p>
-        <h1>{{ t('Scan QR Code') }}</h1>
-        <p>{{ t('Point camera at the customer\'s screen') }}</p>
-    </div>
-
-    <div class="scan-frame mb-8">
-        <div id="reader"></div>
-        <div class="corner-guide tl"></div>
-        <div class="corner-guide tr"></div>
-        <div class="corner-guide bl"></div>
-        <div class="corner-guide br"></div>
-        <div class="scan-line"></div>
-    </div>
-
-    <div class="card text-center mb-8">
-        <p id="scan-status" class="text-sm font-semibold text-muted italic">
-            {{ t('Waiting for QR code...') }}
-        </p>
-    </div>
-
-    <div class="flex flex-col gap-3">
-        <a href="{{ url_for('worker_dashboard') }}" class="btn btn-secondary w-full h-14">
-            <i class="fa-solid fa-arrow-left mr-2"></i>
-            {{ t('Back to Dashboard') }}
-        </a>
-    </div>
+                <!-- Manual Entry -->
+                <div class="card">
+                    <h3 style="font-size:.9375rem; margin-bottom:12px;">
+                        <i class="fa-solid fa-keyboard mr-2 text-primary"></i> Enter Code Manually
+                    </h3>
+                    <p class="text-sm mb-3">Can't scan? Ask your employer for the job code and enter it below.</p>
+                    <div class="input-icon-wrap mb-3">
+                        <i class="fa-solid fa-hashtag input-icon"></i>
+                        <input type="text" id="manual-code" class="form-control" placeholder="Enter job completion code">
+                    </div>
+                    <button class="btn btn-primary btn-full" onclick="submitManualCode()">
+                        <i class="fa-solid fa-check mr-2"></i> Submit Code
+                    </button>
+                </div>
+            </div>
+        </div>
+    </main>
 </div>
-
 {% endblock %}
 
 {% block extra_scripts %}
+<script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
 <script>
-    const scanner = new Html5Qrcode("reader");
-    const config = { fps: 10, qrbox: { width: 250, height: 250 } };
+function openSidebar() { document.getElementById('sidebar').classList.add('open'); document.getElementById('sidebar-overlay').classList.add('open'); }
+function closeSidebar() { document.getElementById('sidebar').classList.remove('open'); document.getElementById('sidebar-overlay').classList.remove('open'); }
 
-    async function onScanSuccess(decodedText) {
-        try {
-            const payload = JSON.parse(decodedText);
-            if (payload.bid && payload.tok) {
-                await scanner.stop();
-                document.getElementById('scan-status').textContent = "{{ t('Booking detected! Verifying...') }}";
-                document.getElementById('scan-status').className = "text-sm font-bold text-primary";
-                
-                const res = await fetch(`/api/bookings/${payload.bid}/checkin`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ token: payload.tok })
-                });
-                const data = await res.json();
-                
-                if (res.ok) {
-                    document.getElementById('scan-status').className = "text-sm font-bold text-success";
-                    document.getElementById('scan-status').textContent = "✓ " + (data.message || "{{ t('Success!') }}");
-                    setTimeout(() => window.location.href = '/dashboard/worker', 2000);
-                } else {
-                    document.getElementById('scan-status').className = "text-sm font-bold text-coral";
-                    document.getElementById('scan-status').textContent = "⚠ " + (data.error || 'Verification failed');
-                    setTimeout(() => scanner.start({ facingMode: "environment" }, config, onScanSuccess), 3000);
-                }
-                return;
-            }
-        } catch (e) {}
+let scanner = null;
 
-        scanner.stop().then(() => {
-            document.getElementById('scan-status').textContent = "{{ t('QR detected! Opening...') }}";
-            if (decodedText.includes('/complete-job/')) {
+function startScan() {
+    document.getElementById('start-scan-btn').style.display = 'none';
+    document.getElementById('stop-scan-btn').style.display = 'inline-flex';
+    scanner = new Html5Qrcode("scan-box");
+    scanner.start(
+        { facingMode: "environment" },
+        { fps: 10, qrbox: { width: 250, height: 250 } },
+        (decodedText) => {
+            stopScan();
+            if (decodedText.startsWith('http')) {
                 window.location.href = decodedText;
             } else {
-                document.getElementById('scan-status').textContent = "{{ t('Wrong QR code. Try again.') }}";
-                setTimeout(() => scanner.start({ facingMode: "environment" }, config, onScanSuccess), 2000);
+                window.location.href = '/complete-job/' + decodedText;
             }
-        });
-    }
+        },
+        (err) => {}
+    ).catch(err => {
+        setStatus('Camera access denied. Please use manual entry below.', 'error');
+        document.getElementById('start-scan-btn').style.display = 'inline-flex';
+        document.getElementById('stop-scan-btn').style.display = 'none';
+    });
+}
 
-    scanner.start({ facingMode: "environment" }, config, onScanSuccess)
-        .catch(err => {
-            document.getElementById('scan-status').textContent = "{{ t('Camera access denied. Please enable and reload.') }}";
-            document.getElementById('scan-status').className = "text-sm font-bold text-coral";
-        });
+function stopScan() {
+    if (scanner) { scanner.stop().catch(()=>{}); scanner = null; }
+    document.getElementById('start-scan-btn').style.display = 'inline-flex';
+    document.getElementById('stop-scan-btn').style.display = 'none';
+}
+
+function setStatus(msg, type='info') {
+    const el = document.getElementById('scan-status');
+    const icons = { info: 'fa-circle-info', success: 'fa-check-circle', error: 'fa-triangle-exclamation' };
+    el.className = `alert alert-${type} mt-4`;
+    el.innerHTML = `<i class="fa-solid ${icons[type]||icons.info}"></i> ${msg}`;
+}
+
+function submitManualCode() {
+    const code = document.getElementById('manual-code').value.trim();
+    if (!code) { showToast('Please enter a job code', 'error'); return; }
+    window.location.href = '/complete-job/' + code;
+}
 </script>
 {% endblock %}

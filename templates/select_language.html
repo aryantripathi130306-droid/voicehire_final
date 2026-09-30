@@ -1,110 +1,56 @@
 {% extends 'base.html' %}
+{% block title %}Select Language — VoiceHire{% endblock %}
+{% block body_class %}lang-page{% endblock %}
 
-{% block body_class %}lang-selection-page{% endblock %}
+{% block body %}
+<div class="lang-page">
+    <div class="lang-box">
+        <a href="/" class="logo">
+            <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+            <span class="logo-text">VoiceHire</span>
+        </a>
+        <h1>Choose Your Language</h1>
+        <p>अपनी भाषा चुनें · Select your preferred language to continue</p>
 
-{% block content %}
-<div class="animate-slide-up">
-    <div class="hero-header">
-        <div class="logo-icon mx-auto mb-6">
-            <i class="fa-solid fa-microphone-lines"></i>
+        <div class="lang-grid">
+            <a href="{{ url_for('set_lang', lang_code='en') }}" class="lang-btn">
+                <span class="lang-native">🇮🇳 EN</span>
+                <span class="lang-name">English</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='hi') }}" class="lang-btn">
+                <span class="lang-native">हिंदी</span>
+                <span class="lang-name">Hindi</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='mr') }}" class="lang-btn">
+                <span class="lang-native">मराठी</span>
+                <span class="lang-name">Marathi</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='bn') }}" class="lang-btn">
+                <span class="lang-native">বাংলা</span>
+                <span class="lang-name">Bengali</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='ta') }}" class="lang-btn">
+                <span class="lang-native">தமிழ்</span>
+                <span class="lang-name">Tamil</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='te') }}" class="lang-btn">
+                <span class="lang-native">తెలుగు</span>
+                <span class="lang-name">Telugu</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='kn') }}" class="lang-btn">
+                <span class="lang-native">ಕನ್ನಡ</span>
+                <span class="lang-name">Kannada</span>
+            </a>
+            <a href="{{ url_for('set_lang', lang_code='gu') }}" class="lang-btn">
+                <span class="lang-native">ગુજરાતી</span>
+                <span class="lang-name">Gujarati</span>
+            </a>
         </div>
-        <h1>VoiceHire</h1>
-        <p>{{ t('Select Your Language') }}</p>
-        <p class="text-hindi mt-1">अपनी भाषा चुनें</p>
-    </div>
 
-    <div class="illustration-container">
-        <img src="{{ url_for('static', filename='uploads/hero_illustration.png') }}" alt="Bharat Workers" class="hero-img">
+        <p style="font-size:.8125rem;">
+            <i class="fa-solid fa-circle-info mr-1 text-primary"></i>
+            You can always change your language later from Settings
+        </p>
     </div>
-
-    <div class="option-grid">
-        <a href="/set_lang/en" class="card lang-card">
-            <span class="lang-native">English</span>
-            <span class="lang-name">English</span>
-        </a>
-        <a href="/set_lang/hi" class="card lang-card">
-            <span class="lang-native">हिन्दी</span>
-            <span class="lang-name">Hindi</span>
-        </a>
-        <a href="/set_lang/mr" class="card lang-card">
-            <span class="lang-native">मराठी</span>
-            <span class="lang-name">Marathi</span>
-        </a>
-        <a href="/set_lang/ta" class="card lang-card">
-            <span class="lang-native">தமிழ்</span>
-            <span class="lang-name">Tamil</span>
-        </a>
-        <a href="/set_lang/te" class="card lang-card">
-            <span class="lang-native">తెలుగు</span>
-            <span class="lang-name">Telugu</span>
-        </a>
-        <a href="/set_lang/bn" class="card lang-card">
-            <span class="lang-native">বাংলা</span>
-            <span class="lang-name">Bengali</span>
-        </a>
-        <a href="/set_lang/kn" class="card lang-card">
-            <span class="lang-native">ಕನ್ನಡ</span>
-            <span class="lang-name">Kannada</span>
-        </a>
-        <a href="/set_lang/gu" class="card lang-card">
-            <span class="lang-native">ગુજરાતી</span>
-            <span class="lang-name">Gujarati</span>
-        </a>
-    </div>
-
-    <footer class="text-center mt-12 mb-8">
-        <p class="badge badge-primary">{{ t('Built for every Indian.') }}</p>
-    </footer>
 </div>
-
-<style>
-    .lang-selection-page #main-content {
-        padding-top: 3rem;
-    }
-
-    .illustration-container {
-        display: flex;
-        justify-content: center;
-        margin-bottom: 2rem;
-    }
-
-    .hero-img {
-        width: 100%;
-        max-width: 300px;
-        height: auto;
-        opacity: 0.9;
-    }
-
-    .lang-card {
-        text-align: center;
-        display: flex;
-        flex-direction: column;
-        gap: 0.25rem;
-        padding: 1.25rem;
-        cursor: pointer;
-        text-decoration: none;
-        color: inherit;
-    }
-
-    .lang-native {
-        font-size: 1.25rem;
-        font-weight: 700;
-        color: var(--secondary);
-    }
-
-    .lang-name {
-        font-size: 0.75rem;
-        font-weight: 600;
-        color: var(--text-muted);
-        text-transform: uppercase;
-        letter-spacing: 0.1em;
-    }
-
-    .text-hindi {
-        color: var(--text-muted);
-        font-size: 0.9rem;
-    }
-
-    .mx-auto { margin-left: auto; margin-right: auto; }
-</style>
 {% endblock %}

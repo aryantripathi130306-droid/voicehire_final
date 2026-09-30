@@ -1,330 +1,459 @@
 {% extends 'base.html' %}
+{% block title %}VoiceHire — Your Voice Can Work For You{% endblock %}
+{% block body_class %}landing-page{% endblock %}
 
-{% block body_class %}gateway-page{% endblock %}
+{% block body %}
 
-{% block content %}
-<div class="animate-slide-up">
-    <!-- Voice Assistant UI -->
-    <div class="voice-assistant-ui mb-8">
-        <div class="header-status">
-            <span id="step-label" class="badge badge-primary">Step 1 of 2</span>
-            <div class="dots mt-2">
-                <span id="dot-1" class="dot active"></span>
-                <span id="dot-2" class="dot"></span>
+<!-- Toast Container -->
+<div class="toast-container" id="toast-container"></div>
+
+<!-- ── PUBLIC HEADER ── -->
+<header class="pub-header">
+    <div class="pub-header-inner">
+        <a href="{{ url_for('index') }}" class="logo">
+            <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+            <span class="logo-text">VoiceHire</span>
+        </a>
+
+        <nav class="pub-nav">
+            <a href="#how-it-works">How It Works</a>
+            <a href="#for-workers">For Workers</a>
+            <a href="#for-employers">For Employers</a>
+            <a href="#about">About</a>
+        </nav>
+
+        <div class="pub-nav-actions">
+            <!-- Language Selector (compact) -->
+            <div class="lang-dropdown" id="lang-dropdown">
+                <button class="lang-btn-compact" onclick="toggleLangMenu()" id="lang-btn">
+                    <i class="fa-solid fa-globe"></i>
+                    <span id="current-lang-label">{{ session.get('lang', 'en') | upper }}</span>
+                    <i class="fa-solid fa-chevron-down" style="font-size:.6rem;"></i>
+                </button>
+                <div class="lang-menu" id="lang-menu">
+                    <a href="{{ url_for('set_lang', lang_code='en') }}" class="lang-menu-item {% if session.get('lang','en') == 'en' %}active{% endif %}">🇮🇳 English</a>
+                    <a href="{{ url_for('set_lang', lang_code='hi') }}" class="lang-menu-item {% if session.get('lang') == 'hi' %}active{% endif %}">हिंदी</a>
+                    <a href="{{ url_for('set_lang', lang_code='mr') }}" class="lang-menu-item {% if session.get('lang') == 'mr' %}active{% endif %}">मराठी</a>
+                    <a href="{{ url_for('set_lang', lang_code='bn') }}" class="lang-menu-item {% if session.get('lang') == 'bn' %}active{% endif %}">বাংলা</a>
+                    <a href="{{ url_for('set_lang', lang_code='ta') }}" class="lang-menu-item {% if session.get('lang') == 'ta' %}active{% endif %}">தமிழ்</a>
+                    <a href="{{ url_for('set_lang', lang_code='te') }}" class="lang-menu-item {% if session.get('lang') == 'te' %}active{% endif %}">తెలుగు</a>
+                    <a href="{{ url_for('set_lang', lang_code='gu') }}" class="lang-menu-item {% if session.get('lang') == 'gu' %}active{% endif %}">ગુજરાતી</a>
+                </div>
             </div>
+
+            <a href="{{ url_for('login_page', role='user') }}" class="btn btn-ghost btn-sm">Login</a>
+            <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm">Sign Up Free</a>
         </div>
 
-        <div class="ai-speech-bubble-container mt-6">
-            <p id="ai-bubble" class="ai-text">...</p>
-        </div>
-
-        <div id="waveform" class="waveform">
-            <span></span><span></span><span></span><span></span><span></span>
-        </div>
-
-        <div id="transcript-box" class="transcript-box hidden"></div>
-        
-        <p class="voice-hint mt-4">{{ t('Tap a button or speak your answer') }}</p>
+        <!-- Mobile menu button -->
+        <button class="pub-mobile-menu-btn" onclick="toggleMobileMenu()" id="pub-mobile-btn">
+            <i class="fa-solid fa-bars"></i>
+        </button>
     </div>
 
-    <!-- PHASE 1: Role Selection -->
-    <div id="phase-1" class="option-grid">
-        <button onclick="selectRole('worker')" class="card role-card">
-            <div class="role-icon worker">
-                <img src="{{ url_for('static', filename='uploads/worker_avatar.png') }}" alt="Worker">
-            </div>
-            <div class="role-details">
-                <h3>{{ t("I'm a Worker") }}</h3>
-                <p>{{ t("Looking for jobs") }}</p>
-            </div>
-            <i class="fa-solid fa-chevron-right arrow"></i>
-        </button>
-
-        <button onclick="selectRole('hirer')" class="card role-card">
-            <div class="role-icon hirer">
-                <img src="{{ url_for('static', filename='uploads/hirer_avatar.png') }}" alt="Hirer">
-            </div>
-            <div class="role-details">
-                <h3>{{ t("I want to Hire") }}</h3>
-                <p>{{ t("Find local experts") }}</p>
-            </div>
-            <i class="fa-solid fa-chevron-right arrow"></i>
-        </button>
+    <!-- Mobile Nav Drawer -->
+    <div class="pub-mobile-nav" id="pub-mobile-nav">
+        <a href="#how-it-works" onclick="closeMobileMenu()">How It Works</a>
+        <a href="#for-workers" onclick="closeMobileMenu()">For Workers</a>
+        <a href="#for-employers" onclick="closeMobileMenu()">For Employers</a>
+        <a href="{{ url_for('login_page', role='user') }}">Login</a>
+        <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm" style="margin-top:8px;">Sign Up Free</a>
     </div>
+</header>
 
-    <!-- PHASE 2: Auth Selection -->
-    <div id="phase-2" class="option-grid hidden">
-        <div class="selected-role-badge text-center mb-4">
-            <span id="role-badge" class="badge badge-success">
-                <i class="fa-solid fa-check-circle mr-2"></i>
-                <span id="role-badge-text">Worker</span>
-            </span>
+
+<!-- ── HERO ── -->
+<section class="hero-section">
+    <div class="hero-inner">
+        <!-- Left Content -->
+        <div class="hero-left fade-in">
+            <div class="hero-badge">
+                <i class="fa-solid fa-bolt"></i> Empowering Informal Workers
+            </div>
+
+            <h1 class="hero-heading">
+                Your Voice Can<br>
+                <span class="text-primary">Work For You.</span>
+            </h1>
+
+            <p class="hero-desc">
+                VoiceHire helps workers discover nearby job opportunities, create voice-based profiles, manage work and get paid — without complicated forms or English.
+            </p>
+
+            <div class="hero-actions">
+                <a href="{{ url_for('signup') }}" class="btn btn-primary btn-lg" id="hero-get-started">
+                    Get Started <i class="fa-solid fa-arrow-right ml-2"></i>
+                </a>
+                <a href="#how-it-works" class="btn btn-ghost btn-lg">
+                    <i class="fa-solid fa-play mr-2"></i> How It Works
+                </a>
+            </div>
+
+            <!-- Trust items -->
+            <div class="hero-trust">
+                <div class="trust-item">
+                    <div class="trust-icon"><i class="fa-solid fa-microphone"></i></div>
+                    <div>
+                        <h4>Voice Based Access</h4>
+                        <p>Speak in your language</p>
+                    </div>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon"><i class="fa-solid fa-location-dot"></i></div>
+                    <div>
+                        <h4>Local Opportunities</h4>
+                        <p>Jobs near your area</p>
+                    </div>
+                </div>
+                <div class="trust-item">
+                    <div class="trust-icon"><i class="fa-solid fa-star"></i></div>
+                    <div>
+                        <h4>Simple & Easy</h4>
+                        <p>No forms, no typing</p>
+                    </div>
+                </div>
+            </div>
         </div>
 
-        <button onclick="selectAuth('new')" class="card role-card">
-            <div class="role-icon new">
-                <i class="fa-solid fa-user-plus"></i>
+        <!-- Right — AI Card -->
+        <div class="hero-visual">
+            <div class="ai-card">
+                <div class="ai-avatar">
+                    <i class="ai-avatar-icon fa-solid fa-robot"></i>
+                    <div class="ai-pulse"></div>
+                </div>
+                <div style="text-align:center; margin-bottom:16px;">
+                    <div style="font-size:.875rem; font-weight:700; color:var(--dark);">VoiceHire Assistant</div>
+                    <div style="font-size:.75rem; color:var(--success); display:flex; align-items:center; justify-content:center; gap:4px; margin-top:2px;">
+                        <i class="fa-solid fa-circle" style="font-size:.5rem;"></i> Online · Hindi / English
+                    </div>
+                </div>
+                <div class="ai-bubble">
+                    Namaste! Main aapki help ke liye hoon. <strong>Aap kya karna chahte hain?</strong>
+                </div>
+                <div class="ai-quick-btns">
+                    <a href="{{ url_for('signup') }}" class="ai-quick-btn">
+                        <i class="fa-solid fa-briefcase mr-1"></i>Find Jobs
+                    </a>
+                    <a href="{{ url_for('worker_signup_page') }}" class="ai-quick-btn">
+                        <i class="fa-solid fa-microphone mr-1"></i>Voice Profile
+                    </a>
+                    <a href="{{ url_for('login_page', role='user') }}" class="ai-quick-btn">
+                        <i class="fa-solid fa-wallet mr-1"></i>Payments
+                    </a>
+                    <a href="{{ url_for('login_page', role='user') }}" class="ai-quick-btn">
+                        <i class="fa-solid fa-headset mr-1"></i>Support
+                    </a>
+                </div>
             </div>
-            <div class="role-details">
-                <h3>{{ t("Create New Profile") }}</h3>
-                <p>{{ t("I'm new here") }}</p>
-            </div>
-            <i class="fa-solid fa-chevron-right arrow"></i>
-        </button>
-
-        <button onclick="selectAuth('login')" class="card role-card">
-            <div class="role-icon login">
-                <i class="fa-solid fa-right-to-bracket"></i>
-            </div>
-            <div class="role-details">
-                <h3>{{ t("Log In") }}</h3>
-                <p>{{ t("I have an account") }}</p>
-            </div>
-            <i class="fa-solid fa-chevron-right arrow"></i>
-        </button>
-
-        <button onclick="goBack()" class="btn-back-link mt-4">
-            <i class="fa-solid fa-arrow-left mr-2"></i>
-            {{ t("Change role") }}
-        </button>
+        </div>
     </div>
-</div>
+</section>
 
-<!-- Hidden Strings for JS -->
-<div style="display:none">
-    <span id="str-q1">{{ t("Welcome to VoiceHire! Are you a worker looking for jobs, or are you looking to hire someone?") }}</span>
-    <span id="str-q2-worker">{{ t("Got it! Would you like to create a new worker profile, or log in to your existing account?") }}</span>
-    <span id="str-q2-hirer">{{ t("Great! Would you like to create a customer account, or log in to your existing account?") }}</span>
-    <span id="str-ok-worker-new">{{ t("Perfect! Taking you to worker registration.") }}</span>
-    <span id="str-ok-worker-login">{{ t("Welcome back! Taking you to the worker login page.") }}</span>
-    <span id="str-ok-hirer-new">{{ t("Excellent! Setting up your customer account now.") }}</span>
-    <span id="str-ok-hirer-login">{{ t("Welcome back! Taking you to login.") }}</span>
-    <span id="str-retry-role">{{ t("Sorry, I did not catch that. Please say Worker or Hirer.") }}</span>
-    <span id="str-retry-auth">{{ t("Please say Create or Login.") }}</span>
-    <span id="str-label-worker">{{ t("Worker") }}</span>
-    <span id="str-label-hirer">{{ t("Customer") }}</span>
-</div>
 
+<!-- ── HOW IT WORKS ── -->
+<section class="how-section" id="how-it-works">
+    <div class="container text-center">
+        <div class="section-label">Simple Process</div>
+        <h2 class="section-title">Get hired in 4 easy steps</h2>
+        <p class="section-desc">No complicated forms. No English required. Just your voice and skills.</p>
+
+        <div class="steps-grid">
+            <div class="step-card">
+                <div class="step-num">1</div>
+                <div class="step-icon"><i class="fa-solid fa-globe"></i></div>
+                <h3>Choose Language</h3>
+                <p>Select your preferred regional language from the dropdown above.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">2</div>
+                <div class="step-icon"><i class="fa-solid fa-microphone"></i></div>
+                <h3>Voice Profile</h3>
+                <p>Record a short voice intro about your skills. No typing needed.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">3</div>
+                <div class="step-icon"><i class="fa-solid fa-briefcase"></i></div>
+                <h3>Find Jobs</h3>
+                <p>Browse nearby opportunities that match your skills and location.</p>
+            </div>
+            <div class="step-card">
+                <div class="step-num">4</div>
+                <div class="step-icon"><i class="fa-solid fa-wallet"></i></div>
+                <h3>Get Paid</h3>
+                <p>Complete work, confirm via QR scan, and receive payment securely.</p>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ── FOR WORKERS ── -->
+<section class="features-section" id="for-workers">
+    <div class="container">
+        <div class="text-center mb-12">
+            <div class="section-label">For Workers</div>
+            <h2 class="section-title">Everything you need to find work</h2>
+            <p class="section-desc">Built for daily-wage workers, gig workers, and informal job seekers across India.</p>
+        </div>
+        <div class="features-grid">
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+                <h3>Voice-First Profile</h3>
+                <p>Create your profile by speaking. Tell employers about your skills in your own language.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-location-dot"></i></div>
+                <h3>Hyper-Local Jobs</h3>
+                <p>Find jobs within 2–10 km of your location. Work close to home, no long commutes.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-language"></i></div>
+                <h3>8 Regional Languages</h3>
+                <p>Hindi, Marathi, Tamil, Telugu, Kannada, Bengali, Gujarati support.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-qrcode"></i></div>
+                <h3>QR Attendance</h3>
+                <p>Simple QR code scan for check-in and job completion. No paperwork.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
+                <h3>Work History & Ratings</h3>
+                <p>Build a verifiable track record of completed jobs. Higher ratings = more work.</p>
+            </div>
+            <div class="feature-card">
+                <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
+                <h3>Verified & Safe</h3>
+                <p>ID verification, employer reviews, and secure payments protect every transaction.</p>
+            </div>
+        </div>
+        <div class="text-center mt-8">
+            <a href="{{ url_for('worker_signup_page') }}" class="btn btn-primary btn-lg">
+                Sign Up as Worker <i class="fa-solid fa-arrow-right ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+
+<!-- ── FOR EMPLOYERS ── -->
+<section class="how-section" id="for-employers" style="background:var(--bg);">
+    <div class="container">
+        <div class="text-center mb-12">
+            <div class="section-label">For Employers</div>
+            <h2 class="section-title">Find verified local workers fast</h2>
+            <p class="section-desc">Post a job, browse voice profiles, and book workers in your neighbourhood.</p>
+        </div>
+
+        <div style="display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center;">
+            <div>
+                <div style="display:flex; flex-direction:column; gap:20px;">
+                    <div style="display:flex; gap:16px; align-items:flex-start;">
+                        <div class="trust-icon" style="flex-shrink:0;"><i class="fa-solid fa-magnifying-glass"></i></div>
+                        <div>
+                            <h4 style="color:var(--dark); margin-bottom:4px;">Search Instantly</h4>
+                            <p style="font-size:.875rem;">Find plumbers, electricians, drivers available near you right now.</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:16px; align-items:flex-start;">
+                        <div class="trust-icon" style="flex-shrink:0;"><i class="fa-solid fa-volume-high"></i></div>
+                        <div>
+                            <h4 style="color:var(--dark); margin-bottom:4px;">Hear Voice Profiles</h4>
+                            <p style="font-size:.875rem;">Listen to workers describe their skills before hiring.</p>
+                        </div>
+                    </div>
+                    <div style="display:flex; gap:16px; align-items:flex-start;">
+                        <div class="trust-icon" style="flex-shrink:0;"><i class="fa-solid fa-calendar-check"></i></div>
+                        <div>
+                            <h4 style="color:var(--dark); margin-bottom:4px;">Book & Track</h4>
+                            <p style="font-size:.875rem;">Schedule work slots, track attendance via QR, confirm completion.</p>
+                        </div>
+                    </div>
+                </div>
+                <div class="mt-8">
+                    <a href="{{ url_for('user_signup_page') }}" class="btn btn-primary btn-lg">
+                        Post a Job Free <i class="fa-solid fa-arrow-right ml-2"></i>
+                    </a>
+                </div>
+            </div>
+
+            <!-- Sample Worker Cards -->
+            <div style="background:linear-gradient(135deg,var(--primary-light) 0%,#DBEAFE 100%); border-radius:var(--radius-xl); padding:32px; border:1px solid var(--primary-mid);">
+                <div style="display:flex; flex-direction:column; gap:12px;">
+                    <div style="background:white; border-radius:var(--radius-lg); padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm);">
+                        <div style="width:40px;height:40px;border-radius:var(--radius);background:var(--primary);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">RK</div>
+                        <div style="flex:1;">
+                            <div style="font-size:.875rem;font-weight:600;color:var(--dark);">Ramesh Kumar</div>
+                            <div style="font-size:.75rem;color:var(--primary);font-weight:500;">Electrician · ⭐ 4.8</div>
+                        </div>
+                        <span class="badge badge-success">2 km</span>
+                    </div>
+                    <div style="background:white; border-radius:var(--radius-lg); padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm);">
+                        <div style="width:40px;height:40px;border-radius:var(--radius);background:var(--success);color:white;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">SD</div>
+                        <div style="flex:1;">
+                            <div style="font-size:.875rem;font-weight:600;color:var(--dark);">Suresh Deva</div>
+                            <div style="font-size:.75rem;color:var(--primary);font-weight:500;">Plumber · ⭐ 4.6</div>
+                        </div>
+                        <span class="badge badge-success">5 km</span>
+                    </div>
+                    <div style="background:white; border-radius:var(--radius-lg); padding:14px 16px; display:flex; align-items:center; gap:12px; box-shadow:var(--shadow-sm);">
+                        <div style="width:40px;height:40px;border-radius:var(--radius);background:#F59E0B;color:white;display:flex;align-items:center;justify-content:center;font-weight:700;flex-shrink:0;">PD</div>
+                        <div style="flex:1;">
+                            <div style="font-size:.875rem;font-weight:600;color:var(--dark);">Priya Devi</div>
+                            <div style="font-size:.75rem;color:var(--primary);font-weight:500;">House Help · ⭐ 4.9</div>
+                        </div>
+                        <span class="badge badge-success">3 km</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</section>
+
+
+<!-- ── CTA ── -->
+<section class="cta-section text-center" id="about">
+    <div class="container">
+        <div style="display:inline-block; background:rgba(255,255,255,.15); color:white; padding:4px 16px; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:20px;">
+            Real Jobs. Real People. Voice Powered.
+        </div>
+        <h2 class="section-title">Start your journey with VoiceHire today</h2>
+        <p class="section-desc">Join thousands of workers and employers already using VoiceHire across India.</p>
+        <div class="cta-actions">
+            <a href="{{ url_for('worker_signup_page') }}" class="btn btn-lg" style="background:white; color:var(--primary);">
+                I'm a Worker <i class="fa-solid fa-hard-hat ml-2"></i>
+            </a>
+            <a href="{{ url_for('user_signup_page') }}" class="btn btn-lg" style="background:rgba(255,255,255,.15); color:white; border:1.5px solid rgba(255,255,255,.4);">
+                I'm an Employer <i class="fa-solid fa-building ml-2"></i>
+            </a>
+        </div>
+    </div>
+</section>
+
+
+<!-- ── FOOTER ── -->
+<footer class="site-footer">
+    <div class="footer-inner">
+        <div class="footer-brand">
+            <a href="{{ url_for('index') }}" class="logo" style="margin-bottom:12px;">
+                <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+                <span class="logo-text">VoiceHire</span>
+            </a>
+            <p>Empowering India's informal workforce through voice technology and simple digital tools.</p>
+        </div>
+        <div class="footer-col">
+            <h5>Product</h5>
+            <ul>
+                <li><a href="#how-it-works">How It Works</a></li>
+                <li><a href="#for-workers">For Workers</a></li>
+                <li><a href="#for-employers">For Employers</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h5>Get Started</h5>
+            <ul>
+                <li><a href="{{ url_for('worker_signup_page') }}">Sign Up as Worker</a></li>
+                <li><a href="{{ url_for('user_signup_page') }}">Sign Up as Employer</a></li>
+                <li><a href="{{ url_for('login_page', role='worker') }}">Worker Login</a></li>
+                <li><a href="{{ url_for('login_page', role='user') }}">Employer Login</a></li>
+            </ul>
+        </div>
+        <div class="footer-col">
+            <h5>Legal</h5>
+            <ul>
+                <li><a href="#">Privacy Policy</a></li>
+                <li><a href="#">Terms of Service</a></li>
+            </ul>
+        </div>
+    </div>
+    <div class="footer-bottom">
+        <span>© 2026 VoiceHire. All rights reserved.</span>
+        <span>Made with ❤️ in India</span>
+    </div>
+</footer>
+
+
+<!-- Extra styles for landing page only -->
 <style>
-    .gateway-page #main-content {
-        padding: 1.5rem;
-    }
+/* Language dropdown */
+.lang-dropdown { position: relative; }
+.lang-btn-compact {
+    display: flex; align-items: center; gap: 6px;
+    padding: 7px 12px; border-radius: var(--radius);
+    border: 1.5px solid var(--border);
+    background: var(--card); color: var(--muted);
+    font-size: .8125rem; font-weight: 600; cursor: pointer;
+    transition: all .18s ease;
+}
+.lang-btn-compact:hover { border-color: var(--primary-mid); color: var(--primary); background: var(--primary-light); }
+.lang-menu {
+    position: absolute; top: calc(100% + 8px); right: 0;
+    background: var(--card); border: 1px solid var(--border);
+    border-radius: var(--radius-lg); box-shadow: var(--shadow-md);
+    min-width: 150px; overflow: hidden; z-index: 200;
+    display: none;
+}
+.lang-menu.open { display: block; animation: slideUp .15s ease; }
+.lang-menu-item {
+    display: block; padding: 10px 16px;
+    font-size: .8125rem; color: var(--muted); font-weight: 500;
+    transition: all .15s ease; text-decoration: none;
+}
+.lang-menu-item:hover { background: var(--primary-light); color: var(--primary); }
+.lang-menu-item.active { color: var(--primary); font-weight: 700; background: var(--primary-light); }
 
-    .ai-text {
-        font-size: 1.25rem;
-        font-weight: 700;
-        line-height: 1.4;
-    }
+/* Mobile pub nav */
+.pub-mobile-menu-btn {
+    display: none; background: none; border: none;
+    font-size: 1.125rem; color: var(--muted); cursor: pointer; padding: 6px;
+}
+.pub-mobile-nav {
+    display: none; flex-direction: column; gap: 4px;
+    padding: 12px 24px 16px; border-top: 1px solid var(--border);
+    background: var(--card);
+}
+.pub-mobile-nav a { padding: 10px 0; color: var(--muted); font-size: .9375rem; font-weight: 500; display: block; }
+.pub-mobile-nav a:hover { color: var(--primary); }
+.pub-mobile-nav.open { display: flex; }
 
-    .voice-hint {
-        font-size: 0.75rem;
-        opacity: 0.7;
-        font-weight: 500;
-    }
-
-    .dots {
-        display: flex;
-        justify-content: center;
-        gap: 6px;
-    }
-
-    .dot {
-        width: 6px;
-        height: 6px;
-        border-radius: 50%;
-        background: rgba(255,255,255,0.2);
-        transition: 0.3s;
-    }
-
-    .dot.active {
-        background: var(--primary);
-        transform: scale(1.4);
-    }
-
-    .role-card {
-        display: flex;
-        align-items: center;
-        gap: 1.25rem;
-        padding: 1.25rem;
-        text-align: left;
-        width: 100%;
-        cursor: pointer;
-        border: 2px solid transparent;
-    }
-
-    .role-card:hover {
-        border-color: var(--primary);
-    }
-
-    .role-icon {
-        width: 3.5rem;
-        height: 3.5rem;
-        border-radius: var(--radius-md);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        overflow: hidden;
-        background: var(--bg-main);
-        flex-shrink: 0;
-    }
-
-    .role-icon img {
-        width: 100%;
-        height: 100%;
-        object-fit: cover;
-    }
-
-    .role-icon.new, .role-icon.login {
-        font-size: 1.5rem;
-        color: var(--secondary);
-    }
-
-    .role-details h3 {
-        font-size: 1.1rem;
-        margin-bottom: 2px;
-    }
-
-    .role-details p {
-        font-size: 0.85rem;
-    }
-
-    .arrow {
-        margin-left: auto;
-        color: var(--border);
-        font-size: 0.8rem;
-    }
-
-    .btn-back-link {
-        background: none;
-        border: none;
-        color: var(--text-muted);
-        font-weight: 600;
-        font-size: 0.9rem;
-        cursor: pointer;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        width: 100%;
-    }
-
-    .btn-back-link:hover {
-        color: var(--secondary);
-    }
-
-    .waveform span {
-        transition: height 0.2s ease;
-    }
+@media (max-width: 768px) {
+    .pub-mobile-menu-btn { display: block; }
+    .pub-nav { display: none; }
+    .pub-nav-actions .lang-dropdown { display: none; }
+    .pub-nav-actions .btn:first-of-type { display: none; }
+    #for-employers .container > div { grid-template-columns: 1fr !important; }
+}
 </style>
 
 <script>
-    const lang = "{{ session.get('lang', 'en') }}";
-    const speechLang = ({
-        hi: 'hi-IN', bn: 'bn-IN', te: 'te-IN', mr: 'mr-IN', ta: 'ta-IN',
-        gu: 'gu-IN', kn: 'kn-IN', ml: 'ml-IN', pa: 'pa-IN', ur: 'ur-IN',
-        or: 'or-IN', as: 'as-IN', en: 'en-IN'
-    })[lang] || 'en-IN';
+// Language dropdown toggle
+function toggleLangMenu() {
+    document.getElementById('lang-menu').classList.toggle('open');
+}
+// Close on outside click
+document.addEventListener('click', e => {
+    const dd = document.getElementById('lang-dropdown');
+    if (dd && !dd.contains(e.target)) document.getElementById('lang-menu').classList.remove('open');
+});
 
-    let voiceState = 'idle';
-    let selectedRole = null;
+// Mobile menu
+function toggleMobileMenu() {
+    const nav = document.getElementById('pub-mobile-nav');
+    nav.classList.toggle('open');
+}
+function closeMobileMenu() {
+    document.getElementById('pub-mobile-nav').classList.remove('open');
+}
 
-    // Keyword banks (simplified for brevity here, should ideally be more comprehensive)
-    const WORKER_KW = ['worker', 'work', 'job', 'काम', 'मज़दूर', 'वर्कर', 'कामगार'];
-    const HIRER_KW = ['hire', 'hirer', 'customer', 'client', 'ग्राहक', 'चाहिए', 'हायर', 'मदद'];
-    const CREATE_KW = ['create', 'new', 'register', 'signup', 'नया', 'बनाओ', 'नई'];
-    const LOGIN_KW = ['login', 'log in', 'already', 'account', 'लॉगिन', 'पुराना'];
-
-    function g(id) { return document.getElementById(id).textContent.trim(); }
-    function setBubble(text) { document.getElementById('ai-bubble').textContent = text; }
-    function setPulse(on) { document.getElementById('waveform').classList.toggle('active', on); }
-
-    function speak(text, onEnd) {
-        window.speechSynthesis.cancel();
-        const u = new SpeechSynthesisUtterance(text);
-        u.lang = speechLang;
-        u.rate = 0.9;
-        u.onstart = () => setPulse(true);
-        u.onend = () => { setPulse(false); if (onEnd) onEnd(); };
-        u.onerror = () => { setPulse(false); if (onEnd) onEnd(); };
-        window.speechSynthesis.speak(u);
-    }
-
-    function listenOnce(onResult) {
-        const SR = window.SpeechRecognition || window.webkitSpeechRecognition;
-        if (!SR) return;
-        const rec = new SR();
-        rec.lang = speechLang;
-        rec.onstart = () => {
-            document.getElementById('waveform').classList.add('active');
-            document.getElementById('waveform').style.opacity = '1';
-        };
-        rec.onresult = (e) => {
-            const said = e.results[0][0].transcript.toLowerCase();
-            const box = document.getElementById('transcript-box');
-            box.textContent = '"' + said + '"';
-            box.classList.remove('hidden');
-            onResult(said);
-        };
-        rec.onend = () => document.getElementById('waveform').classList.remove('active');
-        rec.start();
-    }
-
-    function askRole() {
-        voiceState = 'askRole';
-        const q = g('str-q1');
-        setBubble(q);
-        speak(q, () => {
-            listenOnce((said) => {
-                if (WORKER_KW.some(k => said.includes(k))) selectRole('worker');
-                else if (HIRER_KW.some(k => said.includes(k))) selectRole('hirer');
-                else speak(g('str-retry-role'), askRole);
-            });
-        });
-    }
-
-    function selectRole(role) {
-        selectedRole = role;
-        document.getElementById('phase-1').classList.add('hidden');
-        document.getElementById('phase-2').classList.remove('hidden');
-        document.getElementById('role-badge-text').textContent = g(role === 'worker' ? 'str-label-worker' : 'str-label-hirer');
-        document.getElementById('dot-1').classList.remove('active');
-        document.getElementById('dot-2').classList.add('active');
-        document.getElementById('step-label').textContent = 'Step 2 of 2';
-        document.getElementById('transcript-box').classList.add('hidden');
-
-        const q = g(role === 'worker' ? 'str-q2-worker' : 'str-q2-hirer');
-        setBubble(q);
-        speak(q, () => {
-            listenOnce((said) => {
-                if (CREATE_KW.some(k => said.includes(k))) selectAuth('new');
-                else if (LOGIN_KW.some(k => said.includes(k))) selectAuth('login');
-                else speak(g('str-retry-auth'), () => selectRole(role));
-            });
-        });
-    }
-
-    function selectAuth(authType) {
-        const routes = {
-            'worker-new': '/signup/worker',
-            'worker-login': '/login?role=worker',
-            'hirer-new': '/signup/user',
-            'hirer-login': '/login?role=user'
-        };
-        const key = selectedRole + '-' + authType;
-        const msg = g('str-ok-' + selectedRole + '-' + authType);
-        setBubble(msg);
-        speak(msg, () => window.location.href = routes[key]);
-        setTimeout(() => window.location.href = routes[key], 3000);
-    }
-
-    function goBack() {
-        document.getElementById('phase-2').classList.add('hidden');
-        document.getElementById('phase-1').classList.remove('hidden');
-        document.getElementById('dot-2').classList.remove('active');
-        document.getElementById('dot-1').classList.add('active');
-        document.getElementById('step-label').textContent = 'Step 1 of 2';
-        askRole();
-    }
-
-    window.onload = () => setTimeout(askRole, 800);
+// Smooth scroll for anchor links
+document.querySelectorAll('a[href^="#"]').forEach(a => {
+    a.addEventListener('click', e => {
+        const id = a.getAttribute('href').slice(1);
+        const el = document.getElementById(id);
+        if (el) { e.preventDefault(); el.scrollIntoView({ behavior: 'smooth', block: 'start' }); closeMobileMenu(); }
+    });
+});
 </script>
+
 {% endblock %}

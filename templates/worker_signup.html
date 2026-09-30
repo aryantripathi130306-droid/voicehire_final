@@ -1,320 +1,388 @@
 {% extends 'base.html' %}
+{% block title %}Worker Sign Up — VoiceHire{% endblock %}
 
-{% block head %}
-<style>
-    .signup-container {
-        max-width: 600px;
-        margin: 2rem auto;
-    }
+{% block body %}
+<div class="auth-page">
+    <!-- LEFT -->
+    <div class="auth-left">
+        <a href="/" class="logo">
+            <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
+            <span class="logo-text">VoiceHire</span>
+        </a>
+        <div class="auth-left-content">
+            <div class="auth-ai-illus"><i class="fa-solid fa-hard-hat"></i></div>
+            <h2>Join as a Worker</h2>
+            <p>Create your profile with just your voice. No complicated forms. Get hired locally.</p>
+            <div class="auth-feature-list">
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Free to sign up</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Find local jobs nearby</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Voice profile — no typing needed</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Secure payments</span></div>
+            </div>
+        </div>
+    </div>
 
-    .ai-helper-section {
-        background: var(--secondary);
-        color: white;
-        border-radius: var(--radius-lg);
-        padding: 1.5rem;
-        margin-bottom: 2rem;
-        position: relative;
-        overflow: hidden;
-    }
+    <!-- RIGHT -->
+    <div class="auth-right" style="padding:40px 48px; overflow-y:auto;">
+        <div class="auth-form-box" style="max-width:480px;">
 
-    .ai-bubble {
-        background: rgba(255, 255, 255, 0.1);
-        padding: 1rem;
-        border-radius: var(--radius-md);
-        border-bottom-left-radius: 0;
-        font-weight: 600;
-        font-size: 0.95rem;
-        margin-bottom: 1rem;
-    }
+            <!-- Step Progress -->
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                <a href="{{ url_for('gateway') }}" class="back-link" style="margin:0;">
+                    <i class="fa-solid fa-arrow-left"></i>
+                </a>
+                <h1>Create Worker Account</h1>
+            </div>
+            <p class="auth-subtitle" style="margin-bottom:24px;">Fill in your details to get started. Takes less than 2 minutes.</p>
 
-    .input-with-voice {
-        position: relative;
-    }
+            <!-- Step Indicators -->
+            <div class="step-progress mb-3" id="step-progress">
+                <div class="step-progress-item">
+                    <div class="step-dot active" id="dot-1">1</div>
+                    <div class="step-line" id="line-1"></div>
+                </div>
+                <div class="step-progress-item">
+                    <div class="step-dot" id="dot-2">2</div>
+                    <div class="step-line" id="line-2"></div>
+                </div>
+                <div class="step-progress-item">
+                    <div class="step-dot" id="dot-3">3</div>
+                    <div class="step-line" id="line-3" style="display:none;"></div>
+                </div>
+                <div class="step-progress-item">
+                    <div class="step-dot" id="dot-4"><i class="fa-solid fa-check" style="font-size:.6rem;"></i></div>
+                </div>
+            </div>
+            <div class="step-progress-labels mb-6">
+                <span class="active">Basic Info</span>
+                <span>Skills & Work</span>
+                <span>Voice Profile</span>
+                <span>Done</span>
+            </div>
 
-    .voice-input-btn {
-        position: absolute;
-        right: 0.5rem;
-        top: 50%;
-        transform: translateY(-50%);
-        width: 2.5rem;
-        height: 2.5rem;
-        border-radius: var(--radius-md);
-        background: var(--bg-main);
-        border: 1px solid var(--border);
-        color: var(--text-muted);
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        cursor: pointer;
-        transition: var(--transition-fast);
-        z-index: 10;
-    }
+            <form id="worker-signup-form" enctype="multipart/form-data">
 
-    .voice-input-btn:hover {
-        background: var(--primary);
-        color: white;
-        border-color: var(--primary);
-    }
+                <!-- STEP 1: Basic Info -->
+                <div id="step-1">
+                    <div class="auth-card">
+                        <h3 class="mb-4"><i class="fa-solid fa-user-circle mr-2 text-primary"></i>Basic Information</h3>
 
-    .form-section-title {
-        font-size: 1.1rem;
-        font-weight: 800;
-        color: var(--secondary);
-        margin: 2.5rem 0 1.5rem;
-        display: flex;
-        align-items: center;
-        gap: 0.75rem;
-    }
+                        <div class="form-group">
+                            <label class="form-label" for="name">Full Name <span class="required">*</span></label>
+                            <div class="input-icon-wrap">
+                                <i class="fa-solid fa-user input-icon"></i>
+                                <input id="name" name="name" type="text" class="form-control" placeholder="Your full name" required>
+                                <span class="input-icon-right" id="voice-name-btn" title="Fill by voice" style="cursor:pointer;">
+                                    <i class="fa-solid fa-microphone" style="color:var(--primary);"></i>
+                                </span>
+                            </div>
+                        </div>
 
-    .form-section-title i {
-        font-size: 1.25rem;
-        color: var(--primary);
-    }
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="phone">Mobile Number <span class="required">*</span></label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-phone input-icon"></i>
+                                    <input id="phone" name="phone" type="tel" class="form-control" placeholder="10-digit number" maxlength="10" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="password">Password <span class="required">*</span></label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-lock input-icon"></i>
+                                    <input id="password" name="password" type="password" class="form-control" placeholder="Min. 6 characters" required>
+                                    <span class="input-icon-right" onclick="togglePwd()"><i class="fa-regular fa-eye"></i></span>
+                                </div>
+                            </div>
+                        </div>
 
-    .form-grid {
-        display: grid;
-        grid-template-columns: 1fr 1fr;
-        gap: 1rem;
-    }
+                        <div class="form-group">
+                            <label class="form-label" for="preferred_lang">Preferred Language</label>
+                            <div class="select-wrap">
+                                <select id="preferred_lang" name="preferred_lang" class="form-control">
+                                    <option value="hi">हिंदी — Hindi</option>
+                                    <option value="en" selected>English</option>
+                                    <option value="mr">मराठी — Marathi</option>
+                                    <option value="bn">বাংলা — Bengali</option>
+                                    <option value="ta">தமிழ் — Tamil</option>
+                                    <option value="te">తెలుగు — Telugu</option>
+                                    <option value="kn">ಕನ್ನಡ — Kannada</option>
+                                    <option value="gu">ગુજરાતી — Gujarati</option>
+                                </select>
+                            </div>
+                        </div>
 
-    @media (max-width: 480px) {
-        .form-grid {
-            grid-template-columns: 1fr;
-        }
-    }
+                        <button type="button" class="btn btn-primary btn-full" onclick="nextStep(2)">
+                            Continue <i class="fa-solid fa-arrow-right ml-2"></i>
+                        </button>
+                    </div>
+                </div>
 
-    .upload-box {
-        background: var(--bg-main);
-        border: 2px dashed var(--border);
-        border-radius: var(--radius-md);
-        padding: 1rem;
-        text-align: center;
-        transition: var(--transition-fast);
-    }
+                <!-- STEP 2: Skills & Work -->
+                <div id="step-2" style="display:none;">
+                    <div class="auth-card">
+                        <h3 class="mb-4"><i class="fa-solid fa-tools mr-2 text-primary"></i>Your Skills & Work</h3>
 
-    .upload-box:hover {
-        border-color: var(--primary);
-        background: white;
-    }
+                        <div class="form-group">
+                            <label class="form-label" for="work">Work Type / Skill <span class="required">*</span></label>
+                            <div class="select-wrap">
+                                <select id="work" name="work" class="form-control" required>
+                                    <option value="">Select your primary skill</option>
+                                    <option>Electrician</option>
+                                    <option>Plumber</option>
+                                    <option>Construction Helper</option>
+                                    <option>Delivery Assistant</option>
+                                    <option>Driver</option>
+                                    <option>House Help / Maid</option>
+                                    <option>Security Guard</option>
+                                    <option>Event Support</option>
+                                    <option>Painter</option>
+                                    <option>Carpenter</option>
+                                    <option>Gardener</option>
+                                    <option>Tailor</option>
+                                    <option>Cobbler</option>
+                                    <option>Cook / Helper</option>
+                                    <option>Other</option>
+                                </select>
+                            </div>
+                        </div>
 
-    .upload-box label {
-        margin-bottom: 0;
-        cursor: pointer;
-    }
-</style>
+                        <div class="form-row">
+                            <div class="form-group">
+                                <label class="form-label" for="location">City / Area <span class="required">*</span></label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-location-dot input-icon"></i>
+                                    <input id="location" name="location" type="text" class="form-control" placeholder="e.g. Noida Sector 62" required>
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label" for="price">Rate (₹/day)</label>
+                                <div class="input-icon-wrap">
+                                    <i class="fa-solid fa-rupee-sign input-icon"></i>
+                                    <input id="price" name="price" type="number" class="form-control" placeholder="e.g. 400" min="0">
+                                </div>
+                            </div>
+                        </div>
+
+                        <div class="form-group">
+                            <label class="form-label" for="bio">Short Bio <span class="text-sm font-medium" style="font-weight:400; color:var(--muted);">(Optional)</span></label>
+                            <textarea id="bio" name="bio" class="form-control" rows="3" placeholder="Tell employers about your experience..."></textarea>
+                        </div>
+
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" class="btn btn-ghost" onclick="nextStep(1)" style="flex:0 0 auto;">
+                                <i class="fa-solid fa-arrow-left mr-1"></i> Back
+                            </button>
+                            <button type="button" class="btn btn-primary btn-full" onclick="nextStep(3)">
+                                Continue <i class="fa-solid fa-arrow-right ml-2"></i>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- STEP 3: Voice Profile + Files -->
+                <div id="step-3" style="display:none;">
+                    <div class="auth-card">
+                        <h3 class="mb-1"><i class="fa-solid fa-microphone mr-2 text-primary"></i>Voice Profile</h3>
+                        <p class="text-sm mb-4">Record a short introduction. Employers can listen before hiring you.</p>
+
+                        <!-- Mic Recorder -->
+                        <div class="mic-card" id="mic-card-box">
+                            <div class="mic-circle" id="mic-circle" onclick="toggleRecording()">
+                                <i class="fa-solid fa-microphone" id="mic-icon"></i>
+                            </div>
+                            <div class="waveform" id="waveform" style="display:none;">
+                                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                <div class="bar"></div><div class="bar"></div><div class="bar"></div>
+                                <div class="bar"></div><div class="bar"></div>
+                            </div>
+                            <div class="timer-display" id="rec-timer" style="display:none;">0:00</div>
+                            <p id="mic-label" class="font-semibold" style="color:var(--dark); margin-bottom:4px;">Tap to Record</p>
+                            <p class="text-sm">Speak clearly for 10–20 seconds</p>
+                        </div>
+
+                        <!-- Language selector -->
+                        <div class="lang-chips mb-4">
+                            <span class="lang-chip active" onclick="setLang(this)">हिंदी</span>
+                            <span class="lang-chip" onclick="setLang(this)">English</span>
+                            <span class="lang-chip" onclick="setLang(this)">मराठी</span>
+                            <span class="lang-chip" onclick="setLang(this)">Other</span>
+                        </div>
+
+                        <!-- File uploads -->
+                        <div class="form-row mb-4">
+                            <div class="form-group">
+                                <label class="form-label">Profile Picture</label>
+                                <div class="upload-box" onclick="document.getElementById('profile_pic').click()">
+                                    <i class="fa-solid fa-camera"></i>
+                                    <p>Upload photo</p>
+                                    <input type="file" id="profile_pic" name="profile_pic" accept="image/*">
+                                </div>
+                            </div>
+                            <div class="form-group">
+                                <label class="form-label">ID Proof</label>
+                                <div class="upload-box" onclick="document.getElementById('id_proof').click()">
+                                    <i class="fa-solid fa-id-card"></i>
+                                    <p>Aadhaar / PAN</p>
+                                    <input type="file" id="id_proof" name="id_proof" accept="image/*">
+                                </div>
+                            </div>
+                        </div>
+
+                        <input type="file" id="voice_note" name="voice_note" accept="audio/*" style="display:none;">
+                        <input type="hidden" name="latitude" id="w-lat">
+                        <input type="hidden" name="longitude" id="w-lng">
+
+                        <div style="display:flex; gap:10px;">
+                            <button type="button" class="btn btn-ghost" onclick="nextStep(2)" style="flex:0 0 auto;">
+                                <i class="fa-solid fa-arrow-left mr-1"></i> Back
+                            </button>
+                            <button type="submit" class="btn btn-primary btn-full" id="submit-btn">
+                                Create Account <i class="fa-solid fa-check-circle ml-2"></i>
+                            </button>
+                        </div>
+                        <div class="text-center mt-3">
+                            <button type="submit" class="btn-ghost" style="font-size:.8125rem; color:var(--muted); background:none; border:none; cursor:pointer;">
+                                Skip voice profile for now
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+            </form>
+
+            <div class="auth-footer">
+                Already have an account? <a href="{{ url_for('login_page', role='worker') }}">Login</a>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
-{% block content %}
-<div class="signup-container animate-slide-up">
-    <div class="hero-header text-center mb-8">
-        <p class="badge badge-primary mb-2">{{ t('Join as Worker') }}</p>
-        <h1>{{ t('Elite Network') }}</h1>
-        <p>{{ t('Grow your business with VoiceHire') }}</p>
-    </div>
-
-    <!-- AI Guide Section -->
-    <div class="ai-helper-section shadow-lg">
-        <div class="flex items-center gap-3 mb-4">
-            <div class="logo-icon sm">
-                <i class="fa-solid fa-robot"></i>
-            </div>
-            <div>
-                <h4 class="text-white">{{ t('Voice Registration') }}</h4>
-                <p class="text-white opacity-70 text-xs">{{ t('Register without typing') }}</p>
-            </div>
-        </div>
-
-        <div id="ai-conversation-area" class="hidden">
-            <div id="ai-question" class="ai-bubble">Hi! I'll help you set up your profile.</div>
-            <div id="waveform" class="waveform">
-                <span></span><span></span><span></span><span></span><span></span>
-            </div>
-            <p id="ai-transcript" class="transcript-box text-white opacity-80 text-xs italic"></p>
-        </div>
-
-        <button id="btn-start-ai" class="btn btn-primary" onclick="app.startStepByStepAI('worker')">
-            <i class="fa-solid fa-microphone mr-2"></i>
-            {{ t('Start Voice Setup') }}
-        </button>
-    </div>
-
-    <div class="card">
-        <form id="worker-signup-form" enctype="multipart/form-data">
-            <h3 class="form-section-title">
-                <i class="fa-solid fa-user"></i>
-                {{ t('Personal Details') }}
-            </h3>
-            
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="name">{{ t('Full Name') }}</label>
-                    <div class="input-with-voice">
-                        <input type="text" id="w-name" name="name" class="form-control" placeholder="Rahul Kumar" required>
-                        <button type="button" class="voice-input-btn" onclick="app.listenForInput('w-name')">
-                            <i class="fa-solid fa-microphone"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="phone">{{ t('Phone Number') }}</label>
-                    <div class="input-with-voice">
-                        <input type="tel" id="w-phone" name="phone" class="form-control" placeholder="10-digit number" required>
-                        <button type="button" class="voice-input-btn" onclick="app.listenForInput('w-phone')">
-                            <i class="fa-solid fa-microphone"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="password">{{ t('Password') }}</label>
-                <div class="input-with-voice">
-                    <input type="password" id="w-password" name="password" class="form-control" placeholder="••••••••" required>
-                    <button type="button" class="voice-input-btn" onclick="app.listenForInput('w-password')">
-                        <i class="fa-solid fa-microphone"></i>
-                    </button>
-                </div>
-            </div>
-
-            <h3 class="form-section-title">
-                <i class="fa-solid fa-briefcase"></i>
-                {{ t('Work Information') }}
-            </h3>
-
-            <div class="form-grid">
-                <div class="form-group">
-                    <label for="work">{{ t('Work Type') }}</label>
-                    <div class="input-with-voice">
-                        <input type="text" id="w-work" name="work" class="form-control" placeholder="e.g. Plumber" required>
-                        <button type="button" class="voice-input-btn" onclick="app.listenForInput('w-work')">
-                            <i class="fa-solid fa-microphone"></i>
-                        </button>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label for="price">{{ t('Hourly Price (₹)') }}</label>
-                    <input type="number" id="price" name="price" class="form-control" placeholder="500" required>
-                </div>
-            </div>
-
-            <div class="form-group">
-                <label for="location">{{ t('City / Area') }}</label>
-                <div class="input-with-voice">
-                    <input type="text" id="w-location" name="location" class="form-control" placeholder="e.g. Mumbai" required>
-                    <div style="position: absolute; right: 0.5rem; top: 50%; transform: translateY(-50%); display: flex; gap: 4px;">
-                        <button type="button" class="voice-input-btn" style="position: static; transform: none;" onclick="app.detectLocation('w-location')">
-                            <i class="fa-solid fa-location-dot"></i>
-                        </button>
-                        <button type="button" class="voice-input-btn" style="position: static; transform: none;" onclick="app.listenForInput('w-location')">
-                            <i class="fa-solid fa-microphone"></i>
-                        </button>
-                    </div>
-                </div>
-            </div>
-
-            <h3 class="form-section-title">
-                <i class="fa-solid fa-id-card"></i>
-                {{ t('Portfolio & Verification') }}
-            </h3>
-
-            <div class="form-grid">
-                <div class="form-group">
-                    <label>{{ t('Voice Bio') }}</label>
-                    <div class="upload-box">
-                        <label for="voice_note">
-                            <i class="fa-solid fa-volume-high mb-2"></i>
-                            <p class="text-xs">{{ t('Upload Audio') }}</p>
-                            <input type="file" id="voice_note" name="voice_note" class="hidden" accept="audio/*">
-                        </label>
-                    </div>
-                </div>
-
-                <div class="form-group">
-                    <label>{{ t('Video Pitch') }}</label>
-                    <div class="upload-box">
-                        <label for="video">
-                            <i class="fa-solid fa-video mb-2"></i>
-                            <p class="text-xs">{{ t('Upload Video') }}</p>
-                            <input type="file" id="video" name="video" class="hidden" accept="video/*">
-                        </label>
-                    </div>
-                </div>
-            </div>
-
-            <div class="form-group mt-4">
-                <label for="profile_pic">{{ t('Profile Picture') }}</label>
-                <input type="file" id="profile_pic" name="profile_pic" class="form-control" accept="image/*">
-            </div>
-
-            <div class="form-group">
-                <label for="id_proof">{{ t('Identity Proof') }}</label>
-                <input type="file" id="id_proof" name="id_proof" class="form-control" accept="image/*">
-            </div>
-
-            <input type="hidden" name="latitude" id="w-lat">
-            <input type="hidden" name="longitude" id="w-lng">
-
-            <button type="submit" class="btn btn-secondary mt-8">
-                {{ t('Complete Registration') }}
-                <i class="fa-solid fa-check-circle ml-2"></i>
-            </button>
-        </form>
-    </div>
-
-    <div class="text-center mt-8 mb-12">
-        <p class="text-muted">
-            {{ t('Already a worker?') }} 
-            <a href="{{ url_for('login_page', role='worker') }}" class="text-primary font-bold">{{ t('Log in') }}</a>
-        </p>
-        
-        <a href="{{ url_for('login_page', role='worker') }}" class="btn-back-link mt-6">
-            <i class="fa-solid fa-arrow-left mr-2"></i>
-            {{ t('Back to Login') }}
-        </a>
-    </div>
-</div>
-
-<div id="ai-prompts" class="hidden">
-    <span id="ai-p0">{{ t('What is your full name?') }}</span>
-    <span id="ai-p1">{{ t('What type of work do you do?') }}</span>
-    <span id="ai-p2">{{ t('In which city or area do you live?') }}</span>
-    <span id="ai-p3">{{ t('Please say your 10 digit phone number.') }}</span>
-    <span id="ai-p4">{{ t('Now, please say a password you would like to use.') }}</span>
-    <span id="ai-p5">{{ t('Great! Your details are saved. You can upload a voice note or video below, then click Complete Registration.') }}</span>
-    <span id="ai-retry">{{ t("Sorry, I didn't catch that. Please repeat.") }}</span>
-</div>
-
+{% block extra_scripts %}
 <script>
-    document.getElementById('worker-signup-form').addEventListener('submit', async (e) => {
-        e.preventDefault();
-        const formData = new FormData(e.target);
-        
-        try {
-            const res = await fetch('/api/signup/worker', {
-                method: 'POST',
-                body: formData
-            });
-            const result = await res.json();
-            if (result.success) {
-                window.location.href = result.redirect;
-            } else {
-                alert(result.error || 'Signup failed');
-            }
-        } catch (err) {
-            console.error(err);
-            alert('Something went wrong');
-        }
-    });
-</script>
+let currentStep = 1;
 
-<style>
-    .hidden { display: none; }
-    .mb-2 { margin-bottom: 0.5rem; }
-    .mt-2 { margin-top: 0.5rem; }
-    .mr-2 { margin-right: 0.5rem; }
-    .ml-2 { margin-left: 0.5rem; }
-    .mx-auto { margin-left: auto; margin-right: auto; }
-</style>
+function nextStep(step) {
+    // Validate current step
+    if (step === 2) {
+        const name = document.getElementById('name').value.trim();
+        const phone = document.getElementById('phone').value.trim();
+        const pwd = document.getElementById('password').value.trim();
+        if (!name || !phone || !pwd) { showToast('Please fill all required fields', 'error'); return; }
+        if (!/^[6-9]\d{9}$/.test(phone)) { showToast('Enter a valid 10-digit Indian phone number', 'error'); return; }
+        if (pwd.length < 6) { showToast('Password must be at least 6 characters', 'error'); return; }
+    }
+    if (step === 3) {
+        const work = document.getElementById('work').value;
+        const location = document.getElementById('location').value.trim();
+        if (!work || !location) { showToast('Please select your work type and location', 'error'); return; }
+    }
+
+    document.getElementById(`step-${currentStep}`).style.display = 'none';
+    document.getElementById(`step-${step}`).style.display = 'block';
+
+    // Update dots
+    for (let i = 1; i <= 4; i++) {
+        const dot = document.getElementById(`dot-${i}`);
+        if (!dot) continue;
+        if (i < step) { dot.className = 'step-dot done'; dot.innerHTML = '<i class="fa-solid fa-check" style="font-size:.6rem;"></i>'; }
+        else if (i === step) { dot.className = 'step-dot active'; dot.textContent = i; }
+        else { dot.className = 'step-dot'; dot.textContent = i; }
+    }
+    const labels = document.querySelectorAll('.step-progress-labels span');
+    labels.forEach((l, i) => l.classList.toggle('active', i + 1 === step));
+
+    currentStep = step;
+
+    if (step === 3) {
+        // Try geolocation
+        if (navigator.geolocation) {
+            navigator.geolocation.getCurrentPosition(pos => {
+                document.getElementById('w-lat').value = pos.coords.latitude;
+                document.getElementById('w-lng').value = pos.coords.longitude;
+            });
+        }
+    }
+}
+
+function togglePwd() {
+    const inp = document.getElementById('password');
+    inp.type = inp.type === 'password' ? 'text' : 'password';
+}
+
+function setLang(el) {
+    document.querySelectorAll('.lang-chip').forEach(c => c.classList.remove('active'));
+    el.classList.add('active');
+}
+
+// Recording
+let mediaRecorder, audioChunks = [], isRecording = false, timerInterval;
+async function toggleRecording() {
+    if (!isRecording) {
+        try {
+            const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+            mediaRecorder = new MediaRecorder(stream);
+            audioChunks = [];
+            mediaRecorder.addEventListener('dataavailable', e => audioChunks.push(e.data));
+            mediaRecorder.addEventListener('stop', () => {
+                const blob = new Blob(audioChunks, { type: 'audio/webm' });
+                const file = new File([blob], 'voice_profile.webm', { type: 'audio/webm' });
+                const dt = new DataTransfer();
+                dt.items.add(file);
+                document.getElementById('voice_note').files = dt.files;
+                showToast('Voice recording saved!', 'success');
+            });
+            mediaRecorder.start();
+            isRecording = true;
+            document.getElementById('mic-circle').classList.add('recording');
+            document.getElementById('mic-icon').className = 'fa-solid fa-stop';
+            document.getElementById('mic-label').textContent = 'Recording... Tap to Stop';
+            document.getElementById('waveform').style.display = 'flex';
+            document.getElementById('rec-timer').style.display = 'block';
+            let secs = 0;
+            timerInterval = setInterval(() => {
+                secs++;
+                document.getElementById('rec-timer').textContent = `0:${String(secs).padStart(2,'0')}`;
+            }, 1000);
+        } catch(e) {
+            showToast('Microphone access denied. Please allow microphone.', 'error');
+        }
+    } else {
+        mediaRecorder.stop();
+        isRecording = false;
+        clearInterval(timerInterval);
+        document.getElementById('mic-circle').classList.remove('recording');
+        document.getElementById('mic-icon').className = 'fa-solid fa-check';
+        document.getElementById('mic-label').textContent = 'Voice Recorded ✓';
+        document.getElementById('waveform').style.display = 'none';
+    }
+}
+
+// Form submit
+document.getElementById('worker-signup-form').addEventListener('submit', async (e) => {
+    e.preventDefault();
+    const btn = document.getElementById('submit-btn');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Creating account...';
+
+    try {
+        const fd = new FormData(e.target);
+        const res = await fetch('/api/auth/signup/worker', { method: 'POST', body: fd });
+        const data = await res.json();
+        if (data.redirect) {
+            showToast('Account created! Welcome to VoiceHire.', 'success');
+            setTimeout(() => window.location.href = data.redirect, 1000);
+        } else {
+            showToast(data.error || 'Signup failed. Please try again.', 'error');
+            btn.disabled = false;
+            btn.innerHTML = 'Create Account <i class="fa-solid fa-check-circle ml-2"></i>';
+        }
+    } catch(err) {
+        showToast('Server error. Please try again.', 'error');
+        btn.disabled = false;
+        btn.innerHTML = 'Create Account <i class="fa-solid fa-check-circle ml-2"></i>';
+    }
+});
+</script>
 {% endblock %}
