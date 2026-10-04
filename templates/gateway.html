@@ -115,34 +115,35 @@
             </div>
         </div>
 
-        <!-- Right — AI Card -->
+        <!-- Right — Live AI Assistant Card -->
         <div class="hero-visual">
-            <div class="ai-card">
+            <div class="ai-card" id="hero-ai-card" style="cursor:pointer;" onclick="document.getElementById('vhb-fab') && document.getElementById('vhb-fab').click()">
                 <div class="ai-avatar">
                     <i class="ai-avatar-icon fa-solid fa-robot"></i>
                     <div class="ai-pulse"></div>
                 </div>
                 <div style="text-align:center; margin-bottom:16px;">
-                    <div style="font-size:.875rem; font-weight:700; color:var(--dark);">VoiceHire Assistant</div>
+                    <div style="font-size:.875rem; font-weight:700; color:var(--dark);">VoiceHire AI Assistant</div>
                     <div style="font-size:.75rem; color:var(--success); display:flex; align-items:center; justify-content:center; gap:4px; margin-top:2px;">
-                        <i class="fa-solid fa-circle" style="font-size:.5rem;"></i> Online · Hindi / English
+                        <i class="fa-solid fa-circle" style="font-size:.5rem;"></i> Online · Bolna shuru karein!
                     </div>
                 </div>
-                <div class="ai-bubble">
-                    Namaste! Main aapki help ke liye hoon. <strong>Aap kya karna chahte hain?</strong>
+                <div class="ai-bubble" id="hero-bubble" style="font-size:.9rem; line-height:1.6;">
+                    🎙️ <strong>Namaste!</strong> Main aapka AI sahayak hoon.<br>
+                    <span style="color:#6B7280;font-size:.8rem;">Page khulte hi bolna shuru hoga. Neeche ka button bhi dabayen.</span>
                 </div>
                 <div class="ai-quick-btns">
-                    <a href="{{ url_for('signup') }}" class="ai-quick-btn">
-                        <i class="fa-solid fa-briefcase mr-1"></i>Find Jobs
-                    </a>
+                    <button class="ai-quick-btn" onclick="event.stopPropagation(); document.getElementById('vhb-fab') && document.getElementById('vhb-fab').click()" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;border:none;cursor:pointer;">
+                        <i class="fa-solid fa-microphone mr-1"></i>AI se baat karein
+                    </button>
                     <a href="{{ url_for('worker_signup_page') }}" class="ai-quick-btn">
-                        <i class="fa-solid fa-microphone mr-1"></i>Voice Profile
+                        <i class="fa-solid fa-user-plus mr-1"></i>Worker Signup
                     </a>
-                    <a href="{{ url_for('login_page', role='user') }}" class="ai-quick-btn">
-                        <i class="fa-solid fa-wallet mr-1"></i>Payments
+                    <a href="{{ url_for('login_page', role='worker') }}" class="ai-quick-btn">
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i>Login
                     </a>
-                    <a href="{{ url_for('login_page', role='user') }}" class="ai-quick-btn">
-                        <i class="fa-solid fa-headset mr-1"></i>Support
+                    <a href="#how-it-works" class="ai-quick-btn">
+                        <i class="fa-solid fa-circle-info mr-1"></i>How It Works
                     </a>
                 </div>
             </div>
@@ -455,5 +456,8 @@ document.querySelectorAll('a[href^="#"]').forEach(a => {
     });
 });
 </script>
+
+<!-- Gateway AI Voice Assistant -->
+<script src="{{ url_for('static', filename='js/gateway_ai_assistant.js') }}"></script>
 
 {% endblock %}
