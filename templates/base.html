@@ -76,17 +76,22 @@
     <span id="ai-retry">{{ t("Sorry, I didn't catch that. Please repeat.") }}</span>
 </div>
 
-<script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<script src="{{ url_for('static', filename='js/voice_guide_bot.js') }}"></script>
-<script src="{{ url_for('static', filename='js/gateway_ai_assistant.js') }}"></script>
+<!-- Set VH global before AI scripts so they can read role/lang/userId at init time -->
 <script>
     window.VH = {
-        role: "{{ session.get('role', '') }}",
-        lang: "{{ session.get('lang', 'en') }}",
-        userId: "{{ session.get('user_id', '') }}",
+        role:     "{{ session.get('role', '') }}",
+        lang:     "{{ session.get('lang', 'hi') }}",
+        userId:   "{{ session.get('user_id', '') }}",
         userName: "{{ session.get('name', '') }}"
     };
+</script>
 
+<script src="{{ url_for('static', filename='js/app.js') }}"></script>
+<!-- Load unified AI assistant FIRST (sets __VH_AI_INIT__ guard) -->
+<script src="{{ url_for('static', filename='js/gateway_ai_assistant.js') }}"></script>
+<!-- Old bot only runs on signup/login/dashboard (gateway guard inside) -->
+<script src="{{ url_for('static', filename='js/voice_guide_bot.js') }}"></script>
+<script>
     // Toast utility
     function showToast(msg, type = 'info') {
         const icons = { success: 'fa-check', error: 'fa-xmark', info: 'fa-circle-info', warning: 'fa-triangle-exclamation' };

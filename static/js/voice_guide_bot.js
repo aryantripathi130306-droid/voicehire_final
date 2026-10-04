@@ -665,6 +665,12 @@
   }
 
   function init() {
+    // Skip on gateway page — the unified gateway_ai_assistant.js handles it
+    const path = window.location.pathname;
+    const isGateway = path === '/' || path === '/gateway' || path === '/home';
+    if (isGateway) return;
+    // Skip if unified assistant already initialized
+    if (window.__VH_AI_INIT__) return;
     injectCSS();
     window.VGBot = new VoiceGuideBot();
   }

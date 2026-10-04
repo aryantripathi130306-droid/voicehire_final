@@ -14,7 +14,7 @@ from datetime import datetime, timedelta, date
 from collections import defaultdict
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
-from flask import Flask, render_template, request, jsonify, session, redirect, url_for
+from flask import Flask, render_template, request, jsonify, session, redirect, url_for, Response
 from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import create_client, Client
@@ -955,7 +955,7 @@ def generate_qr_base64(data: dict) -> str:
     qr.make(fit=True)
     img = qr.make_image(fill_color="#000000", back_color="#ffffff")
     buf = io.BytesIO()
-    img.save(buf, format="PNG")
+    img.save(buf)
     buf.seek(0)
     return base64.b64encode(buf.read()).decode('utf-8')
 
@@ -1365,10 +1365,6 @@ def export_workers():
         
         if not workers:
             return jsonify({'error': 'Worker record not found'}), 404
-            
-        import csv
-        from io import StringIO
-        from flask import Response
         
         # Clean data (remove passwords, etc.)
         for w in workers:
