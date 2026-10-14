@@ -98,7 +98,17 @@
 <script>
 function togglePwd() {
     const inp = document.getElementById('password');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
+    const btn = event.currentTarget;
+    const ico = btn.querySelector('i');
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        ico.className = 'fa-regular fa-eye-slash';
+        btn.setAttribute('aria-label', 'Hide password');
+    } else {
+        inp.type = 'password';
+        ico.className = 'fa-regular fa-eye';
+        btn.setAttribute('aria-label', 'Show password');
+    }
 }
 
 document.getElementById('user-signup-form').addEventListener('submit', async (e) => {
@@ -110,7 +120,7 @@ document.getElementById('user-signup-form').addEventListener('submit', async (e)
         const fd = new FormData(e.target);
         const res = await fetch('/api/auth/signup/user', { method: 'POST', body: fd });
         const data = await res.json();
-        if (data.redirect) {
+        if (res.ok && data.redirect) {
             showToast('Account created! Welcome to VoiceHire.', 'success');
             setTimeout(() => window.location.href = data.redirect, 1000);
         } else {

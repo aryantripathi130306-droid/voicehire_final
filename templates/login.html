@@ -58,6 +58,28 @@
                     </div>
                 </div>
 
+                <!-- Role mismatch alert container -->
+                <div id="mismatch-banner" style="display:none; margin-bottom:16px; background:#FEF3C7; border:1px solid #F59E0B; border-radius:12px; padding:14px 16px;">
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <i class="fa-solid fa-triangle-exclamation" style="color:#D97706; margin-top:3px; font-size:1.1rem;"></i>
+                        <div>
+                            <div id="mismatch-text" style="font-size:0.875rem; color:#92400E; font-weight:500; line-height:1.4;"></div>
+                            <button type="button" id="mismatch-switch-btn" class="btn btn-sm btn-primary" style="margin-top:8px;">Switch Role & Continue</button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Lockout warning alert container -->
+                <div id="lockout-banner" style="display:none; margin-bottom:16px; background:#FEE2E2; border:1px solid #EF4444; border-radius:12px; padding:14px 16px;">
+                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                        <i class="fa-solid fa-lock" style="color:#DC2626; margin-top:3px; font-size:1.1rem;"></i>
+                        <div>
+                            <div id="lockout-text" style="font-size:0.875rem; color:#991B1B; font-weight:500; line-height:1.4;"></div>
+                            <div style="font-size:0.75rem; color:#7F1D1D; margin-top:4px;">For your security, repeated incorrect attempts are temporarily blocked.</div>
+                        </div>
+                    </div>
+                </div>
+
                 <form id="login-form" autocomplete="on">
                     <input type="hidden" id="login-role" value="{{ role }}">
 
@@ -74,7 +96,7 @@
                         <div class="input-icon-wrap">
                             <i class="fa-solid fa-lock input-icon"></i>
                             <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
-                            <span class="input-icon-right" onclick="togglePwd('password', this)">
+                            <span class="input-icon-right" onclick="togglePwd('password', this)" role="button" tabindex="0" aria-label="Toggle password visibility">
                                 <i class="fa-regular fa-eye"></i>
                             </span>
                         </div>
@@ -84,7 +106,7 @@
                         <label class="flex items-center gap-2 text-sm text-muted" style="cursor:pointer;">
                             <input type="checkbox" id="remember"> Remember me
                         </label>
-                        <a href="#" class="text-sm text-primary font-medium">Forgot Password?</a>
+                        <a href="{{ url_for('forgot_password_page', role=role) }}" id="forgot-pwd-link" class="text-sm text-primary font-medium">Forgot Password?</a>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
@@ -124,6 +146,8 @@ function setRole(role) {
     document.getElementById('login-role').value = role;
     document.getElementById('card-user').classList.toggle('selected', role === 'user');
     document.getElementById('card-worker').classList.toggle('selected', role === 'worker');
+    document.getElementById('forgot-pwd-link').href = `/forgot-password?role=${role}`;
+    document.getElementById('mismatch-banner').style.display = 'none';
 }
 
 function togglePwd(inputId, btn) {
@@ -132,9 +156,11 @@ function togglePwd(inputId, btn) {
     if (inp.type === 'password') {
         inp.type = 'text';
         ico.className = 'fa-regular fa-eye-slash';
+        btn.setAttribute('aria-label', 'Hide password');
     } else {
         inp.type = 'password';
         ico.className = 'fa-regular fa-eye';
+        btn.setAttribute('aria-label', 'Show password');
     }
 }
 
@@ -149,13 +175,10 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
 
     btn.disabled = true;
     btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-2"></i> Logging in...';
+    document.getElementById('mismatch-banner').style.display = 'none';
+    document.getElementById('lockout-banner').style.display = 'none';
 
     try {
-        const fd = new FormData();
-        fd.append('phone', phone);
-        fd.append('password', password);
-        fd.append('role', role);
-
         const res = await fetch('/api/auth/login', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
@@ -163,7 +186,36 @@ document.getElementById('login-form').addEventListener('submit', async (e) => {
         });
         const data = await res.json();
 
-        if (data.redirect) {
+        if (res.status === 403 && data.error === 'role_mismatch') {
+            const banner = document.getElementById('mismatch-banner');
+            document.getElementById('mismatch-text').textContent = data.message;
+            const switchBtn = document.getElementById('mismatch-switch-btn');
+            const targetRoleLabel = data.detected_role === 'worker' ? 'Worker' : 'Employer';
+            switchBtn.textContent = `Switch to ${targetRoleLabel} Login`;
+            switchBtn.onclick = () => {
+                setRole(data.detected_role);
+                // Pre-fill password and submit or let user review
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login';
+            };
+            banner.style.display = 'block';
+            showToast(data.message, 'warning');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login';
+            return;
+        }
+
+        if (res.status === 429 && data.lockout) {
+            const banner = document.getElementById('lockout-banner');
+            document.getElementById('lockout-text').textContent = data.error;
+            banner.style.display = 'block';
+            showToast(data.error, 'error');
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login';
+            return;
+        }
+
+        if (res.ok && data.redirect) {
             showToast('Login successful! Welcome back.', 'success');
             setTimeout(() => window.location.href = data.redirect, 800);
         } else {

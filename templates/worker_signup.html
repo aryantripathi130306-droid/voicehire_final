@@ -90,8 +90,8 @@
                                 <label class="form-label" for="password">Password <span class="required">*</span></label>
                                 <div class="input-icon-wrap">
                                     <i class="fa-solid fa-lock input-icon"></i>
-                                    <input id="password" name="password" type="password" class="form-control" placeholder="Min. 6 characters" required>
-                                    <span class="input-icon-right" onclick="togglePwd()"><i class="fa-regular fa-eye"></i></span>
+                                    <input id="password" name="password" type="password" class="form-control" placeholder="Min. 6 characters" required autocomplete="new-password">
+                                    <span class="input-icon-right" onclick="togglePwd(this)" role="button" tabindex="0" aria-label="Toggle password visibility"><i class="fa-regular fa-eye"></i></span>
                                 </div>
                             </div>
                         </div>
@@ -306,9 +306,19 @@ function nextStep(step) {
     }
 }
 
-function togglePwd() {
+function togglePwd(btn) {
     const inp = document.getElementById('password');
-    inp.type = inp.type === 'password' ? 'text' : 'password';
+    if (!btn) btn = event ? event.currentTarget : null;
+    const ico = btn ? btn.querySelector('i') : null;
+    if (inp.type === 'password') {
+        inp.type = 'text';
+        if (ico) ico.className = 'fa-regular fa-eye-slash';
+        if (btn) btn.setAttribute('aria-label', 'Hide password');
+    } else {
+        inp.type = 'password';
+        if (ico) ico.className = 'fa-regular fa-eye';
+        if (btn) btn.setAttribute('aria-label', 'Show password');
+    }
 }
 
 function setLang(el) {

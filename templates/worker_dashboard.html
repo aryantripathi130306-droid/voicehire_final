@@ -17,7 +17,7 @@
             <a href="{{ url_for('worker_dashboard') }}" class="nav-item active">
                 <i class="fa-solid fa-house nav-icon"></i> Home
             </a>
-            <a href="{{ url_for('booking_slots_page', worker_id=worker.id) if worker else '#' }}" class="nav-item">
+            <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
                 <i class="fa-solid fa-briefcase nav-icon"></i> Find Jobs
             </a>
             <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
@@ -29,14 +29,14 @@
             </a>
 
             <div class="nav-section-label">Account</div>
-            <a href="#" class="nav-item" id="wallet-nav">
+            <a href="#wallet" class="nav-item" id="wallet-nav" onclick="document.querySelector('.stats-grid')?.scrollIntoView({behavior:'smooth'}); return false;">
                 <i class="fa-solid fa-wallet nav-icon"></i> Wallet
             </a>
-            <a href="#" class="nav-item" id="profile-nav">
+            <a href="#profile" class="nav-item" id="profile-nav" onclick="openProfileModal(); return false;">
                 <i class="fa-solid fa-user nav-icon"></i> Profile
             </a>
-            <a href="#" class="nav-item" id="settings-nav">
-                <i class="fa-solid fa-gear nav-icon"></i> Settings
+            <a href="/api/export-workers" class="nav-item" id="export-nav">
+                <i class="fa-solid fa-file-csv nav-icon"></i> Export Data
             </a>
         </nav>
 
@@ -109,7 +109,7 @@
                         </div>
                     </div>
                 </div>
-                <a href="#" class="btn btn-sm" style="background:white; color:var(--primary); white-space:nowrap; flex-shrink:0;">
+                <a href="#profile" class="btn btn-sm" style="background:white; color:var(--primary); white-space:nowrap; flex-shrink:0;" onclick="openProfileModal(); return false;">
                     Setup Now
                 </a>
             </div>
@@ -154,7 +154,7 @@
                 <div>
                     <div class="section-head">
                         <h2>Nearby Opportunities</h2>
-                        <a href="{{ url_for('booking_slots_page', worker_id=worker.id) if worker else '#' }}">View All</a>
+                        <a href="{{ url_for('my_bookings_page') }}">View All</a>
                     </div>
                     <div class="jobs-grid" id="nearby-jobs">
                         <!-- Skeleton state -->
@@ -169,7 +169,7 @@
                 <div>
                     <div class="section-head"><h2>Quick Actions</h2></div>
                     <div class="quick-actions mb-6">
-                        <a href="{{ url_for('booking_slots_page', worker_id=worker.id) if worker else '#' }}" class="quick-action-btn">
+                        <a href="{{ url_for('my_bookings_page') }}" class="quick-action-btn">
                             <div class="qa-icon"><i class="fa-solid fa-briefcase"></i></div>
                             <div class="qa-label">Find Jobs</div>
                         </a>
@@ -181,7 +181,7 @@
                             <div class="qa-icon" style="background:var(--success-light); color:var(--success);"><i class="fa-solid fa-qrcode"></i></div>
                             <div class="qa-label">Scan QR</div>
                         </a>
-                        <a href="#" class="quick-action-btn">
+                        <a href="#wallet" class="quick-action-btn" onclick="document.querySelector('.stats-grid')?.scrollIntoView({behavior:'smooth'}); return false;">
                             <div class="qa-icon" style="background:var(--warning-light); color:var(--warning);"><i class="fa-solid fa-wallet"></i></div>
                             <div class="qa-label">Wallet</div>
                         </a>
@@ -199,6 +199,38 @@
         </div>
     </main>
 </div>
+
+<!-- Worker Profile Modal -->
+<div id="worker-profile-modal" class="modal-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--card-bg, #fff); border-radius:var(--radius-xl, 16px); width:100%; max-width:440px; box-shadow:var(--shadow-xl); overflow:hidden; border:1px solid var(--border);">
+        <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:1.125rem; font-weight:600;">Worker Profile</h3>
+            <button onclick="closeProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div class="sidebar-avatar" style="width:56px; height:56px; font-size:1.5rem;">{{ worker.name[0].upper() if worker and worker.name else 'W' }}</div>
+                <div>
+                    <h4 style="margin:0; font-size:1.125rem;">{{ worker.name if worker else 'Worker' }}</h4>
+                    <span class="badge badge-primary">{{ worker.work if worker else 'Service Professional' }}</span>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.875rem; color:var(--text-secondary);">
+                <div><strong style="color:var(--text-main);">Location:</strong> {{ worker.location if worker and worker.location else 'Not specified' }}</div>
+                <div><strong style="color:var(--text-main);">Phone:</strong> {{ worker.phone if worker and worker.phone else 'Not provided' }}</div>
+                <div><strong style="color:var(--text-main);">Voice Bio:</strong> {{ 'Recorded' if worker and worker.voice_note else 'Pending' }}</div>
+                <div><strong style="color:var(--text-main);">ID Proof:</strong> {{ 'Uploaded' if worker and worker.id_proof else 'Pending' }}</div>
+                <div><strong style="color:var(--text-main);">Standard Rate:</strong> ₹{{ worker.price if worker and worker.price else '400' }} / day</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <a href="/api/export-workers" class="btn btn-secondary btn-sm" style="flex:1; text-align:center;">
+                    <i class="fa-solid fa-download mr-1"></i> Download Data
+                </a>
+                <button onclick="closeProfileModal()" class="btn btn-primary btn-sm" style="flex:1;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -213,7 +245,16 @@ function closeSidebar() {
     document.getElementById('sidebar-overlay').classList.remove('open');
 }
 
-// Time of day greeting (set by template or JS)
+// Profile modal controls
+function openProfileModal() {
+    const m = document.getElementById('worker-profile-modal');
+    if (m) { m.style.display = 'flex'; }
+}
+function closeProfileModal() {
+    const m = document.getElementById('worker-profile-modal');
+    if (m) { m.style.display = 'none'; }
+}
+
 // Load stats
 async function loadStats() {
     try {
@@ -222,6 +263,10 @@ async function loadStats() {
         const d = await res.json();
         document.getElementById('stat-today').textContent = `₹${d.today_earnings || 0}`;
         document.getElementById('stat-month').textContent = `₹${d.month_earnings || 0}`;
+        const statJobs = document.getElementById('stat-jobs');
+        if (statJobs) {
+            statJobs.textContent = d.total_jobs !== undefined ? d.total_jobs : (d.last_jobs ? d.last_jobs.length : 0);
+        }
 
         // Recent jobs
         const rj = document.getElementById('recent-jobs');
@@ -242,82 +287,85 @@ async function loadStats() {
     } catch(e) {}
 }
 
-// Load nearby jobs
+// Load nearby jobs dynamically
 async function loadNearbyJobs() {
     const container = document.getElementById('nearby-jobs');
     try {
         const res = await fetch('/api/workers/nearby?limit=3');
-        // fallback: show sample cards
+        if (!res.ok) throw new Error('API status ' + res.status);
+        const jobs = await res.json();
+        if (jobs && jobs.length > 0) {
+            container.innerHTML = jobs.map(j => {
+                const employerName = j.user_name || 'Customer';
+                const initial = (employerName.trim().charAt(0) || 'C').toUpperCase();
+                const service = j.service_type || 'General Service';
+                const desc = j.description || service;
+                const loc = j.location || 'Nearby';
+                const price = j.price ? `₹${j.price}` : '₹400';
+                const isUrgent = !!j.is_urgent;
+                return `
+                    <div class="job-card">
+                        <div class="job-card-header">
+                            <div class="job-employer">
+                                <div class="employer-avatar">${initial}</div>
+                                <div>
+                                    <div class="employer-name">${employerName}</div>
+                                    <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> ${isUrgent ? 'Urgent Need' : 'Verified Request'}</div>
+                                </div>
+                            </div>
+                            <span class="badge ${isUrgent ? 'badge-danger' : 'badge-primary'}">${service}</span>
+                        </div>
+                        <div class="job-title">${desc}</div>
+                        <div class="job-meta">
+                            <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> ${loc}</span>
+                            ${isUrgent ? '<span class="job-meta-item" style="color:var(--danger);"><i class="fa-solid fa-bolt"></i> Urgent</span>' : '<span class="job-meta-item"><i class="fa-solid fa-clock"></i> Open</span>'}
+                        </div>
+                        <div class="job-pay">${price} <span>/ est.</span></div>
+                        <div class="job-actions">
+                            <button class="btn btn-primary btn-sm btn-full" onclick="acceptJob('${j.id}')">Accept Job</button>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1; padding: 28px 16px; text-align:center;">
+                    <i class="fa-solid fa-briefcase" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
+                    <h3 style="font-size: 1rem; margin-bottom: 4px;">No Open Jobs Nearby</h3>
+                    <p style="font-size: 0.875rem; color: var(--muted); margin: 0;">New job postings from customers will appear here automatically.</p>
+                </div>
+            `;
+        }
+    } catch(e) {
         container.innerHTML = `
-            <div class="job-card">
-                <div class="job-card-header">
-                    <div class="job-employer">
-                        <div class="employer-avatar">AE</div>
-                        <div>
-                            <div class="employer-name">ABC Events</div>
-                            <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> Verified</div>
-                        </div>
-                    </div>
-                    <span class="badge badge-primary">Part Time</span>
-                </div>
-                <div class="job-title">Event Support Helper</div>
-                <div class="job-meta">
-                    <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> RBU Campus</span>
-                    <span class="job-meta-item"><i class="fa-solid fa-route"></i> 5 km away</span>
-                    <span class="job-meta-item"><i class="fa-solid fa-clock"></i> 4 Hours</span>
-                </div>
-                <div class="job-pay">₹450 <span>/ day</span></div>
-                <div class="job-actions">
-                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm btn-full">Apply Now</a>
-                </div>
-            </div>
-            <div class="job-card">
-                <div class="job-card-header">
-                    <div class="job-employer">
-                        <div class="employer-avatar" style="background:var(--success-light);color:var(--success);">QC</div>
-                        <div>
-                            <div class="employer-name">Quick Commerce</div>
-                            <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> Verified</div>
-                        </div>
-                    </div>
-                    <span class="badge badge-success">Full Day</span>
-                </div>
-                <div class="job-title">Delivery Assistant</div>
-                <div class="job-meta">
-                    <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> Sector 12</span>
-                    <span class="job-meta-item"><i class="fa-solid fa-route"></i> 3 km away</span>
-                    <span class="job-meta-item"><i class="fa-solid fa-clock"></i> Full Day</span>
-                </div>
-                <div class="job-pay">₹300 <span>/ day</span></div>
-                <div class="job-actions">
-                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm btn-full">Apply Now</a>
-                </div>
-            </div>
-            <div class="job-card">
-                <div class="job-card-header">
-                    <div class="job-employer">
-                        <div class="employer-avatar" style="background:var(--warning-light);color:var(--warning);">BB</div>
-                        <div>
-                            <div class="employer-name">BuildBridge Co.</div>
-                            <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> Verified</div>
-                        </div>
-                    </div>
-                    <span class="badge badge-warning">Full Day</span>
-                </div>
-                <div class="job-title">Construction Helper</div>
-                <div class="job-meta">
-                    <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> Phase 2</span>
-                    <span class="job-meta-item"><i class="fa-solid fa-route"></i> 2 km away</span>
-                    <span class="job-meta-item"><i class="fa-solid fa-clock"></i> Full Day</span>
-                </div>
-                <div class="job-pay">₹400 <span>/ day</span></div>
-                <div class="job-actions">
-                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm btn-full">Apply Now</a>
-                </div>
+            <div class="empty-state" style="grid-column: 1 / -1; padding: 28px 16px; text-align:center;">
+                <i class="fa-solid fa-briefcase" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
+                <h3 style="font-size: 1rem; margin-bottom: 4px;">No Open Jobs Nearby</h3>
+                <p style="font-size: 0.875rem; color: var(--muted); margin: 0;">New job postings from customers will appear here automatically.</p>
             </div>
         `;
-    } catch(e) {
-        container.innerHTML = `<div class="empty-state"><i class="fa-solid fa-briefcase"></i><h3>No jobs found</h3><p>Check back soon for nearby opportunities.</p></div>`;
+    }
+}
+
+// Accept a job
+async function acceptJob(jobId) {
+    if (!confirm('Do you want to accept this job?')) return;
+    try {
+        const res = await fetch(`/api/jobs/${jobId}/accept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+        const d = await res.json();
+        if (res.ok) {
+            alert('Job accepted! Check My Work for details.');
+            loadNearbyJobs();
+            loadStats();
+        } else {
+            alert(d.error || 'Failed to accept job.');
+        }
+    } catch(err) {
+        alert('Network error while accepting job.');
     }
 }
 

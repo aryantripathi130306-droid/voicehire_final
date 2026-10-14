@@ -87,7 +87,9 @@
 </script>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
-<!-- Load unified AI assistant FIRST (sets __VH_AI_INIT__ guard) -->
+<!-- VoiceHire Production Voice Services Layer -->
+<script src="{{ url_for('static', filename='js/voice_services.js') }}"></script>
+<!-- Load unified AI assistant -->
 <script src="{{ url_for('static', filename='js/gateway_ai_assistant.js') }}"></script>
 <!-- Old bot only runs on signup/login/dashboard (gateway guard inside) -->
 <script src="{{ url_for('static', filename='js/voice_guide_bot.js') }}"></script>

@@ -1,1337 +1,1822 @@
 /**
- * VoiceHire — Unified AI Voice Assistant
- * ═══════════════════════════════════════════════════════════════════
- * Single source of truth. Replaces both voice_guide_bot.js (gateway)
- * and the old gateway_ai_assistant.js.
- *
- * BEHAVIOUR BY PAGE:
- *  / (gateway)   → Auto-open after 2s. Full guided onboarding flow.
- *  /signup/*     → Auto-open. Fill form by voice.
- *  /login        → Auto-open. Fill form by voice.
- *  /dashboard/*  → Show floating button. Speak job notifications.
- *
- * LANGUAGE SUPPORT (22 Indian languages + English):
- *  hi, en, bn, ta, te, mr, gu, kn, ml, pa, or, as, ur,
- *  mai, bh, ne, sd, kok, mni, sat, ks, doi
- *
- * FLOW:
- *  GATEWAY → greet (Hindi) → lang select → login/register → dashboard guide
- *  SIGNUP  → greet → fill name/work/location/phone/password → submit
- *  LOGIN   → greet → fill role/phone/password → submit
- * ═══════════════════════════════════════════════════════════════════
+ * VoiceHire — Unified Voice Assistant & Onboarding Shell
+ * ═══════════════════════════════════════════════════════════════════════════
+ * Complies with Master Engineering Rules (Rule 1-14):
+ *  - High-accessibility voice & visual onboarding for informal workforce.
+ *  - Browser Web Speech API (SpeechRecognition + SpeechSynthesis).
+ *  - Handles audio autoplay blocking with non-intrusive activation button.
+ *  - Requests microphone permission only when voice input is initiated.
+ *  - Explicit Assistant State Model (no scattered boolean flags).
+ *  - Zero password collection via voice (Strict Rule 8 Compliance).
+ *  - Preserves existing UI and full manual navigation alternative.
+ * ═══════════════════════════════════════════════════════════════════════════
  */
+
 (function () {
   'use strict';
 
-  /* ───────────────────────────────────────────────────────────────
-     GUARD: Prevent double-init if script is loaded multiple times
-  ─────────────────────────────────────────────────────────────── */
-  if (window.__VH_AI_INIT__) return;
-  window.__VH_AI_INIT__ = true;
+  // Guard against duplicate execution
+  if (window.__VH_ASSISTANT_INITIALIZED__) return;
+  window.__VH_ASSISTANT_INITIALIZED__ = true;
+  window.__VH_AI_INIT__ = true; // Signals older legacy scripts to stand down
 
-  /* ───────────────────────────────────────────────────────────────
-     1. LANGUAGE REGISTRY
-     Maps language code → { name, nativeName, speechCode, flag }
-  ─────────────────────────────────────────────────────────────── */
-  const LANGS = {
-    hi: { name: 'Hindi',     native: 'हिंदी',      speech: 'hi-IN', flag: '🇮🇳' },
-    en: { name: 'English',   native: 'English',    speech: 'en-IN', flag: '🇬🇧' },
-    bn: { name: 'Bangla',    native: 'বাংলা',      speech: 'bn-IN', flag: '🇧🇩' },
-    ta: { name: 'Tamil',     native: 'தமிழ்',      speech: 'ta-IN', flag: '🌟' },
-    te: { name: 'Telugu',    native: 'తెలుగు',     speech: 'te-IN', flag: '🌟' },
-    mr: { name: 'Marathi',   native: 'मराठी',      speech: 'mr-IN', flag: '🇮🇳' },
-    gu: { name: 'Gujarati',  native: 'ગુજરાતી',   speech: 'gu-IN', flag: '🇮🇳' },
-    kn: { name: 'Kannada',   native: 'ಕನ್ನಡ',     speech: 'kn-IN', flag: '🌟' },
-    ml: { name: 'Malayalam', native: 'മലയാളം',     speech: 'ml-IN', flag: '🌟' },
-    pa: { name: 'Punjabi',   native: 'ਪੰਜਾਬੀ',    speech: 'pa-IN', flag: '🇮🇳' },
-    or: { name: 'Odia',      native: 'ଓଡ଼ିଆ',    speech: 'or-IN', flag: '🌟' },
-    as: { name: 'Assamese',  native: 'অসমীয়া',   speech: 'as-IN', flag: '🌟' },
-    ur: { name: 'Urdu',      native: 'اردو',       speech: 'ur-IN', flag: '🇮🇳' },
-    ne: { name: 'Nepali',    native: 'नेपाली',     speech: 'ne-IN', flag: '🏔️' },
-    kok:{ name: 'Konkani',   native: 'कोंकणी',    speech: 'kok-IN',flag: '🌟' },
+  /* ─────────────────────────────────────────────────────────────────────────
+     1. ASSISTANT STATE MODEL
+  ───────────────────────────────────────────────────────────────────────── */
+  const States = {
+    UNINITIALIZED:    'UNINITIALIZED',
+    AUTOPLAY_PROMPT:  'AUTOPLAY_PROMPT',
+    GREETING:         'GREETING',
+    LANGUAGE_SELECT:  'LANGUAGE_SELECT',
+    ROLE_SELECT:      'ROLE_SELECT',
+    ACTION_SELECT:    'ACTION_SELECT',
+    NAVIGATING:       'NAVIGATING',
+    IDLE:             'IDLE'
   };
 
-  /* ───────────────────────────────────────────────────────────────
-     2. DIALOGUE LIBRARY
-     Every string the AI speaks — keyed by lang code.
-     Falls back: lang → en → hi
-  ─────────────────────────────────────────────────────────────── */
-  const D = {
-    /* ── Gateway boot (always spoken in Hindi first) ── */
-    boot: {
-      _always_hi: "Namaste! Main VoiceHire ka AI Assistant hoon. Kya aap Hindi mein baat karna chahenge? Ya kisi aur bhasha mein baat karna chahte hain? Aap apni bhasha ka naam bol sakte hain ya neeche se select kar sakte hain.",
-    },
+  /* ─────────────────────────────────────────────────────────────────────────
+     2. VERIFIED LANGUAGE REGISTRY
+     Prioritizes Hindi, Punjabi, and English first, followed by verified Indian languages.
+  ───────────────────────────────────────────────────────────────────────── */
+  const LANGUAGES = {
+    hi: { code: 'hi', name: 'Hindi',     native: 'हिंदी',      speechCode: 'hi-IN', flag: '🇮🇳' },
+    pa: { code: 'pa', name: 'Punjabi',   native: 'ਪੰਜਾਬੀ',    speechCode: 'pa-IN', flag: '🇮🇳' },
+    en: { code: 'en', name: 'English',   native: 'English',    speechCode: 'en-IN', flag: '🇬🇧' },
+    bn: { code: 'bn', name: 'Bengali',   native: 'বাংলা',      speechCode: 'bn-IN', flag: '🇧🇩' },
+    mr: { code: 'mr', name: 'Marathi',   native: 'मराठी',      speechCode: 'mr-IN', flag: '🇮🇳' },
+    ta: { code: 'ta', name: 'Tamil',     native: 'தமிழ்',      speechCode: 'ta-IN', flag: '🌟' },
+    te: { code: 'te', name: 'Telugu',    native: 'తెలుగు',     speechCode: 'te-IN', flag: '🌟' },
+    gu: { code: 'gu', name: 'Gujarati',  native: 'ગુજરાતી',   speechCode: 'gu-IN', flag: '🇮🇳' },
+    kn: { code: 'kn', name: 'Kannada',   native: 'ಕನ್ನಡ',     speechCode: 'kn-IN', flag: '🌟' },
+    ml: { code: 'ml', name: 'Malayalam', native: 'മലയാളം',     speechCode: 'ml-IN', flag: '🌟' },
+    or: { code: 'or', name: 'Odia',      native: 'ଓଡ଼ିଆ',      speechCode: 'or-IN', flag: '🌟' },
+    ur: { code: 'ur', name: 'Urdu',      native: 'اردو',       speechCode: 'ur-IN', flag: '🇮🇳' }
+  };
 
-    langDetectHint: {
-      _always: "Apni bhasha bolein — Hindi, English, Tamil, Telugu, Bangla..."
+  /* ─────────────────────────────────────────────────────────────────────────
+     3. MULTILINGUAL DIALOGUE LIBRARY
+  ───────────────────────────────────────────────────────────────────────── */
+  const DIALOGUES = {
+    greeting: {
+      hi: "नमस्ते! मैं VoiceHire का आवाज़ सहायक हूँ। मैं आपको काम ढूँढने या वर्कर बुक करने में मदद कर सकता हूँ।",
+      pa: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ VoiceHire ਦਾ ਆਵਾਜ਼ ਸਹਾਇਕ ਹਾਂ। ਮੈਂ ਤੁਹਾਨੂੰ ਕੰਮ ਲੱਭਣ ਜਾਂ ਕਾਰੀਗਰ ਬੁੱਕ ਕਰਨ ਵਿੱਚ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
+      en: "Hello! I am your VoiceHire voice assistant. I can help you find local work or book skilled workers.",
+      bn: "নমস্কার! আমি VoiceHire-এর ভয়েস সহকারী। আমি আপনাকে কাজ খুঁজতে বা কর্মী বুক করতে সাহায্য করতে পারি।",
+      mr: "नमस्कार! मी VoiceHire चा आवाज सहाय्यक आहे. मी तुम्हाला काम शोधण्यात किंवा कारागीर बुक करण्यात मदत करू शकतो.",
+      ta: "வணக்கம்! நான் VoiceHire-ன் குரல் உதவியாளர். வேலை தேட அல்லது தொழிலாளர்களை பதிவு செய்ய நான் உதவுவேன்.",
+      te: "నమస్కారం! నేను VoiceHire వాయిస్ అసిస్టెంట్. పని వెతకడానికి లేదా వర్కర్‌ని బుక్ చేసుకోవడానికి నేను సహాయం చేస్తాను.",
+      gu: "નમસ્તે! હું VoiceHire નો અવાજ સહાયક છું. હું તમને કામ શોધવામાં અથવા વર્કર બુક કરવામાં મદદ કરી શકું છું.",
+      kn: "ನಮಸ್ಕಾರ! ನಾನು VoiceHire ಧ್ವನಿ ಸಹಾಯಕ. ಕೆಲಸ ಹುಡುಕಲು ಅಥವಾ ಕೆಲಸಗಾರರನ್ನು ಬುಕ್ ಮಾಡಲು ನಾನು ಸಹಾಯ ಮಾಡುತ್ತೇನೆ.",
+      ml: "നമസ്കാരം! ഞാൻ VoiceHire-ന്റെ വോയ്‌സ് അസിസ്റ്റന്റാണ്. ജോലി കണ്ടെത്താനോ തൊഴിലാളികളെ ബുക്ക് ചെയ്യാനോ സഹായിക്കാം.",
+      or: "ନମସ୍କାର! ମୁଁ VoiceHire ର ଭଏସ୍ ସହାୟକ। ମୁଁ ଆପଣଙ୍କୁ କାମ ଖୋଜିବା କିମ୍ବା ଶ୍ରମିକ ବୁକ୍ କରିବାରେ ସାହାଯ୍ୟ କରିପାରିବି।",
+      ur: "سلام! میں VoiceHire کا آواز معاون ہوں۔ میں آپ کو کام تلاش کرنے یا ورکر بک کرنے میں مدد کر سکتا ہوں۔"
     },
-
-    langConfirm: {
-      hi: "Bahut achha! Ab hum Hindi mein baat karenge.",
+    askLanguage: {
+      hi: "आप किस भाषा में बात करना चाहते हैं? अपनी पसंद की भाषा चुनें।",
+      pa: "ਤੁਸੀਂ ਕਿਸ ਭਾਸ਼ਾ ਵਿੱਚ ਗੱਲਬਾਤ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ? ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ।",
+      en: "Which language do you prefer? Please choose below.",
+      bn: "আপনি কোন ভাষায় কথা বলতে চান? আপনার ভাষা বেছে নিন।",
+      mr: "तुम्हाला कोणत्या भाषेत बोलायला आवडेल? कृपया तुमची भाषा निवडा.",
+      ta: "நீங்கள் எந்த மொழியில் பேச விரும்புகிறீர்கள்? உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்.",
+      te: "మీరు ఏ భాషలో మాట్లాడాలనుకుంటున్నారు? దయచేసి ఎంచుకోండి.",
+      gu: "તમે કઈ ભાષામાં વાત કરવા માંગો છો? તમારી ભાષા પસંદ કરો.",
+      kn: "ನೀವು ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಲು ಬಯಸುತ್ತೀರಿ? ದಯವಿಟ್ಟು ಆಯ್ಕೆಮಾಡಿ.",
+      ml: "ഏത് ഭാഷയിലാണ് സംസാരിക്കാൻ ആഗ്രഹിക്കുന്നത്? ദയവായി തിരഞ്ഞെടുക്കുക.",
+      or: "ଆପଣ କେଉଁ ଭାଷାରେ କଥା ହେବାକୁ ଚାହାଁନ୍ତି? ଆପଣଙ୍କର ଭାଷା ବାଛନ୍ତୁ।",
+      ur: "آپ کس زبان میں بات کرنا چاہتے ہیں؟ براہ کرم اپنی زبان منتخب کریں۔"
+    },
+    langConfirmed: {
+      hi: "बहुत अच्छा! अब हम हिंदी में बात करेंगे।",
+      pa: "ਬਹੁਤ ਵਧੀਆ! ਹੁਣ ਅਸੀਂ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲਬਾਤ ਕਰਾਂਗੇ।",
       en: "Great! We will continue in English.",
-      bn: "Khub bhalo! Ekhon Banglay kotha bolbo.",
-      ta: "Nanru! Naan unkalukku Tamil-il pEsuvEn.",
-      te: "Chala bagundi! Ippudu Telugu lo maatunadam.",
-      mr: "Chhan! Aata Marathi madhye boluyat.",
-      gu: "Saras! Hve Gujarati ma vaat karishu.",
-      kn: "Chennaagi! Kannada-alli maatunaadona.",
-      ml: "Nannai! Malayalathil samsarikkaam.",
-      pa: "Bahut vaddhia! Hun Punjabi vich gall karange.",
-      or: "Bhala! Odia re kathaa hebu.",
-      as: "Bhal! Asomiya bhashat kotha patio.",
-      ur: "Bohat achhaa! Ab Urdu mein baat karte hain.",
-      ne: "Ramro! Nepali ma kura garau.",
-      kok:"Boro! Aata Konkani-t ulovuya.",
+      bn: "খুব ভালো! এখন আমরা বাংলায় কথা বলব।",
+      mr: "छान! आता आपण मराठीत बोलूया.",
+      ta: "மிக நன்று! இப்போது தமிழில் தொடருவோம்.",
+      te: "చాలా బాగుంది! ఇప్పుడు మనం తెలుగులో మాట్లాడదాం.",
+      gu: "સરસ! હવે આપણે ગુજરાતીમાં વાત કરીશું.",
+      kn: "ಉತ್ತಮ! ಈಗ ನಾವು ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡೋಣ.",
+      ml: "വളരെ നല്ലത്! ഇനി മലയാളത്തിൽ സംസാരിക്കാം.",
+      or: "ବହୁତ ଭଲ! ଏବେ ଆମେ ଓଡ଼ିଆରେ କଥାବାର୍ତ୍ତା କରିବା।",
+      ur: "بہت اچھا! اب ہم اردو میں بات کریں گے۔"
     },
-
-    /* ── Gateway: new or existing user? ── */
-    roleAsk: {
-      hi: "Kya aap VoiceHire par pehle aaye hain? Agar aapka account hai to 'Login' bolein. Agar nayi profile banana chahte hain to 'Nayi Profile' bolein.",
-      en: "Have you used VoiceHire before? Say 'Login' if you have an account, or 'New Profile' to register.",
-      bn: "Apni ki age VoiceHire use korechhen? 'Login' bolun jodi account ache, noyto 'Notun Profile' bolun.",
-      ta: "Neenga munbe VoiceHire upatiteenga? 'Login' sollunga illaiyal 'Puthu Profile' sollunga.",
-      te: "Meeru mundhu VoiceHire vadilaaraa? Account unte 'Login' cheppandi, ledante 'Kotta Profile' cheppandi.",
-      mr: "Tumhi aadhi VoiceHire vaparla aahe ka? 'Login' mhana kiva 'Navi Profile' mhana.",
-      gu: "Shu tame pehla VoiceHire vapro chho? 'Login' kaho ya 'Navi Profile' kaho.",
-      kn: "Neenu modalu VoiceHire upayogisiddiya? 'Login' helo illava 'Nava Profile' helo.",
-      ml: "Neengu munpe VoiceHire upayogicchittundo? 'Login' paro allenkil 'Puthiya Profile' paro.",
-      pa: "Kya tusi pehlan VoiceHire use kita? 'Login' kaho ya 'Naya Profile' kaho.",
-      or: "Aapana purbaru VoiceHire bahibaru achi ki? 'Login' kahu nahi hole 'Nua Profile' kahu.",
-      ur: "Kya aap pehle VoiceHire use kar chuke hain? 'Login' bolein ya 'Nayi Profile' bolein.",
-      ne: "Tapaiले pahile VoiceHire prayog garnu bhayo? 'Login' bhannu ya 'Naya Profile' bhannu.",
+    askRole: {
+      hi: "क्या आपको काम चाहिए या आप किसी काम के लिए वर्कर को रखना चाहते हैं?",
+      pa: "ਕੀ ਤੁਹਾਨੂੰ ਕੰਮ ਚਾਹੀਦਾ ਹੈ ਜਾਂ ਤੁਸੀਂ ਕਿਸੇ ਕੰਮ ਲਈ ਵਰਕਰ ਨੂੰ ਹਾਇਰ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?",
+      en: "Are you looking for work, or do you want to hire a worker?",
+      bn: "আপনি কি কাজ খুঁজছেন, নাকি কাউকে কাজে নিয়োগ করতে চান?",
+      mr: "तुम्हाला काम हवे आहे की कामासाठी कामगार ठेवायचा आहे?",
+      ta: "நீங்கள் வேலை தேடுகிறீர்களா, அல்லது ஒரு தொழிலாளியை வேலைக்கு அமர்த்த விரும்புகிறீர்களா?",
+      te: "మీరు పని కోసం చూస్తున్నారా, లేదా వర్కర్‌ని పనిలో పెట్టుకోవాలనుకుంటున్నారా?",
+      gu: "શું તમે કામ શોધી રહ્યા છો, કે કોઈ વર્કરને કામે રાખવા માંગો છો?",
+      kn: "ನೀವು ಕೆಲಸ ಹುಡುಕುತ್ತಿದ್ದೀರಾ ಅಥವಾ ಕೆಲಸಗಾರರನ್ನು ನೇಮಿಸಿಕೊಳ್ಳಲು ಬಯಸುವಿರಾ?",
+      ml: "നിങ്ങൾ ജോലി അന്വേഷിക്കുകയാണോ, അതോ തൊഴിലാളിയെ നിയമിക്കാൻ ആഗ്രഹിക്കുന്നുണ്ടോ?",
+      or: "ଆପଣ କାମ ଖୋଜୁଛନ୍ତି କିମ୍ବା କାମ ପାଇଁ ଶ୍ରମିକ ନିୟୋଜିତ କରିବାକୁ ଚାହାଁନ୍ତି?",
+      ur: "کیا آپ کام تلاش کر رہے ہیں، یا کسی کام کے لیے ورکر رکھنا چاہتے ہیں؟"
     },
-
-    /* ── Worker type question ── */
-    workerOrUser: {
-      hi: "Aap kaun hain? Kya aap kaam dhundhne waale hain? To 'Mazdoor' bolein. Ya aap kisi ko hire karna chahte hain? To 'Maalik' bolein.",
-      en: "Are you a Worker looking for jobs, or an Employer looking to hire? Say 'Worker' or 'Employer'.",
-      bn: "Apni Worker naki Employer? 'Worker' ba 'Employer' bolun.",
-      ta: "Neenga Worker-a Employer-a? 'Worker' ya 'Employer' sollunga.",
-      te: "Meeru Worker aa Employer aa? 'Worker' cheppandi ya 'Employer' cheppandi.",
-      mr: "Tumhi Worker aahat ka Employer? 'Worker' ya 'Employer' mhana.",
-      gu: "Tame Worker cho ke Employer? 'Worker' ya 'Employer' kaho.",
-      kn: "Neenu Worker-aa Employer-aa? 'Worker' helo ya 'Employer' helo.",
-      ml: "Neenu Worker-aano Employer-aano? 'Worker' paro ya 'Employer' paro.",
-      pa: "Tusi Worker ho ya Employer? 'Worker' ya 'Employer' kaho.",
-      or: "Aapana Worker naki Employer? 'Worker' ba 'Employer' kahu.",
-      ur: "Aap Worker hain ya Employer? 'Worker' ya 'Employer' bolein.",
-      ne: "Tapai Worker ho ki Employer? 'Worker' bhannu ya 'Employer' bhannu.",
+    roleWorker: {
+      hi: "मुझे काम चाहिए (Worker)",
+      pa: "ਮੈਨੂੰ ਕੰਮ ਚਾਹੀਦਾ ਹੈ (Worker)",
+      en: "I Want Work (Worker)",
+      bn: "আমি কাজ চাই (Worker)",
+      mr: "मला काम हवे आहे (Worker)",
+      ta: "எனக்கு வேலை வேண்டும் (Worker)",
+      te: "నాకు పని కావాలి (Worker)",
+      gu: "મને કામ જોઈએ છે (Worker)",
+      kn: "ನನಗೆ ಕೆಲಸ ಬೇಕು (Worker)",
+      ml: "എനിക്ക് ജോലി വേണം (Worker)",
+      or: "ମୋତେ କାମ ଦରକାର (Worker)",
+      ur: "مجھے کام چاہیے (Worker)"
     },
-
-    /* ── Login flow ── */
-    loginPhone: {
-      hi: "Theek hai! Apna 10 ankon ka mobile number dheere dheere bolein.",
-      en: "Please say your 10-digit mobile number slowly and clearly.",
-      bn: "Apnar 10-digit mobile number aaste bolun.",
-      ta: "Unkal 10 ellakkam phone number mella sollunga.",
-      te: "Meeru 10 annelaphone number meesta meesta cheppandi.",
-      mr: "Tumcha 10 anki mobile number savakar saanga.",
-      gu: "Tamaro 10 ankno mobile number dhire dhire kaho.",
-      kn: "Nimma 10 anka mobile number nidhanavagi heli.",
-      ml: "Nimma 10 akkam phone number peethiyayi parayo.",
-      pa: "Apna 10-anka wala mobile number dhire dhire kaho.",
-      or: "Apananka 10-anka mobile number aaste aaste kahu.",
-      ur: "Apna 10 ankon ka mobile number dheere bolein.",
-      ne: "Tapaiको 10 anka mobile number bistaarai bhannu.",
+    roleWorkerSub: {
+      hi: "लोकल नौकरियाँ व रोज़गार खोजें",
+      pa: "ਸਥਾਨਕ ਨੌਕਰੀਆਂ ਤੇ ਰੋਜ਼ਗਾਰ ਲੱਭੋ",
+      en: "Discover local job opportunities",
+      bn: "স্থানীয় কাজের সুযোগ খুঁজুন",
+      mr: "स्थानिक रोजगाराच्या संधी शोधा",
+      ta: "உள்ளூர் வேலை வாய்ப்புகளைக் கண்டறியுங்கள்",
+      te: "స్థానిక ఉద్యోగ అవకాశాలను కనుగొనండి",
+      gu: "સ્થાનિક નોકરીઓ અને રોજગાર શોધો",
+      kn: "ಸ್ಥಳೀಯ ಉದ್ಯೋಗಾವಕಾಶಗಳನ್ನು ಹುಡುಕಿ",
+      ml: "പ്രാദേശിക തൊഴിലവസരങ്ങൾ കണ്ടെത്തുക",
+      or: "ସ୍ଥାନୀୟ ରୋଜଗାର ସୁଯୋଗ ଖୋଜନ୍ତୁ",
+      ur: "مقامی ملازمتوں کے مواقع تلاش کریں"
     },
-
-    loginPassword: {
-      hi: "Ab apna password bolein.",
-      en: "Now say your password.",
-      bn: "Akhon apnar password bolun.",
-      ta: "Ippo unkal password sollunga.",
-      te: "Ippudu meeru password cheppandi.",
-      mr: "Aata tumcha password saanga.",
-      gu: "Hve tamaro password kaho.",
-      kn: "Ipa nimma password heli.",
-      ml: "Ippol nimma password parayo.",
-      pa: "Hune apna password kaho.",
-      or: "Ebeye apananka password kahu.",
-      ur: "Ab apna password bolein.",
-      ne: "Aba tapaiको password bhannu.",
+    roleCustomer: {
+      hi: "मुझे वर्कर चाहिए (Customer)",
+      pa: "ਮੈਨੂੰ ਵਰਕਰ ਚਾਹੀਦਾ ਹੈ (Customer)",
+      en: "I Want to Hire (Customer)",
+      bn: "আমার কর্মী দরকার (Customer)",
+      mr: "मला कामगार हवा आहे (Customer)",
+      ta: "எனக்கு தொழிலாளி தேவை (Customer)",
+      te: "నాకు వర్కర్ కావాలి (Customer)",
+      gu: "મને વર્કર જોઈએ છે (Customer)",
+      kn: "ನನಗೆ ಕೆಲಸಗಾರರು ಬೇಕು (Customer)",
+      ml: "എനിക്ക് തൊഴിലാളികളെ വേണം (Customer)",
+      or: "ମୋତେ ଶ୍ରମିକ ଦରକାର (Customer)",
+      ur: "مجھے ورکر چاہیے (Customer)"
     },
-
-    loginSubmitting: {
-      hi: "Bahut achha! Login ho raha hai...",
-      en: "Perfect! Logging you in now...",
-      bn: "Khub bhalo! Akhon login hochhe...",
-      ta: "Arumai! Ippoluthu login aaguthu...",
-      te: "Chala bagundi! Ippudu login avutundi...",
-      mr: "Mast! Aata login hoto aahe...",
-      gu: "Saras! Hve login thai rahu chhe...",
-      kn: "Tumba Chenna! Ipa login aagutide...",
-      ml: "Kollaam! Ippol login aakkunnu...",
-      pa: "Bahut vaddhia! Hune login ho raha hai...",
-      ur: "Bahut achha! Login ho raha hai...",
-      ne: "Raamro! Login hudai cha...",
+    roleCustomerSub: {
+      hi: "प्लंबर, इलेक्ट्रीशियन, हेल्पर बुक करें",
+      pa: "ਪਲੰਬਰ, ਇਲੈਕਟ੍ਰੀਸ਼ੀਅਨ, ਹੈਲਪਰ ਬੁੱਕ ਕਰੋ",
+      en: "Book verified plumbers, helpers & pros",
+      bn: "প্লাম্বার, ইলেকট্রিশিয়ান ও হেল্পার বুক করুন",
+      mr: "प्लंबर, इलेक्ट्रिशियन, मदतनीस बुक करा",
+      ta: "பிளம்பர், எலக்ட்ரீஷியன், உதவியாளர்களை பதிவு செய்க",
+      te: "ప్లంబర్, ఎలక్ట్రీషియన్, హెల్పర్లను బుక్ చేయండి",
+      gu: "પ્લમ્બર, ઇલેક્ટ્રિશિયન, હેલ્પર બુક કરો",
+      kn: "ಪ್ಲಂಬರ್, ಎಲೆಕ್ಟ್ರಿಷಿಯನ್, ಸಹಾಯಕವನ್ನು ಬುಕ್ ಮಾಡಿ",
+      ml: "പ്ലംബർ, ഇലക്ട്രീഷ്യൻ എന്നിവരെ ബുക്ക് ചെയ്യുക",
+      or: "ପ୍ଲମ୍ବର, ଇଲେକ୍ଟ୍ରିସିଆନ୍, ହେଲ୍ପର୍ ବୁକ୍ କରନ୍ତୁ",
+      ur: "پلمبر، الیکٹریشن اور ہیلپر بک کریں"
     },
-
-    /* ── Register flow ── */
-    regName: {
-      hi: "Aapka poora naam kya hai? Kripaya bolein.",
-      en: "What is your full name? Please say it clearly.",
-      bn: "Apnar puro naam ki? Sposto kore bolun.",
-      ta: "Unkal peyar enna? Thirivaay sollunga.",
-      te: "Meeru peru emiti? Cheppandi.",
-      mr: "Tumche poorne naav saanga.",
-      gu: "Tamaru puru naam kaho.",
-      kn: "Nimma hesa heli.",
-      ml: "Nimma pera parayo.",
-      pa: "Apna poora naam kaho.",
-      or: "Apananka poora naam kahu.",
-      ur: "Aapka poora naam bolein.",
-      ne: "Tapaiको puraa naam bhannu.",
+    askAction: {
+      hi: "क्या आपका पहले से खाता है या आप नया खाता बनाना चाहते हैं?",
+      pa: "ਕੀ ਤੁਹਾਡਾ ਪਹਿਲਾਂ ਤੋਂ ਖਾਤਾ ਹੈ ਜਾਂ ਤੁਸੀਂ ਨਵਾਂ ਖਾਤਾ ਬਣਾਉਣਾ ਚਾਹੁੰਦੇ ਹੋ?",
+      en: "Do you already have an account, or would you like to create a new one?",
+      bn: "আপনার কি আগে থেকেই অ্যাকাউন্ট আছে, নাকি নতুন অ্যাকাউন্ট খুলবেন?",
+      mr: "तुमचे आधीच खाते आहे की तुम्हाला नवीन खाते तयार करायचे आहे?",
+      ta: "உங்களுக்கு ஏற்கனவே கணக்கு உள்ளதா அல்லது புதிய கணக்கு தொடங்க வேண்டுமா?",
+      te: "మీకు ఇప్పటికే ఖాతా ఉందా లేక కొత్త ఖాతా సృష్టించాలనుకుంటున్నారా?",
+      gu: "શું તમારી પાસે પહેલેથી ખાતું છે કે નવું ખાતું બનાવવા માંગો છો?",
+      kn: "ನಿಮ್ಮ ಬಳಿ ಈಗಾಗಲೇ ಖಾತೆ ಇದೆಯೇ ಅಥವಾ ಹೊಸ ಖಾತೆಯನ್ನು ರಚಿಸಲು ಬಯಸುವಿರಾ?",
+      ml: "നിങ്ങൾക്ക് ഇതിനകം അക്കൗണ്ട് ഉണ്ടോ അതോ പുതിയ അക്കൗണ്ട് വേണമോ?",
+      or: "ଆପଣଙ୍କର ପୂର୍ବରୁ ଖାତା ଅଛି କି ଆପଣ ନୂଆ ଖାତା ଖୋଲିବାକୁ ଚାହାଁନ୍ତି?",
+      ur: "کیا آپ کا پہلے سے اکاؤنٹ ہے یا آپ نیا اکاؤنٹ بنانا چاہتے ہیں؟"
     },
-
-    regWork: {
-      hi: "Aap kya kaam karte hain? Jaise plumber, electrician, carpenter, safaiwala, driver, cook...",
-      en: "What is your profession? For example: plumber, electrician, driver, cook, cleaner, carpenter...",
-      bn: "Apni ki kaj koren? Jemon plumber, electrician, driver, cook...",
-      ta: "Neenga enna velai seikireerga? Udaharanam: plumber, electrician, driver...",
-      te: "Meeru em pani chestaaru? Udaharanaku: plumber, electrician, driver...",
-      mr: "Tumhi konte kaam karta? Udaaharan: plumber, electrician, driver...",
-      gu: "Tame shu kaam karo chho? Udaharan: plumber, electrician, driver...",
-      kn: "Neenu yenu kelasa maaduttiya? Udaaharana: plumber, electrician...",
-      ml: "Nimmal yenna panikkaranu? Udaaharan: plumber, electrician...",
-      pa: "Tusi ki kaam karde ho? Misal: plumber, electrician, driver...",
-      ur: "Aap kya kaam karte hain? Jaise plumber, electrician, driver...",
-      ne: "Tapai ke kaam garnuhunchha? Udaharan: plumber, electrician...",
+    actionLogin: {
+      hi: "लॉग इन करें (Login)",
+      pa: "ਲੌਗ ਇਨ ਕਰੋ (Login)",
+      en: "Log In",
+      bn: "লগ ইন করুন (Login)",
+      mr: "लॉग इन करा (Login)",
+      ta: "உள்நுழைக (Login)",
+      te: "లాగిన్ అవ్వండి (Login)",
+      gu: "લૉગ ઇન કરો (Login)",
+      kn: "ಲಾಗಿನ್ ಆಗಿ (Login)",
+      ml: "ലോഗിൻ ചെയ്യുക (Login)",
+      or: "ଲଗ୍ ଇନ୍ କରନ୍ତୁ (Login)",
+      ur: "لاگ ان کریں (Login)"
     },
-
-    regLocation: {
-      hi: "Aap kis sheher ya ilaake mein rehte hain?",
-      en: "Which city or area do you live in?",
-      bn: "Apni kon shahore ba elaakay thaken?",
-      ta: "Neenga entha nagaram illaiyal idam irukkireenga?",
-      te: "Meeru em nagaram lonu em praadam lo untaaru?",
-      mr: "Tumhi konathya shaharat kiva bhagaat raahtaa?",
-      gu: "Tame kya shaher ya vishtar ma rahoch?",
-      kn: "Neenu yelli iruttiya?",
-      ml: "Nimmal enghe thamasikkunnath?",
-      pa: "Tusi kis shahar ya ilaake vich rehunde ho?",
-      ur: "Aap kis sheher ya ilaake mein rehte hain?",
-      ne: "Tapai kun shahar ya thaauma basnu hunchha?",
+    actionLoginSub: {
+      hi: "पहले से खाता मौजूद है",
+      pa: "ਪਹਿਲਾਂ ਤੋਂ ਖਾਤਾ ਹੈ",
+      en: "Already have an account",
+      bn: "আগে থেকেই অ্যাকাউন্ট আছে",
+      mr: "आधीच खाते अस्तित्वात आहे",
+      ta: "ஏற்கனவே கணக்கு உள்ளது",
+      te: "ఇప్పటికే ఖాతా ఉంది",
+      gu: "પહેલેથી ખાતું મોજૂદ છે",
+      kn: "ಈಗಾಗಲೇ ಖಾತೆ ಇದೆ",
+      ml: "ഇതിനകം അക്കൗണ്ട് ഉണ്ട്",
+      or: "ପୂର୍ବରୁ ଖାତା ଅଛି",
+      ur: "پہلے سے اکاؤنٹ موجود ہے"
     },
-
-    regPhone: {
-      hi: "Apna 10 ankon ka mobile number dheere dheere bolein.",
-      en: "Please say your 10-digit mobile number slowly.",
-      bn: "Apnar 10-digit mobile number aaste bolun.",
-      ta: "Unkal 10 ellakkam phone number mella sollunga.",
-      te: "Meeru 10 anela phone number meesta meesta cheppandi.",
-      mr: "Tumcha 10 anki mobile number savakar saanga.",
-      gu: "Tamaro 10 ankno mobile number dhire dhire kaho.",
-      kn: "Nimma 10 anka mobile number nidhanavagi heli.",
-      ml: "Nimma 10 akkam phone number mella parayo.",
-      pa: "Apna 10-anka mobile number dhire dhire kaho.",
-      ur: "Apna 10 ankon ka mobile number bolein.",
-      ne: "Tapaiको 10 anka mobile number bistaarai bhannu.",
+    actionRegister: {
+      hi: "नया खाता बनाएं (Create Account)",
+      pa: "ਨਵਾਂ ਖਾਤਾ ਬਣਾਓ (Create Account)",
+      en: "Create Account",
+      bn: "নতুন অ্যাকাউন্ট তৈরি করুন",
+      mr: "नवीन खाते तयार करा",
+      ta: "புதிய கணக்கு தொடங்கு",
+      te: "కొత్త ఖాతా సృష్టించండి",
+      gu: "નવું ખાતું બનાવો",
+      kn: "ಹೊಸ ಖಾತೆ ರಚಿಸಿ",
+      ml: "പുതിയ അക്കൗണ്ട് ഉണ്ടാക്കുക",
+      or: "ନୂଆ ଖାତା ତିଆରି କରନ୍ତୁ",
+      ur: "نیا اکاؤنٹ بنائیں"
     },
-
-    regPassword: {
-      hi: "Ab apni pasand ka password bolein. Koi bhi shabd ya ankon ka mel jo aapko aasaani se yaad rahe.",
-      en: "Now say a password — any word or number combination you can easily remember.",
-      bn: "Akhon ekti password bolun — jekono word ba number jeta apni mone rakhte parben.",
-      ta: "Ippo password sollunga — unga ninaivil nilaikkum oru word ba number.",
-      te: "Ippudu password cheppandi — meeru tagaini gurtupettukuni unna word ya number.",
-      mr: "Aata password saanga — aapala aathavata raheel ase konetihe shabd ya anka.",
-      gu: "Hve password kaho — tamne yaad rahe tevu koi shabd ya ank.",
-      kn: "Ipa password heli — nimmannu ninapitta iruvantha yaavude shabda ya sankhye.",
-      ml: "Ippol password parayo — nimmal orkkaan kazhiyunna vaakkum ankhavum.",
-      pa: "Hune password kaho — koi vi shabd ya ank jo tumhannu yaad rahe.",
-      ur: "Ab password bolein — koi bhi lafz ya ank jo yaad rakhna aasaan ho.",
-      ne: "Aba password bhannu — yaad rakhna sajilo shabad ya anka.",
+    actionRegisterSub: {
+      hi: "मुफ़्त प्रोफ़ाइल बनाएं",
+      pa: "ਮੁਫ਼ਤ ਪ੍ਰੋਫਾਈਲ ਬਣਾਓ",
+      en: "Register for free",
+      bn: "বিনামূল্যে প্রোফাইল তৈরি করুন",
+      mr: "मोफत प्रोफाईल तयार करा",
+      ta: "இலவச சுயவிவரத்தை உருவாக்கவும்",
+      te: "ఉచిత ప్రొఫైల్ సృష్టించండి",
+      gu: "મફત પ્રોફાઇલ બનાવો",
+      kn: "ಉಚಿತ ಪ್ರೊಫೈಲ್ ರಚಿಸಿ",
+      ml: "സൗജന്യ പ്രൊഫൈൽ ഉണ്ടാക്കുക",
+      or: "ମାଗଣାରେ ପ୍ରୋଫାଇଲ୍ ତିଆରି କରନ୍ତୁ",
+      ur: "مفت پروفائل بنائیں"
     },
-
-    regSubmitting: {
-      hi: "Wah! Aapki profile ban rahi hai. Ek second ruk...",
-      en: "Excellent! Creating your profile now...",
-      bn: "Oshadharon! Apnar profile toiri hocche...",
-      ta: "Miga Arumai! Unkal profile tayaar aaguthu...",
-      te: "Adhbhutam! Meeru profile create avutundi...",
-      mr: "Shandar! Tumchi profile tayyar hote aahe...",
-      gu: "Darun! Tamari profile bani rahi chhe...",
-      kn: "Adbhuta! Nimma profile create aagutide...",
-      ml: "Poornam! Nimma profile create cheyyunnu...",
-      pa: "Kamaal! Apna profile ban raha hai...",
-      ur: "Wah! Aapki profile ban rahi hai...",
-      ne: "Dherai raamro! Tapaiको profile banai rahe chha...",
+    navigating: {
+      hi: "मैं आपको सही पेज पर ले जा रहा हूँ...",
+      pa: "ਤੁਹਾਨੂੰ ਪੇਜ 'ਤੇ ਲਿਜਾਇਆ ਜਾ ਰਿਹਾ ਹੈ...",
+      en: "Taking you to the page now...",
+      bn: "আপনাকে সংশ্লিষ্ট পেজে নিয়ে যাওয়া হচ্ছে...",
+      mr: "मी तुम्हाला योग्य पृष्ठावर घेऊन जात आहे...",
+      ta: "உங்களை பக்கத்திற்கு அழைத்துச் செல்கிறேன்...",
+      te: "మిమ్మల్ని పేజీకి తీసుకువెళుతున్నాను...",
+      gu: "હું તમને પેજ પર લઈ જઈ રહ્યો છું...",
+      kn: "ನಿಮ್ಮನ್ನು ಪುಟಕ್ಕೆ ಕರೆದೊಯ್ಯುತ್ತಿದ್ದೇನೆ...",
+      ml: "നിങ്ങളെ പേജിലേക്ക് കൊണ്ടുപോകുന്നു...",
+      or: "ଆପଣଙ୍କୁ ସଠିକ୍ ପୃଷ୍ଠାକୁ ନିଆଯାଉଛି...",
+      ur: "میں آپ کو صفحے پر لے جا رہا ہوں..."
     },
-
-    /* ── Dashboard guide ── */
-    dashGreet: {
-      hi: "Swagat hai! Aapka dashboard taiyaar hai. Naye kaam dekhne ke liye Find Jobs dabayein. Apni availability ON rakhein taaki job requests aayein!",
-      en: "Welcome back! Your dashboard is ready. Tap Find Jobs to see new work. Keep your availability ON to receive job requests!",
-      bn: "Swagata! Apnar dashboard taiyaar. Notun kaj dekhte Find Jobs taan. Availability ON rakun!",
-      ta: "Varaverkirom! Unkal dashboard tayaar. Puthu velai kaana Find Jobs thado. Availability ON vaiyungal!",
-      te: "Swaagatam! Meeru dashboard ready. Kotta jobs choosukovadaniki Find Jobs nockkondi. Availability ON ga pettandi!",
-      mr: "Swagat! Tumcha dashboard tayaar. Nawe kaam paahat Find Jobs click kara. Availability ON theva!",
-      gu: "Swagat! Tama dashboard taiyaar chhe. Nava kaam jova Find Jobs tap karo. Availability ON rakho!",
-      kn: "Swagata! Nimma dashboard ready. Hosa jobs noodalu Find Jobs click maadi. Availability ON ittukoli!",
-      ml: "Swaagatam! Nimma dashboard ready. Puthu jobs kaanaanu Find Jobs tap cheyyuka. Availability ON aakki vaykkuka!",
-      pa: "Ji ayan nu! Apna dashboard taiyaar hai. Nava kaam vekhne lyi Find Jobs dabaao. Availability ON rakho!",
-      ur: "Khush aamdeed! Aapka dashboard taiyaar hai. Nayi jobs dekhne ke liye Find Jobs tap karein. Availability ON rakhein!",
-      ne: "Swaagatam! Tapaiको dashboard taiyaar chha. Naya kaam herna Find Jobs click garnu. Availability ON rakhnos!",
+    autoplayBlockedMsg: {
+      hi: "आवाज़ सुनने और बात करने के लिए नीचे दिए गए बटन पर टैप करें।",
+      pa: "ਆਵਾਜ਼ ਸੁਣਨ ਅਤੇ ਗੱਲ ਕਰਨ ਲਈ ਹੇਠਾਂ ਦਿੱਤੇ ਬਟਨ 'ਤੇ ਟੈਪ ਕਰੋ।",
+      en: "Tap the button below to enable the voice assistant audio.",
+      bn: "শব্দ শুনতে ও কথা বলতে নিচের বোতামে চাপ দিন।",
+      mr: "आवाज ऐकण्यासाठी आणि बोलण्यासाठी खालील बटणावर टॅप करा.",
+      ta: "குரலைக் கேட்க கீழே உள்ள பொத்தானைத் தட்டவும்.",
+      te: "వాయిస్ వినడానికి క్రింది బటన్‌పై నొక్కండి.",
+      gu: "અવાજ સાંભળવા માટે નીચેના બટન પર ટેપ કરો.",
+      kn: "ಧ್ವನಿಯನ್ನು ಕೇಳಲು ಕೆಳಗಿನ ಬಟನ್ ಟ್ಯಾಪ್ ಮಾಡಿ.",
+      ml: "ശബ്ദം കേൾക്കാൻ താഴെയുള്ള ബട്ടൺ ടാപ്പുചെയ്യുക.",
+      or: "ଭଏସ୍ ଶୁଣିବା ପାଇଁ ତଳେ ଥିବା ବଟନ୍ ଟ୍ୟାପ୍ କରନ୍ତୁ।",
+      ur: "آواز سننے اور بات کرنے کے لیے نیچے دیئے گئے بٹن پر ٹیپ کریں۔"
     },
-
-    /* ── Job notification ── */
-    jobAlert: {
-      hi: "Aapke liye ek nayi job request aayi hai! Dashboard check karein.",
-      en: "You have a new job request! Please check your dashboard.",
-      bn: "Apnar jonnyo ekta notun kaj eshechhe! Dashboard dekun.",
-      ta: "Unkalukku oru puthu velai vanthu irukku! Dashboard parungu.",
-      te: "Meeru kotta job request vachindi! Dashboard chuskoandi.",
-      mr: "Tumhala ek nawe kaam aale! Dashboard paha.",
-      gu: "Tama mate ek navu kaam aavyu! Dashboard juo.",
-      kn: "Nimge hosa job request bande! Dashboard nodi.",
-      ml: "Nimmalku oru puthiya job request vannu! Dashboard nokko.",
-      pa: "Tuhade layi ik navi job request aayi hai! Dashboard vekhao.",
-      ur: "Aapke liye ek nayi job request aayi hai! Dashboard check karein.",
-      ne: "Tapaiलāi naya job request aayo chha! Dashboard check garnu.",
+    startVoiceBtn: {
+      hi: "🔊 आवाज़ सहायक शुरू करें",
+      pa: "🔊 ਆਵਾਜ਼ ਸਹਾਇਕ ਸ਼ੁਰੂ ਕਰੋ",
+      en: "🔊 Start Voice Assistant",
+      bn: "🔊 ভয়েস সহকারী শুরু করুন",
+      mr: "🔊 आवाज सहाय्यक सुरू करा",
+      ta: "🔊 குரல் உதவியாளரைத் தொடங்கு",
+      te: "🔊 వాయిస్ అసిస్టెంట్‌ని ప్రారంభించండి",
+      gu: "🔊 અવાજ સહાયક શરૂ કરો",
+      kn: "🔊 ಧ್ವನಿ ಸಹಾಯಕವನ್ನು ಪ್ರಾರಂಭಿಸಿ",
+      ml: "🔊 വോയ്‌സ് അസിസ്റ്റന്റ് ആരംഭിക്കുക",
+      or: "🔊 ଭଏସ୍ ସହାୟକ ଆରମ୍ଭ କରନ୍ତୁ",
+      ur: "🔊 آواز معاون شروع کریں"
     },
-
-    retry: {
-      hi: "Maafi kijiye, samajh nahi aaya. Kripaya phir se bolein.",
-      en: "Sorry, I did not catch that. Please say it again.",
-      bn: "Kshoma korun, bujhte parchhi na. Abar bolun.",
-      ta: "Mannikkanam, puriyavillai. Meendum sollunga.",
-      te: "Kshaminchaandi, artham kaaledhu. Meeru meeru cheppandi.",
-      mr: "Maaf kara, samajala nahi. Parat saanga.",
-      gu: "Maaf karo, samajyu nahi. Phri kaho.",
-      kn: "Kshamisi, arthaagalilla. Matte heli.",
-      ml: "Kshaminnam, arjila. Valiyoru parayo.",
-      pa: "Maafi karo, samajh nahi aaya. Phir kaho.",
-      ur: "Maafi chahta hoon, samajh nahi aaya. Phir bolein.",
-      ne: "Maafi maagnuhos, bujhena. Pheri bhannu.",
+    micListening: {
+      hi: "सुन रहा हूँ... बोलिए",
+      pa: "ਸੁਣ ਰਿਹਾ ਹਾਂ... ਬੋਲੋ",
+      en: "Listening... please speak",
+      bn: "শুনছি... বলুন",
+      mr: "ऐकत आहे... बोला",
+      ta: "கேட்கிறேன்... பேசுங்கள்",
+      te: "వింటున్నాను... మాట్లాడండి",
+      gu: "સાંભળી રહ્યો છું... બોલો",
+      kn: "ಕೇಳಿಸಿಕೊಳ್ಳುತ್ತಿದ್ದೇನೆ... ಮಾತನಾಡಿ",
+      ml: "കേൾക്കുന്നു... സംസാരിക്കൂ",
+      or: "ଶୁଣୁଛି... କୁହନ୍ତୁ",
+      ur: "سن رہا ہوں... بولیے"
     },
-
-    noSpeech: {
-      hi: "Koi awaaz nahi mili. Ek baar phir koshish karein.",
-      en: "No voice detected. Please try speaking again.",
-      bn: "Kono awaz paaini. Abar bolun.",
-      ta: "Kural kedaikkavillai. Meendum sollunga.",
-      te: "Voice raaledu. Meeru meeru try cheyandi.",
-      mr: "Awaz aali nahi. Parat bolun.",
-      gu: "Koi awaaz sanbhaldi nahi. Phri bolao.",
-      kn: "Dhwani sigalilla. Matte try madi.",
-      ur: "Koi awaaz nahi mili. Dobara bolein.",
-      ne: "Awaaz detekhina. Pheri prayaas garnu.",
-    },
-
-    noSupport: {
-      hi: "Aapka browser voice support nahi karta. Kripaya Google Chrome use karein.",
-      en: "Your browser does not support voice. Please use Google Chrome.",
-    },
+    micDenied: {
+      hi: "माइक्रोफ़ोन की अनुमति नहीं मिली। आप नीचे दिए गए बटन पर टैप कर सकते हैं।",
+      pa: "ਮਾਈਕ੍ਰੋਫੋਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਮਿਲੀ। ਤੁਸੀਂ ਹੇਠਾਂ ਦਿੱਤੇ ਬਟਨਾਂ 'ਤੇ ਟੈਪ ਕਰ ਸਕਦੇ ਹੋ।",
+      en: "Microphone permission was not granted. You can tap any option below.",
+      bn: "মাইক্রোফোনের অনুমতি পাওয়া যায়নি। আপনি নিচের অপশনে চাপ দিতে পারেন।",
+      mr: "मायक्रोफोनची परवानगी मिळाली नाही. आपण खालील पर्यायांवर टॅप करू शकता.",
+      ta: "மைக்ரோஃபோன் அனுமதி கிடைக்கவில்லை. நீங்கள் கீழே உள்ள விருப்பங்களை தேர்வு செய்யலாம்.",
+      te: "మైక్రోఫోన్ అనుమతి లభించలేదు. మీరు క్రింది ఎంపికలను ఎంచుకోవచ్చు.",
+      gu: "માઇક્રોફોનની મંજૂરી મળી નથી. તમે નીચે આપેલા બટન પર ટેપ કરી શકો છો.",
+      kn: "ಮೈಕ್ರೋಫೋನ್ ಅನುಮತಿ ಲಭ್ಯವಾಗಿಲ್ಲ. ನೀವು ಕೆಳಗಿನ ಆಯ್ಕೆಗಳನ್ನು ಬಳಸಬಹುದು.",
+      ml: "മൈക്രോഫോൺ അനുമതി ലഭിച്ചില്ല. താഴെയുള്ള ഓപ്ഷനുകൾ ഉപയോഗിക്കുക.",
+      or: "ମାଇକ୍ରୋଫୋନ୍ ଅନୁମତି ମିଳିଲା ନାହିଁ। ଆପଣ ତଳେ ଥିବା ବଟନ୍ ବ୍ୟବହାର କରିପାରିବେ।",
+      ur: "مائیکروفون کی اجازت نہیں ملی۔ آپ نیچے دیے گئے آپشنز پر ٹیپ کر سکتے ہیں۔"
+    }
   };
 
-  /* ───────────────────────────────────────────────────────────────
-     3. STATE
-  ─────────────────────────────────────────────────────────────── */
-  let lang = 'hi';
-  let recognition = null;
-  let isSpeaking = false;
-  let isListening = false;
-  let panelOpen = false;
-  let currentResolve = null;   // resolve fn for the current listen() promise
-  let jobPollTimer = null;
-  let lastJobCount = null;
-  let hasInitialized = false;
+  /* ─────────────────────────────────────────────────────────────────────────
+     4. VOICEHIRE ASSISTANT CORE CONTROLLER
+  ───────────────────────────────────────────────────────────────────────── */
+  class VoiceHireAssistant {
+    constructor() {
+      // Configuration & Preferences
+      this.currentLang = localStorage.getItem('vh_lang') || (window.VH && window.VH.lang) || 'hi';
+      if (!LANGUAGES[this.currentLang]) this.currentLang = 'hi';
 
-  /* ───────────────────────────────────────────────────────────────
-     4. SPEECH ENGINE
-  ─────────────────────────────────────────────────────────────── */
-  function say(textOrKey, overrideLang) {
-    return new Promise(resolve => {
-      if (!window.speechSynthesis) { resolve(); return; }
-      window.speechSynthesis.cancel();
+      this.isManualMode = localStorage.getItem('vh_manual_mode') === 'true';
+      this.isMuted = localStorage.getItem('vh_muted') === 'true';
+      this.isDismissed = sessionStorage.getItem('vh_dismissed') === 'true';
 
-      let text = textOrKey;
-      // If it's a key in D, resolve the language
-      if (D[textOrKey]) {
-        const src = D[textOrKey];
-        const useLang = overrideLang || lang;
-        text = src[useLang] || src.en || src.hi || src._always_hi || src._always || '';
+      // State Management
+      this.state = States.UNINITIALIZED;
+      this.selectedRole = null;       // 'worker' | 'user'
+      this.selectedAction = null;     // 'login' | 'register'
+      this.lastInstruction = '';
+
+      // Production Voice Services Engine
+      this.tts = new (window.VoiceHireVoice ? window.VoiceHireVoice.TextToSpeechService : Object)();
+      this.stt = new (window.VoiceHireVoice ? window.VoiceHireVoice.SpeechRecognitionService : Object)();
+      this.lastClickTime = 0;
+      this.isSpeaking = false;
+      this.isListening = false;
+      this.isProcessing = false;
+
+      // DOM References
+      this.dom = {};
+
+      this.init();
+    }
+
+    init() {
+      this.injectStyles();
+      this.renderWidget();
+      this.bindControls();
+      this.initVoiceServices();
+
+      // Check whether user explicitly preferred manual mode
+      if (this.isManualMode) {
+        this.updateStatus('Manual Mode', 'ready');
+        return; // Stays minimized as floating FAB
       }
 
-      if (!text) { resolve(); return; }
-
-      uiSetBubble(text);
-      uiSetWave(true);
-      isSpeaking = true;
-
-      const utt = new SpeechSynthesisUtterance(text);
-      const useLang = overrideLang || lang;
-      utt.lang = (LANGS[useLang] || LANGS.hi).speech;
-      utt.rate  = 0.90;
-      utt.pitch = 1.05;
-      utt.volume = 1;
-
-      // Try to find native voice
-      const voices = window.speechSynthesis.getVoices();
-      const langPrefix = utt.lang.split('-')[0];
-      const match = voices.find(v => v.lang.startsWith(langPrefix) && !v.name.includes('(')) ||
-                    voices.find(v => v.lang.startsWith(langPrefix));
-      if (match) utt.voice = match;
-
-      utt.onend  = () => { isSpeaking = false; uiSetWave(false); resolve(); };
-      utt.onerror= () => { isSpeaking = false; uiSetWave(false); resolve(); };
-
-      // Safari/iOS workaround — split very long sentences
-      window.speechSynthesis.speak(utt);
-    });
-  }
-
-  function hear(timeoutMs) {
-    return new Promise(resolve => {
-      if (!('webkitSpeechRecognition' in window || 'SpeechRecognition' in window)) {
-        say('noSupport').then(() => resolve({ text: '', raw: [] }));
+      // If already dismissed for this tab session, do not auto-open
+      if (this.isDismissed) {
         return;
       }
 
-      const Rec = window.SpeechRecognition || window.webkitSpeechRecognition;
-      recognition = new Rec();
-      recognition.lang = (LANGS[lang] || LANGS.hi).speech;
-      recognition.interimResults = true;
-      recognition.maxAlternatives = 5;
-      recognition.continuous = false;
+      // Auto-open for new visitor after short delay
+      setTimeout(() => {
+        this.open();
+        this.startOnboarding();
+      }, 750);
+    }
 
-      let interimEl = document.getElementById('vh-interim');
-      let finalResult = '';
-      let allAlts = [];
-      const timeout = setTimeout(() => {
-        recognition.stop();
-        resolve({ text: '', raw: [] });
-      }, timeoutMs || 12000);
-
-      recognition.onstart = () => { isListening = true; uiSetMic(true); };
-      recognition.onend   = () => {
-        isListening = false;
-        uiSetMic(false);
-        clearTimeout(timeout);
-        if (interimEl) interimEl.textContent = '';
-        resolve({ text: finalResult.trim(), raw: allAlts });
-      };
-      recognition.onerror = (e) => {
-        isListening = false;
-        uiSetMic(false);
-        clearTimeout(timeout);
-        if (interimEl) interimEl.textContent = '';
-        resolve({ text: '', raw: [], error: e.error });
-      };
-      recognition.onresult = (e) => {
-        let interim = '';
-        for (let i = e.resultIndex; i < e.results.length; i++) {
-          if (e.results[i].isFinal) {
-            finalResult = e.results[i][0].transcript;
-            allAlts = Array.from(e.results[i]).map(r => r.transcript.toLowerCase().trim());
-          } else {
-            interim += e.results[i][0].transcript;
-          }
+    /* ── DOM & Styling ─────────────────────────────────────────────────── */
+    injectStyles() {
+      if (document.getElementById('vh-assistant-styles')) return;
+      const s = document.createElement('style');
+      s.id = 'vh-assistant-styles';
+      s.textContent = `
+        /* VoiceHire Assistant Container */
+        #vh-assistant-root {
+          position: fixed;
+          bottom: 24px;
+          right: 24px;
+          z-index: 999999;
+          font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+          pointer-events: none;
         }
-        if (interimEl) interimEl.textContent = interim || finalResult;
-      };
 
-      recognition.start();
-    });
-  }
+        /* Floating Action Button (FAB) */
+        .vh-fab {
+          pointer-events: auto;
+          position: absolute;
+          bottom: 0;
+          right: 0;
+          width: 60px;
+          height: 60px;
+          border-radius: 50%;
+          background: linear-gradient(135deg, #2563EB 0%, #1D4ED8 100%);
+          border: 3px solid #FFFFFF;
+          color: #FFFFFF;
+          box-shadow: 0 8px 24px rgba(37, 99, 235, 0.35);
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.5rem;
+          transition: transform 0.2s cubic-bezier(0.34, 1.56, 0.64, 1), box-shadow 0.2s ease;
+        }
+        .vh-fab:hover {
+          transform: scale(1.08);
+          box-shadow: 0 12px 32px rgba(37, 99, 235, 0.45);
+        }
+        .vh-fab-pulse {
+          position: absolute;
+          top: -2px;
+          right: -2px;
+          width: 14px;
+          height: 14px;
+          border-radius: 50%;
+          background: #16A34A;
+          border: 2px solid #FFFFFF;
+          animation: vh-pulse-ring 2s infinite;
+        }
+        @keyframes vh-pulse-ring {
+          0% { transform: scale(1); opacity: 1; }
+          50% { transform: scale(1.6); opacity: 0.5; }
+          100% { transform: scale(1); opacity: 1; }
+        }
 
-  function stopListening() {
-    if (recognition) { try { recognition.stop(); } catch(e){} recognition = null; }
-    isListening = false;
-    uiSetMic(false);
-  }
-  function stopSpeaking() {
-    if (window.speechSynthesis) window.speechSynthesis.cancel();
-    isSpeaking = false;
-    uiSetWave(false);
-  }
+        /* Main Assistant Window Panel */
+        .vh-panel {
+          pointer-events: auto;
+          position: absolute;
+          bottom: 74px;
+          right: 0;
+          width: 380px;
+          max-width: calc(100vw - 32px);
+          max-height: 85vh;
+          background: #FFFFFF;
+          border-radius: 20px;
+          border: 1px solid #E2E8F0;
+          box-shadow: 0 20px 48px rgba(15, 23, 42, 0.18), 0 8px 16px rgba(15, 23, 42, 0.08);
+          display: flex;
+          flex-direction: column;
+          overflow: hidden;
+          opacity: 0;
+          transform: scale(0.85) translateY(20px);
+          transform-origin: bottom right;
+          transition: transform 0.28s cubic-bezier(0.34, 1.56, 0.64, 1), opacity 0.22s ease;
+          display: none;
+        }
+        .vh-panel.is-open {
+          display: flex;
+          opacity: 1;
+          transform: scale(1) translateY(0);
+        }
 
-  /* ───────────────────────────────────────────────────────────────
-     5. PHONE EXTRACTION
-  ─────────────────────────────────────────────────────────────── */
-  const DIGIT_WORDS = {
-    // English
-    zero:0, one:1, two:2, three:3, four:4, five:5, six:6, seven:7, eight:8, nine:9, oh:0,
-    // Hindi
-    sifar:0, ek:1, do:2, teen:3, char:4, chaar:4, panch:5, paanch:5, chhe:6,
-    chhah:6, saat:7, aath:8, nau:9,
-    // Tamil
-    sunnam:0, onnu:1, irantu:2, moonru:3, naanku:4, ainthu:5, aaru:6,
-    ezhu:7, ettu:8, onpathu:9,
-    // Telugu
-    sunna:0, okati:1, rendu:2, muudu:3, naalugu:4, aidu:5, aaru:6,
-    edu:7, enimidi:8, tommidi:9,
-    // Kannada
-    sonne:0, ondu:1, eradu:2, mooru:3, naalku:4, aidu:5, aaru:6,
-    yelu:7, entu:8, ombattu:9,
-    // Bengali
-    shunno:0, ek_bn:1, dui:2, tin:3, char_bn:4, panch_bn:5, chhoy:6,
-    saat_bn:7, aat:8, noy:9,
-  };
+        /* Panel Header */
+        .vh-header {
+          background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+          color: #FFFFFF;
+          padding: 12px 16px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+        }
+        .vh-header-info {
+          display: flex;
+          align-items: center;
+          gap: 10px;
+        }
+        .vh-header-avatar {
+          position: relative;
+          width: 38px;
+          height: 38px;
+          border-radius: 50%;
+          background: #2563EB;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.15rem;
+          color: #FFFFFF;
+        }
+        .vh-header-ring {
+          position: absolute;
+          inset: -4px;
+          border-radius: 50%;
+          border: 2px solid transparent;
+          transition: all 0.3s ease;
+        }
+        .vh-header-ring.speaking {
+          border-color: #F59E0B;
+          animation: vh-spin 1.5s linear infinite;
+        }
+        .vh-header-ring.listening {
+          border-color: #10B981;
+          animation: vh-spin 1s linear infinite;
+        }
+        @keyframes vh-spin { to { transform: rotate(360deg); } }
 
-  function extractPhone(transcript) {
-    if (!transcript) return null;
-    // 1) Raw digits in string
-    const raw = transcript.replace(/\D/g, '');
-    if (raw.length >= 10) {
-      const last10 = raw.slice(-10);
-      if (/^[6-9]\d{9}$/.test(last10)) return last10;
-      if (/^\d{10}$/.test(last10)) return last10; // still return even if doesn't start 6-9
+        .vh-header-title {
+          font-size: 0.9375rem;
+          font-weight: 700;
+          line-height: 1.2;
+        }
+        .vh-header-status {
+          font-size: 0.75rem;
+          color: #94A3B8;
+          display: flex;
+          align-items: center;
+          gap: 5px;
+          margin-top: 2px;
+        }
+        .vh-status-dot {
+          width: 7px;
+          height: 7px;
+          border-radius: 50%;
+          background: #10B981;
+          display: inline-block;
+        }
+        .vh-status-dot.speaking { background: #F59E0B; }
+        .vh-status-dot.listening { background: #2563EB; animation: vh-pulse 1s infinite; }
+        .vh-status-dot.processing { background: #8B5CF6; }
+
+        /* Header Control Toolbar */
+        .vh-toolbar {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+        }
+        .vh-tool-btn {
+          background: rgba(255, 255, 255, 0.12);
+          border: none;
+          color: #E2E8F0;
+          width: 30px;
+          height: 30px;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 0.8125rem;
+          transition: background 0.15s ease, color 0.15s ease;
+        }
+        .vh-tool-btn:hover {
+          background: rgba(255, 255, 255, 0.25);
+          color: #FFFFFF;
+        }
+        .vh-tool-btn.active {
+          background: #2563EB;
+          color: #FFFFFF;
+        }
+
+        /* Language Drawer */
+        .vh-lang-drawer {
+          background: #F8FAFC;
+          border-bottom: 1px solid #E2E8F0;
+          padding: 12px 14px;
+          display: none;
+          max-height: 220px;
+          overflow-y: auto;
+        }
+        .vh-lang-drawer.is-open { display: block; }
+        .vh-lang-drawer-title {
+          font-size: 0.75rem;
+          font-weight: 700;
+          color: #64748B;
+          text-transform: uppercase;
+          letter-spacing: 0.05em;
+          margin-bottom: 8px;
+        }
+        .vh-lang-grid {
+          display: grid;
+          grid-template-columns: repeat(3, 1fr);
+          gap: 6px;
+        }
+        .vh-lang-card {
+          background: #FFFFFF;
+          border: 1.5px solid #E2E8F0;
+          border-radius: 10px;
+          padding: 8px 6px;
+          text-align: center;
+          cursor: pointer;
+          font-family: inherit;
+          transition: all 0.15s ease;
+        }
+        .vh-lang-card:hover, .vh-lang-card.selected {
+          border-color: #2563EB;
+          background: #EFF6FF;
+          color: #2563EB;
+          font-weight: 700;
+        }
+        .vh-lang-flag { font-size: 1.1rem; display: block; margin-bottom: 2px; }
+        .vh-lang-native { font-size: 0.8125rem; font-weight: 600; display: block; }
+        .vh-lang-name { font-size: 0.6875rem; color: #64748B; display: block; }
+
+        /* Autoplay Blocked Banner */
+        .vh-autoplay-banner {
+          background: #FEF3C7;
+          border-bottom: 1px solid #FDE68A;
+          padding: 12px 16px;
+          display: none;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .vh-autoplay-banner.is-visible { display: flex; }
+        .vh-autoplay-text {
+          font-size: 0.8125rem;
+          color: #92400E;
+          font-weight: 500;
+          line-height: 1.4;
+        }
+        .vh-autoplay-btn {
+          background: #D97706;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 8px;
+          padding: 6px 12px;
+          font-size: 0.75rem;
+          font-weight: 700;
+          cursor: pointer;
+          white-space: nowrap;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .vh-autoplay-btn:hover { background: #B45309; }
+
+        /* Conversation Messages Area */
+        .vh-messages {
+          flex: 1;
+          padding: 16px;
+          overflow-y: auto;
+          display: flex;
+          flex-direction: column;
+          gap: 12px;
+          background: #F8FAFC;
+          min-height: 240px;
+          max-height: 380px;
+        }
+        .vh-bubble {
+          max-width: 90%;
+          padding: 12px 14px;
+          border-radius: 14px;
+          font-size: 0.875rem;
+          line-height: 1.5;
+          animation: vh-fade-in 0.25s ease;
+        }
+        @keyframes vh-fade-in {
+          from { opacity: 0; transform: translateY(6px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .vh-bubble.bot {
+          background: #FFFFFF;
+          color: #0F172A;
+          border: 1px solid #E2E8F0;
+          border-top-left-radius: 4px;
+          align-self: flex-start;
+          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+        }
+        .vh-bubble.user {
+          background: #2563EB;
+          color: #FFFFFF;
+          border-top-right-radius: 4px;
+          align-self: flex-end;
+          font-weight: 500;
+        }
+
+        /* Large Interactive Choices Area */
+        .vh-choices {
+          display: flex;
+          flex-direction: column;
+          gap: 8px;
+          margin-top: 4px;
+        }
+        .vh-choice-btn {
+          background: #FFFFFF;
+          border: 2px solid #E2E8F0;
+          border-radius: 12px;
+          padding: 12px 14px;
+          text-align: left;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 12px;
+          transition: all 0.16s ease;
+          width: 100%;
+        }
+        .vh-choice-btn:hover {
+          border-color: #2563EB;
+          background: #EFF6FF;
+          transform: translateY(-1px);
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
+        }
+        .vh-choice-btn.primary {
+          border-color: #BFDBFE;
+        }
+        .vh-choice-icon {
+          font-size: 1.6rem;
+          flex-shrink: 0;
+          width: 40px;
+          height: 40px;
+          border-radius: 10px;
+          background: #F1F5F9;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+        }
+        .vh-choice-btn:hover .vh-choice-icon {
+          background: #DBEAFE;
+        }
+        .vh-choice-content {
+          flex: 1;
+        }
+        .vh-choice-title {
+          font-size: 0.9375rem;
+          font-weight: 700;
+          color: #0F172A;
+          display: block;
+        }
+        .vh-choice-sub {
+          font-size: 0.75rem;
+          color: #64748B;
+          display: block;
+          margin-top: 2px;
+        }
+
+        /* Speaking Wave Indicator */
+        .vh-wave-wrap {
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          height: 18px;
+          padding: 0 4px;
+          display: none;
+        }
+        .vh-wave-wrap.is-active { display: flex; }
+        .vh-wave-bar {
+          width: 3.5px;
+          height: 4px;
+          border-radius: 3px;
+          background: #2563EB;
+          animation: vh-wave-anim 1s ease-in-out infinite;
+        }
+        .vh-wave-bar:nth-child(1) { animation-delay: 0.0s; }
+        .vh-wave-bar:nth-child(2) { animation-delay: 0.15s; }
+        .vh-wave-bar:nth-child(3) { animation-delay: 0.3s; }
+        .vh-wave-bar:nth-child(4) { animation-delay: 0.45s; }
+        .vh-wave-bar:nth-child(5) { animation-delay: 0.3s; }
+        .vh-wave-bar:nth-child(6) { animation-delay: 0.15s; }
+        @keyframes vh-wave-anim {
+          0%, 100% { height: 4px; }
+          50% { height: 18px; }
+        }
+
+        /* Interim Speech Preview */
+        .vh-interim {
+          font-size: 0.8125rem;
+          font-style: italic;
+          color: #64748B;
+          padding: 6px 10px;
+          background: #F1F5F9;
+          border-radius: 8px;
+          display: none;
+        }
+        .vh-interim.is-active { display: block; }
+
+        /* Panel Footer & Controls */
+        .vh-footer {
+          background: #FFFFFF;
+          border-top: 1px solid #E2E8F0;
+          padding: 10px 14px;
+          display: flex;
+          align-items: center;
+          justify-content: space-between;
+          gap: 10px;
+        }
+        .vh-mic-action {
+          width: 44px;
+          height: 44px;
+          border-radius: 50%;
+          background: #2563EB;
+          color: #FFFFFF;
+          border: none;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
+          font-size: 1.15rem;
+          transition: all 0.2s ease;
+          position: relative;
+        }
+        .vh-mic-action:hover { background: #1D4ED8; transform: scale(1.05); }
+        .vh-mic-action.is-listening {
+          background: #DC2626;
+          animation: vh-mic-pulse 1.2s infinite;
+        }
+        @keyframes vh-mic-pulse {
+          0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
+          70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
+          100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
+        }
+        .vh-footer-info {
+          flex: 1;
+        }
+        .vh-mic-hint {
+          font-size: 0.8125rem;
+          font-weight: 600;
+          color: #1E293B;
+          line-height: 1.2;
+        }
+        .vh-mic-subhint {
+          font-size: 0.6875rem;
+          color: #64748B;
+        }
+        .vh-repeat-btn {
+          background: #F1F5F9;
+          border: 1px solid #E2E8F0;
+          color: #475569;
+          padding: 7px 11px;
+          border-radius: 8px;
+          font-size: 0.75rem;
+          font-weight: 600;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+          white-space: nowrap;
+          transition: all 0.15s ease;
+        }
+        .vh-repeat-btn:hover {
+          background: #E2E8F0;
+          color: #0F172A;
+        }
+
+        /* Typed Input Fallback */
+        .vh-typed-row {
+          display: flex;
+          gap: 8px;
+          padding: 8px 14px 12px 14px;
+          background: #FFFFFF;
+          border-top: 1px dashed #E2E8F0;
+        }
+        .vh-typed-input {
+          flex: 1;
+          border: 1px solid #CBD5E1;
+          border-radius: 8px;
+          padding: 7px 12px;
+          font-size: 0.8125rem;
+          font-family: inherit;
+          outline: none;
+          transition: border-color 0.15s ease;
+        }
+        .vh-typed-input:focus {
+          border-color: #2563EB;
+        }
+        .vh-typed-send {
+          background: #2563EB;
+          color: #FFFFFF;
+          border: none;
+          border-radius: 8px;
+          padding: 0 14px;
+          cursor: pointer;
+          font-size: 0.8125rem;
+          transition: background 0.15s ease;
+        }
+        .vh-typed-send:hover {
+          background: #1D4ED8;
+        }
+
+        /* Transcript Confirmation & Correction Card */
+        .vh-confirm-card {
+          background: #F8FAFC;
+          border: 1px solid #CBD5E1;
+          border-radius: 12px;
+          padding: 10px 12px;
+          margin: 6px 0;
+          display: flex;
+          flex-direction: column;
+          gap: 6px;
+        }
+        .vh-confirm-header {
+          font-size: 0.75rem;
+          color: #64748B;
+          display: flex;
+          align-items: center;
+          gap: 6px;
+        }
+        .vh-confirm-text {
+          font-size: 0.875rem;
+          font-weight: 600;
+          color: #0F172A;
+          word-break: break-word;
+        }
+        .vh-confirm-edit-input {
+          width: 100%;
+          border: 1px solid #3B82F6;
+          border-radius: 6px;
+          padding: 6px 8px;
+          font-size: 0.8125rem;
+          font-family: inherit;
+          outline: none;
+        }
+        .vh-confirm-actions {
+          display: flex;
+          gap: 6px;
+          margin-top: 2px;
+        }
+        .vh-confirm-btn {
+          padding: 5px 9px;
+          border-radius: 6px;
+          font-size: 0.6875rem;
+          font-weight: 600;
+          cursor: pointer;
+          border: 1px solid transparent;
+          display: flex;
+          align-items: center;
+          gap: 4px;
+          transition: all 0.15s ease;
+        }
+        .vh-confirm-btn.primary {
+          background: #2563EB;
+          color: #FFFFFF;
+        }
+        .vh-confirm-btn.secondary {
+          background: #FFFFFF;
+          border-color: #CBD5E1;
+          color: #334155;
+        }
+        .vh-confirm-btn:hover {
+          filter: brightness(0.95);
+        }
+
+        /* Mobile Adjustments */
+        @media (max-width: 480px) {
+          #vh-assistant-root { bottom: 16px; right: 16px; }
+          .vh-panel {
+            width: calc(100vw - 32px);
+            bottom: 70px;
+            right: 0;
+            max-height: 80vh;
+          }
+          .vh-lang-grid { grid-template-columns: repeat(2, 1fr); }
+        }
+      `;
+      document.head.appendChild(s);
     }
-    // 2) Word-to-digit conversion
-    const words = transcript.toLowerCase().split(/[\s,.-]+/);
-    let digits = '';
-    for (const w of words) {
-      const d = DIGIT_WORDS[w];
-      if (d !== undefined) digits += d;
-      else if (/^\d$/.test(w)) digits += w;
-    }
-    if (digits.length >= 10) {
-      const last10 = digits.slice(-10);
-      if (/^[6-9]\d{9}$/.test(last10)) return last10;
-      if (/^\d{10}$/.test(last10)) return last10;
-    }
-    return null;
-  }
 
-  function normalizePassword(transcript) {
-    if (!transcript) return '';
-    // convert spoken digits to numeric form
-    return transcript.toLowerCase().trim().split(/[\s,]+/).map(w => {
-      const d = DIGIT_WORDS[w];
-      return d !== undefined ? String(d) : w;
-    }).join('');
-  }
+    renderWidget() {
+      // Remove any lingering legacy nodes if present
+      ['vh-assistant-root', 'vhai-root', 'vgb-root', 'vh-gateway-bot'].forEach(id => {
+        const el = document.getElementById(id);
+        if (el) el.remove();
+      });
 
-  /* ───────────────────────────────────────────────────────────────
-     6. LANGUAGE DETECTION FROM SPEECH
-  ─────────────────────────────────────────────────────────────── */
-  const LANG_KEYWORDS = {
-    hi: ['hindi', 'हिंदी', 'hind', 'hindhi'],
-    en: ['english', 'angrezi', 'inglis', 'english'],
-    bn: ['bangla', 'bengali', 'bongali', 'বাংলা'],
-    ta: ['tamil', 'தமிழ்', 'tamizh'],
-    te: ['telugu', 'తెలుగు', 'telgu'],
-    mr: ['marathi', 'मराठी', 'maraati'],
-    gu: ['gujarati', 'ગુજરાતી', 'gujrati'],
-    kn: ['kannada', 'ಕನ್ನಡ', 'kannad'],
-    ml: ['malayalam', 'മലയാളം', 'mallu'],
-    pa: ['punjabi', 'ਪੰਜਾਬੀ', 'panjabi'],
-    or: ['odia', 'oriya', 'ଓଡ଼ିଆ'],
-    as: ['assamese', 'অসমীয়া', 'axomiya'],
-    ur: ['urdu', 'اردو'],
-    ne: ['nepali', 'नेपाली'],
-    kok:['konkani', 'कोंकणी'],
-  };
+      const root = document.createElement('div');
+      root.id = 'vh-assistant-root';
 
-  function detectLangFromSpeech(transcript) {
-    const t = (transcript || '').toLowerCase();
-    for (const [code, keywords] of Object.entries(LANG_KEYWORDS)) {
-      if (keywords.some(kw => t.includes(kw))) return code;
-    }
-    return null;
-  }
+      // Generate language cards HTML
+      const langCardsHtml = Object.values(LANGUAGES).map(l => `
+        <button class="vh-lang-card ${l.code === this.currentLang ? 'selected' : ''}" data-code="${l.code}">
+          <span class="vh-lang-flag">${l.flag}</span>
+          <span class="vh-lang-native">${l.native}</span>
+          <span class="vh-lang-name">${l.name}</span>
+        </button>
+      `).join('');
 
-  function getLang(textOrKey) {
-    const src = D[textOrKey];
-    if (!src) return textOrKey; // raw string
-    return src[lang] || src.en || src.hi || src._always_hi || src._always || '';
-  }
+      root.innerHTML = `
+        <!-- Floating Toggle Trigger -->
+        <button class="vh-fab" id="vh-fab-trigger" title="VoiceHire Voice Assistant" aria-label="Open VoiceHire Assistant">
+          <i class="fa-solid fa-microphone-lines"></i>
+          <span class="vh-fab-pulse"></span>
+        </button>
 
-  /* ───────────────────────────────────────────────────────────────
-     7. UI — BUILD PANEL
-  ─────────────────────────────────────────────────────────────── */
-  function buildUI() {
-    // Kill any existing VoiceHire bots
-    ['vgb-root', 'vh-gateway-bot'].forEach(id => {
-      const el = document.getElementById(id);
-      if (el) el.remove();
-    });
-
-    const langButtons = Object.entries(LANGS).map(([code, info]) =>
-      `<button class="vhai-lb" data-lang="${code}" id="vhai-lb-${code}">${info.flag} ${info.native}</button>`
-    ).join('');
-
-    const wrap = document.createElement('div');
-    wrap.id = 'vhai-root';
-    wrap.innerHTML = `
-      <!-- Floating Action Button -->
-      <button class="vhai-fab" id="vhai-fab" title="VoiceHire AI Assistant" aria-label="Open AI Assistant">
-        <i class="fa-solid fa-robot"></i>
-        <span class="vhai-ping"></span>
-      </button>
-
-      <!-- Assistant Panel -->
-      <div class="vhai-panel" id="vhai-panel" aria-hidden="true" role="dialog" aria-label="VoiceHire AI Assistant">
-        <!-- Header -->
-        <div class="vhai-header">
-          <div class="vhai-hdr-left">
-            <div class="vhai-avatar" id="vhai-avatar">
-              <i class="fa-solid fa-robot"></i>
-              <div class="vhai-avatar-ring" id="vhai-avatar-ring"></div>
-            </div>
-            <div>
-              <div class="vhai-title">VoiceHire AI</div>
-              <div class="vhai-status" id="vhai-status">
-                <span class="vhai-dot" id="vhai-dot"></span>
-                <span id="vhai-status-text">Ready</span>
+        <!-- Main Assistant Panel -->
+        <div class="vh-panel" id="vh-main-panel" role="dialog" aria-label="VoiceHire Voice Assistant">
+          
+          <!-- Header -->
+          <div class="vh-header">
+            <div class="vh-header-info">
+              <div class="vh-header-avatar">
+                <i class="fa-solid fa-robot"></i>
+                <div class="vh-header-ring" id="vh-status-ring"></div>
+              </div>
+              <div>
+                <div class="vh-header-title">VoiceHire Assistant</div>
+                <div class="vh-header-status">
+                  <span class="vh-status-dot" id="vh-status-dot"></span>
+                  <span id="vh-status-text">Ready</span>
+                </div>
               </div>
             </div>
+
+            <div class="vh-toolbar">
+              <button class="vh-tool-btn" id="vh-btn-lang" title="Change Language / भाषा बदलें">
+                <i class="fa-solid fa-language"></i>
+              </button>
+              <button class="vh-tool-btn ${this.isMuted ? 'active' : ''}" id="vh-btn-sound" title="${this.isMuted ? 'Unmute Voice' : 'Mute Voice'}">
+                <i class="fa-solid ${this.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
+              </button>
+              <button class="vh-tool-btn ${this.isManualMode ? 'active' : ''}" id="vh-btn-manual" title="Manual Mode (Disable auto-voice)">
+                <i class="fa-solid fa-hand"></i>
+              </button>
+              <button class="vh-tool-btn" id="vh-btn-min" title="Minimize">
+                <i class="fa-solid fa-window-minimize"></i>
+              </button>
+              <button class="vh-tool-btn" id="vh-btn-close" title="Close">
+                <i class="fa-solid fa-xmark"></i>
+              </button>
+            </div>
           </div>
-          <div class="vhai-hdr-right">
-            <button class="vhai-hbtn" id="vhai-lang-toggle" title="Change Language" aria-label="Change Language">
-              <i class="fa-solid fa-language"></i>
+
+          <!-- Language Drawer -->
+          <div class="vh-lang-drawer" id="vh-lang-drawer">
+            <div class="vh-lang-drawer-title">🌐 Choose Your Language / अपनी भाषा चुनें</div>
+            <div class="vh-lang-grid" id="vh-lang-grid">
+              ${langCardsHtml}
+            </div>
+          </div>
+
+          <!-- Autoplay Blocked Banner -->
+          <div class="vh-autoplay-banner" id="vh-autoplay-banner">
+            <div class="vh-autoplay-text" id="vh-autoplay-text">
+              आवाज़ सुनने के लिए यहाँ टैप करें
+            </div>
+            <button class="vh-autoplay-btn" id="vh-start-voice-btn">
+              <i class="fa-solid fa-volume-high"></i> Start
             </button>
-            <button class="vhai-hbtn" id="vhai-close" title="Close" aria-label="Close assistant">
-              <i class="fa-solid fa-xmark"></i>
-            </button>
           </div>
-        </div>
 
-        <!-- Language Picker (hidden by default) -->
-        <div class="vhai-langpick" id="vhai-langpick" style="display:none;">
-          <div class="vhai-lp-title">🌐 Apni bhasha chunein / Choose Language</div>
-          <div class="vhai-lp-grid">${langButtons}</div>
-        </div>
+          <!-- Message History & Choices Transcript -->
+          <div class="vh-messages" id="vh-messages-stream"></div>
 
-        <!-- Bubble + Wave -->
-        <div class="vhai-body">
-          <div class="vhai-bubble" id="vhai-bubble">
-            🎙️ <strong>Namaste!</strong> Main VoiceHire ka AI Assistant hoon. Seedha baat karte hain...
-          </div>
-          <div class="vhai-wave" id="vhai-wave">
-            <span></span><span></span><span></span><span></span><span></span><span></span><span></span>
-          </div>
-          <!-- Live transcript preview -->
-          <div class="vhai-interim" id="vh-interim"></div>
+          <!-- Interim Speech Transcript -->
+          <div class="vh-interim" id="vh-interim-box"></div>
 
-          <!-- Choice Buttons area -->
-          <div class="vhai-choices" id="vhai-choices"></div>
-
-          <!-- Mic row -->
-          <div class="vhai-mic-row" id="vhai-mic-row">
-            <button class="vhai-mic-btn" id="vhai-mic-btn" title="Tap to speak" aria-label="Tap to speak">
+          <!-- Footer Action Bar -->
+          <div class="vh-footer">
+            <button class="vh-mic-action" id="vh-mic-btn" title="Tap to Speak / बोलने के लिए टैप करें">
               <i class="fa-solid fa-microphone"></i>
             </button>
-            <span class="vhai-mic-label" id="vhai-mic-label">Tap to speak</span>
+            <div class="vh-footer-info">
+              <div class="vh-mic-hint" id="vh-mic-hint">Tap to Speak</div>
+              <div class="vh-mic-subhint" id="vh-mic-subhint">Or speak / type below</div>
+              <div class="vh-wave-wrap" id="vh-wave-indicator">
+                <div class="vh-wave-bar"></div>
+                <div class="vh-wave-bar"></div>
+                <div class="vh-wave-bar"></div>
+                <div class="vh-wave-bar"></div>
+                <div class="vh-wave-bar"></div>
+                <div class="vh-wave-bar"></div>
+              </div>
+            </div>
+            <button class="vh-repeat-btn" id="vh-repeat-btn" title="Repeat Spoken Prompt">
+              <i class="fa-solid fa-rotate-right"></i> Repeat
+            </button>
           </div>
+
+          <!-- Typed Input Fallback -->
+          <div class="vh-typed-row" id="vh-typed-row">
+            <input type="text" class="vh-typed-input" id="vh-typed-input" placeholder="यहाँ बोलें या टाइप करें... / Speak or type..." aria-label="Type message fallback">
+            <button class="vh-typed-send" id="vh-typed-send" title="Send / भेजें" aria-label="Send message">
+              <i class="fa-solid fa-paper-plane"></i>
+            </button>
+          </div>
+
         </div>
+      `;
 
-        <!-- Progress bar -->
-        <div class="vhai-progress" id="vhai-progress" style="display:none;">
-          <div class="vhai-progress-bar" id="vhai-progress-bar"></div>
-        </div>
-      </div>
-    `;
+      document.body.appendChild(root);
 
-    injectCSS();
-    document.body.appendChild(wrap);
-
-    // Wire events
-    document.getElementById('vhai-fab').addEventListener('click', openPanel);
-    document.getElementById('vhai-close').addEventListener('click', closePanel);
-    document.getElementById('vhai-lang-toggle').addEventListener('click', toggleLangPicker);
-    document.getElementById('vhai-mic-btn').addEventListener('click', onManualMic);
-
-    // Language button clicks
-    document.querySelectorAll('.vhai-lb').forEach(btn => {
-      btn.addEventListener('click', () => selectLanguage(btn.dataset.lang, true));
-    });
-  }
-
-  function injectCSS() {
-    if (document.getElementById('vhai-css')) return;
-    const s = document.createElement('style');
-    s.id = 'vhai-css';
-    s.textContent = `
-      #vhai-root {
-        position: fixed; bottom: 24px; right: 24px; z-index: 99999;
-        font-family: 'Inter', -apple-system, sans-serif;
-      }
-
-      /* ── FAB ── */
-      .vhai-fab {
-        width: 62px; height: 62px; border-radius: 50%;
-        background: linear-gradient(135deg, #4F46E5 0%, #7C3AED 100%);
-        border: none; cursor: pointer; color: white; font-size: 1.4rem;
-        display: flex; align-items: center; justify-content: center;
-        box-shadow: 0 8px 32px rgba(79,70,229,.45);
-        transition: transform .2s ease, box-shadow .2s ease;
-        position: relative;
-      }
-      .vhai-fab:hover { transform: scale(1.08); box-shadow: 0 12px 40px rgba(79,70,229,.6); }
-      .vhai-ping {
-        position: absolute; top: 1px; right: 1px;
-        width: 15px; height: 15px; border-radius: 50%;
-        background: #10B981; border: 2.5px solid white;
-        animation: vh-ping 2s ease infinite;
-      }
-      @keyframes vh-ping { 0%,100%{transform:scale(1);opacity:1;} 50%{transform:scale(1.5);opacity:.5;} }
-
-      /* ── Panel ── */
-      .vhai-panel {
-        position: absolute; bottom: 76px; right: 0; width: 360px;
-        background: white; border-radius: 22px;
-        box-shadow: 0 28px 80px rgba(0,0,0,.22);
-        overflow: hidden; transform-origin: bottom right;
-        transition: transform .28s cubic-bezier(.34,1.56,.64,1), opacity .2s;
-        transform: scale(.82); opacity: 0; pointer-events: none;
-      }
-      .vhai-panel.open { transform: scale(1); opacity: 1; pointer-events: all; }
-
-      /* ── Header ── */
-      .vhai-header {
-        display: flex; align-items: center; justify-content: space-between;
-        padding: 14px 16px;
-        background: linear-gradient(135deg, #1E1B4B 0%, #4F46E5 60%, #7C3AED 100%);
-      }
-      .vhai-hdr-left { display: flex; align-items: center; gap: 12px; }
-      .vhai-avatar {
-        width: 44px; height: 44px; border-radius: 50%;
-        background: rgba(255,255,255,.18); border: 2px solid rgba(255,255,255,.35);
-        display: flex; align-items: center; justify-content: center;
-        font-size: 1.2rem; color: white; position: relative;
-      }
-      .vhai-avatar-ring {
-        position: absolute; inset: -6px; border-radius: 50%;
-        border: 3px solid transparent; pointer-events: none;
-        transition: border-color .3s;
-      }
-      .vhai-avatar-ring.speaking { border-color: #FDE68A; animation: vh-spin 1s linear infinite; }
-      .vhai-avatar-ring.listening { border-color: #34D399; animation: vh-spin .7s linear infinite; }
-      @keyframes vh-spin { to { transform: rotate(360deg); } }
-      .vhai-title { color: white; font-size: .9rem; font-weight: 700; }
-      .vhai-status { display: flex; align-items: center; gap: 5px; margin-top: 2px; }
-      .vhai-dot { width: 7px; height: 7px; border-radius: 50%; background: #10B981; }
-      #vhai-status-text { font-size: .7rem; color: rgba(255,255,255,.8); }
-      .vhai-hdr-right { display: flex; gap: 5px; }
-      .vhai-hbtn {
-        width: 32px; height: 32px; border-radius: 8px;
-        background: rgba(255,255,255,.15); border: none; color: white;
-        cursor: pointer; font-size: .85rem;
-        display: flex; align-items: center; justify-content: center;
-        transition: background .15s;
-      }
-      .vhai-hbtn:hover { background: rgba(255,255,255,.3); }
-
-      /* ── Language Picker ── */
-      .vhai-langpick {
-        padding: 12px 14px; background: #F8FAFC;
-        border-bottom: 1px solid #E2E8F0; max-height: 200px; overflow-y: auto;
-      }
-      .vhai-lp-title { font-size: .72rem; font-weight: 700; color: #64748B; margin-bottom: 8px; text-transform: uppercase; letter-spacing: .05em; }
-      .vhai-lp-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 5px; }
-      .vhai-lb {
-        padding: 7px 6px; border-radius: 8px;
-        border: 1.5px solid #E2E8F0; background: white;
-        font-size: .75rem; cursor: pointer; text-align: center;
-        transition: all .15s; font-family: inherit;
-      }
-      .vhai-lb:hover, .vhai-lb.selected {
-        border-color: #4F46E5; background: #EEF2FF; color: #4F46E5; font-weight: 600;
-      }
-
-      /* ── Body ── */
-      .vhai-body { padding: 14px 14px 10px; display: flex; flex-direction: column; gap: 10px; }
-
-      /* ── Bubble ── */
-      .vhai-bubble {
-        background: linear-gradient(135deg, #EEF2FF, #F5F3FF);
-        border: 1px solid #C7D2FE; border-radius: 14px 14px 14px 4px;
-        padding: 12px 14px; font-size: .875rem; color: #1E1B4B;
-        line-height: 1.6; min-height: 56px;
-        animation: vh-fade .3s ease;
-      }
-      @keyframes vh-fade { from{opacity:0;transform:translateY(4px);} to{opacity:1;transform:translateY(0);} }
-
-      /* ── Wave (speaking indicator) ── */
-      .vhai-wave {
-        display: flex; align-items: center; gap: 3px;
-        padding-left: 2px; height: 22px;
-        opacity: 0; transition: opacity .25s;
-      }
-      .vhai-wave.on { opacity: 1; }
-      .vhai-wave span {
-        display: inline-block; width: 4px; border-radius: 3px;
-        background: linear-gradient(180deg, #4F46E5, #7C3AED);
-        animation: vh-bar 1s ease-in-out infinite;
-      }
-      .vhai-wave span:nth-child(1){animation-delay:.00s;}
-      .vhai-wave span:nth-child(2){animation-delay:.12s;}
-      .vhai-wave span:nth-child(3){animation-delay:.24s;}
-      .vhai-wave span:nth-child(4){animation-delay:.36s;}
-      .vhai-wave span:nth-child(5){animation-delay:.24s;}
-      .vhai-wave span:nth-child(6){animation-delay:.12s;}
-      .vhai-wave span:nth-child(7){animation-delay:.00s;}
-      @keyframes vh-bar {
-        0%,100%{height:4px;} 50%{height:22px;}
-      }
-
-      /* ── Interim transcript ── */
-      .vhai-interim {
-        font-size: .78rem; color: #6B7280; font-style: italic;
-        min-height: 18px; text-align: center;
-        background: #F9FAFB; border-radius: 6px; padding: 4px 8px;
-        display: none;
-      }
-      .vhai-interim:not(:empty) { display: block; }
-
-      /* ── Choices ── */
-      .vhai-choices { display: flex; flex-direction: column; gap: 6px; }
-      .vhai-choice {
-        display: flex; align-items: center; gap: 10px;
-        padding: 11px 14px; border: 1.5px solid #E5E7EB;
-        background: white; border-radius: 12px; cursor: pointer;
-        transition: all .15s ease; font-family: inherit; text-align: left;
-        width: 100%;
-      }
-      .vhai-choice:hover { border-color: #4F46E5; background: #EEF2FF; transform: translateX(2px); }
-      .vhai-choice-icon { font-size: 1.5rem; flex-shrink: 0; }
-      .vhai-choice strong { color: #1E1B4B; font-size: .875rem; display: block; }
-      .vhai-choice span { color: #6B7280; font-size: .75rem; }
-
-      /* ── Mic Row ── */
-      .vhai-mic-row {
-        display: flex; align-items: center; gap: 12px;
-        background: #F9FAFB; border-radius: 12px; padding: 10px 14px;
-      }
-      .vhai-mic-btn {
-        width: 44px; height: 44px; border-radius: 50%; flex-shrink: 0;
-        background: linear-gradient(135deg, #4F46E5, #7C3AED);
-        border: none; color: white; font-size: 1rem;
-        cursor: pointer; display: flex; align-items: center; justify-content: center;
-        transition: transform .15s, box-shadow .15s;
-      }
-      .vhai-mic-btn:hover { transform: scale(1.08); }
-      .vhai-mic-btn.active {
-        background: linear-gradient(135deg, #DC2626, #B91C1C);
-        animation: vh-mic-pulse 1.2s ease infinite;
-      }
-      @keyframes vh-mic-pulse {
-        0%,100%{box-shadow:0 0 0 0 rgba(220,38,38,.5);}
-        50%{box-shadow:0 0 0 12px rgba(220,38,38,0);}
-      }
-      .vhai-mic-label { font-size: .82rem; color: #6B7280; }
-
-      /* ── Progress ── */
-      .vhai-progress { height: 3px; background: #E5E7EB; }
-      .vhai-progress-bar { height: 100%; background: linear-gradient(90deg, #4F46E5, #7C3AED); transition: width .4s ease; }
-
-      @media (max-width: 420px) {
-        .vhai-panel { width: calc(100vw - 32px); right: -8px; }
-        .vhai-lp-grid { grid-template-columns: repeat(2,1fr); }
-      }
-    `;
-    document.head.appendChild(s);
-  }
-
-  /* ── UI helpers ── */
-  function openPanel() {
-    const p = document.getElementById('vhai-panel');
-    if (!p) return;
-    p.classList.add('open');
-    p.setAttribute('aria-hidden', 'false');
-    panelOpen = true;
-  }
-  function closePanel() {
-    const p = document.getElementById('vhai-panel');
-    if (!p) return;
-    p.classList.remove('open');
-    p.setAttribute('aria-hidden', 'true');
-    panelOpen = false;
-    stopSpeaking(); stopListening();
-  }
-  function toggleLangPicker() {
-    const lp = document.getElementById('vhai-langpick');
-    if (!lp) return;
-    lp.style.display = lp.style.display === 'none' ? '' : 'none';
-  }
-  function uiSetBubble(html) {
-    const b = document.getElementById('vhai-bubble');
-    if (b) { b.innerHTML = html; b.style.animation = 'none'; requestAnimationFrame(() => { b.style.animation = ''; }); }
-  }
-  function uiSetStatus(text, type) {
-    const t = document.getElementById('vhai-status-text');
-    const d = document.getElementById('vhai-dot');
-    const r = document.getElementById('vhai-avatar-ring');
-    if (t) t.textContent = text;
-    const colors = { ready:'#10B981', speaking:'#F59E0B', listening:'#3B82F6', error:'#EF4444' };
-    if (d) d.style.background = colors[type] || colors.ready;
-    if (r) { r.className = 'vhai-avatar-ring'; if (type !== 'ready') r.classList.add(type); }
-  }
-  function uiSetWave(on) {
-    const w = document.getElementById('vhai-wave');
-    if (w) w.classList.toggle('on', on);
-    uiSetStatus(on ? 'Speaking...' : 'Ready', on ? 'speaking' : 'ready');
-  }
-  function uiSetMic(on) {
-    const btn = document.getElementById('vhai-mic-btn');
-    const lbl = document.getElementById('vhai-mic-label');
-    if (btn) btn.classList.toggle('active', on);
-    if (lbl) lbl.textContent = on ? 'Listening...' : 'Tap to speak';
-    if (on) {
-      uiSetStatus('Listening...', 'listening');
-      const w = document.getElementById('vhai-wave'); if (w) w.classList.remove('on');
-    }
-    const it = document.getElementById('vh-interim');
-    if (it && !on) it.textContent = '';
-  }
-  function uiShowChoices(items) {
-    const c = document.getElementById('vhai-choices');
-    if (!c) return;
-    c.innerHTML = '';
-    (items || []).forEach(item => {
-      const btn = document.createElement('button');
-      btn.className = 'vhai-choice';
-      btn.innerHTML = `<span class="vhai-choice-icon">${item.icon}</span><div><strong>${item.label}</strong><span>${item.sub || ''}</span></div>`;
-      btn.addEventListener('click', item.action);
-      c.appendChild(btn);
-    });
-  }
-  function uiClearChoices() { uiShowChoices([]); }
-  function uiSetProgress(pct) {
-    const bar = document.getElementById('vhai-progress');
-    const fill = document.getElementById('vhai-progress-bar');
-    if (!bar || !fill) return;
-    if (pct < 0) { bar.style.display = 'none'; return; }
-    bar.style.display = '';
-    fill.style.width = pct + '%';
-  }
-  function selectLanguage(code, fromButton) {
-    if (!LANGS[code]) code = 'hi';
-    lang = code;
-    // Highlight selected button
-    document.querySelectorAll('.vhai-lb').forEach(b => b.classList.toggle('selected', b.dataset.lang === code));
-    // Update session via server
-    fetch('/set_lang/' + code).catch(() => {});
-    // Update VH global
-    if (window.VH) window.VH.lang = code;
-    if (fromButton) {
-      document.getElementById('vhai-langpick').style.display = 'none';
-      // If flow hasn't started, re-trigger after language confirm
-      stopSpeaking();
-      say('langConfirm').then(() => askNewOrLogin());
-    }
-  }
-
-  /* Manual mic — let user re-speak the current step */
-  let manualMicCallback = null;
-  function onManualMic() {
-    if (isListening || isSpeaking) return;
-    if (manualMicCallback) manualMicCallback();
-    else uiSetMic(true);
-  }
-
-  /* ───────────────────────────────────────────────────────────────
-     8. FLOWS
-  ─────────────────────────────────────────────────────────────── */
-
-  /* ── GATEWAY FLOW ── */
-  async function runGatewayFlow() {
-    // Always greet in Hindi
-    await say(D.boot._always_hi, 'hi');
-    // Show lang picker and listen
-    document.getElementById('vhai-langpick').style.display = '';
-    uiSetStatus('Choose language / Bhasha chunein', 'listening');
-
-    // Listen for language in Hindi (so user can name their language)
-    recognition && recognition.stop();
-    const { text } = await hear(10000);
-    document.getElementById('vhai-langpick').style.display = 'none';
-
-    const detected = detectLangFromSpeech(text);
-    if (detected && LANGS[detected]) {
-      selectLanguage(detected);
-      await say('langConfirm');
-    } else {
-      // Default to Hindi
-      selectLanguage('hi');
-      await say('langConfirm');
-    }
-    await askNewOrLogin();
-  }
-
-  async function askNewOrLogin() {
-    uiClearChoices();
-    await say('roleAsk');
-    uiShowChoices([
-      {
-        icon: '🔑', label: getLang('loginLabel') || 'Login',
-        sub: lang === 'hi' ? 'Pehle se account hai' : 'I already have an account',
-        action: () => { uiClearChoices(); stopListening(); runLoginFlow(); }
-      },
-      {
-        icon: '✨', label: lang === 'hi' ? 'Nayi Profile' : 'New Profile',
-        sub: lang === 'hi' ? 'Pehli baar hoon' : 'First time here',
-        action: () => { uiClearChoices(); stopListening(); runRegisterFlow(); }
-      }
-    ]);
-    // Also listen for voice
-    manualMicCallback = () => hear(8000).then(({text}) => {
-      if (!text) return;
-      const t = text.toLowerCase();
-      const isLogin = /(login|log in|pehle|account|mera|already|maujood|existing)/i.test(t);
-      uiClearChoices(); stopListening();
-      if (isLogin) runLoginFlow(); else runRegisterFlow();
-    });
-    const { text } = await hear(8000);
-    if (!text) return; // user will click button
-    const t = text.toLowerCase();
-    const isLogin = /(login|log in|pehle|account|mera|already|maujood|existing)/i.test(t);
-    uiClearChoices();
-    if (isLogin) await runLoginFlow(); else await runRegisterFlow();
-  }
-
-  /* ── LOGIN FLOW ── */
-  async function runLoginFlow() {
-    uiSetProgress(10);
-    await say('workerOrUser');
-    const role = await collectRole();
-    if (!role) return;
-    uiSetProgress(40);
-
-    const phone = await collectPhone('loginPhone');
-    if (!phone) return;
-    uiSetProgress(70);
-
-    const password = await collectPassword('loginPassword');
-    if (!password) return;
-    uiSetProgress(90);
-
-    await say('loginSubmitting');
-    uiSetProgress(100);
-
-    const result = await fetch('/api/auth/login', {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ phone, password, role })
-    }).then(r => r.json()).catch(() => ({ error: 'Network error' }));
-
-    if (result.redirect) {
-      window.location.href = result.redirect;
-    } else {
-      const errMsg = (result.error || '') + '. ' + getLang('retry');
-      await say(errMsg.trim());
-      uiSetProgress(-1);
-      setTimeout(() => runLoginFlow(), 500);
-    }
-  }
-
-  /* ── REGISTER FLOW ── */
-  async function runRegisterFlow() {
-    uiSetProgress(5);
-    await say('workerOrUser');
-    const role = await collectRole();
-    if (!role) return;
-    uiSetProgress(15);
-
-    const name = await collectText('regName', 3, 5);
-    if (!name) return;
-    uiSetProgress(30);
-
-    let work = '';
-    if (role === 'worker') {
-      work = await collectText('regWork', 2, 5);
-      if (!work) return;
-    }
-    uiSetProgress(50);
-
-    const location = await collectText('regLocation', 2, 5);
-    if (!location) return;
-    uiSetProgress(65);
-
-    const phone = await collectPhone('regPhone');
-    if (!phone) return;
-    uiSetProgress(80);
-
-    const password = await collectPassword('regPassword');
-    if (!password) return;
-    uiSetProgress(95);
-
-    await say('regSubmitting');
-
-    const fd = new FormData();
-    fd.append('name', toTitleCase(name));
-    if (role === 'worker') fd.append('work', toTitleCase(work));
-    fd.append('location', toTitleCase(location));
-    fd.append('phone', phone);
-    fd.append('password', password);
-
-    const endpoint = role === 'worker' ? '/api/auth/signup/worker' : '/api/auth/signup/user';
-    const result = await fetch(endpoint, { method: 'POST', body: fd })
-      .then(r => r.json()).catch(() => ({ error: 'Network error' }));
-
-    if (result.redirect) {
-      uiSetProgress(100);
-      window.location.href = result.redirect;
-    } else {
-      const errMsg = (result.error || '') + '. ' + getLang('retry');
-      await say(errMsg.trim());
-      uiSetProgress(-1);
-      setTimeout(() => runRegisterFlow(), 500);
-    }
-  }
-
-  /* ── SIGNUP PAGE FLOW (pre-filled page) ── */
-  async function runSignupPageFlow(isWorker) {
-    const steps = isWorker
-      ? ['regName','regWork','regLocation','regPhone','regPassword']
-      : ['regName','regPhone','regPassword'];
-    const fields = isWorker
-      ? [['name','w-name'],['work','w-work'],['location','w-location'],['phone','w-phone','us-phone'],['password','w-password','us-password']]
-      : [['name','us-name'],['phone','us-phone'],['password','us-password']];
-
-    uiSetProgress(0);
-    for (let i = 0; i < steps.length; i++) {
-      uiSetProgress(Math.round((i / steps.length) * 90));
-      const key = steps[i];
-      let value = '';
-      if (key === 'regPhone' || key.includes('Phone')) {
-        value = await collectPhone(key);
-        if (!value) continue;
-      } else if (key === 'regPassword' || key.includes('Password')) {
-        value = await collectPassword(key);
-        if (!value) continue;
-      } else {
-        value = await collectText(key, 2, 5);
-        if (!value) continue;
-      }
-      // Fill form field
-      for (const fid of fields[i]) {
-        const el = document.getElementById(fid);
-        if (el) {
-          el.value = value;
-          el.dispatchEvent(new Event('input', { bubbles: true }));
-          el.style.borderColor = '#4F46E5';
-          setTimeout(() => { el.style.borderColor = ''; }, 2000);
-          break;
-        }
-      }
-    }
-    uiSetProgress(100);
-    await say(getLang('regSubmitting') || 'Done! Please click the button to submit.');
-  }
-
-  /* ── LOGIN PAGE FLOW ── */
-  async function runLoginPageFlow() {
-    uiSetProgress(0);
-    await say('workerOrUser');
-    const role = await collectRole();
-    // Click the role card in the existing UI
-    if (role) {
-      const card = document.getElementById('card-' + role);
-      if (card) card.click();
-      const hiddenRole = document.getElementById('login-role');
-      if (hiddenRole) hiddenRole.value = role;
-    }
-    uiSetProgress(40);
-
-    const phone = await collectPhone('loginPhone');
-    if (phone) {
-      ['phone','us-phone','w-phone'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.value = phone; el.dispatchEvent(new Event('input',{bubbles:true})); }
-      });
-    }
-    uiSetProgress(70);
-
-    const password = await collectPassword('loginPassword');
-    if (password) {
-      ['password','us-password','w-password'].forEach(id => {
-        const el = document.getElementById(id);
-        if (el) { el.value = password; el.dispatchEvent(new Event('input',{bubbles:true})); }
-      });
-    }
-    uiSetProgress(90);
-    await say('loginSubmitting');
-    uiSetProgress(100);
-
-    // Submit form if available
-    const form = document.querySelector('form[id*="login"], form.login-form, form');
-    if (form) setTimeout(() => form.requestSubmit(), 600);
-  }
-
-  /* ── DASHBOARD FLOW ── */
-  async function runDashboardFlow() {
-    if (localStorage.getItem('vhai_dash_shown')) return;
-    localStorage.setItem('vhai_dash_shown', '1');
-    await say('dashGreet');
-    startJobPoll();
-  }
-
-  /* ───────────────────────────────────────────────────────────────
-     9. COLLECTION HELPERS (say + hear with retry)
-  ─────────────────────────────────────────────────────────────── */
-  async function collectRole() {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      uiShowChoices([
-        { icon:'🔧', label: lang==='hi'?'Mazdoor / Worker':'Worker',
-          sub: lang==='hi'?'Kaam dhundh raha hoon':'Looking for work',
-          action: () => { uiClearChoices(); stopListening(); window.__vhai_role='worker'; }},
-        { icon:'🏢', label: lang==='hi'?'Maalik / Employer':'Employer',
-          sub: lang==='hi'?'Kaam dena chahta hoon':'Hiring workers',
-          action: () => { uiClearChoices(); stopListening(); window.__vhai_role='user'; }},
-      ]);
-      window.__vhai_role = null;
-      const { text } = await hear(10000);
-      uiClearChoices();
-      if (window.__vhai_role) return window.__vhai_role; // button was clicked
-      if (!text) { if (attempt < 2) await say('noSpeech'); continue; }
-      const t = text.toLowerCase();
-      if (/(worker|mazdoor|kaam|kam|shramik|labour|laborer|majdoor|sramik|thozhilali|karmikudu|karmachiari)/i.test(t)) return 'worker';
-      if (/(employer|maalik|malik|hire|owner|setha|saahab|udyogapathi|bawas|bos)/i.test(t)) return 'user';
-      if (attempt < 2) await say('retry');
-    }
-    return 'worker'; // default
-  }
-
-  async function collectPhone(promptKey) {
-    for (let attempt = 0; attempt < 4; attempt++) {
-      if (attempt > 0) await say('retry');
-      await say(promptKey);
-      uiSetMic(true);
-      const { text } = await hear(15000);
-      uiSetMic(false);
-      if (!text) { await say('noSpeech'); continue; }
-      const phone = extractPhone(text);
-      if (phone) {
-        uiSetBubble(`📱 <strong>${phone}</strong>`);
-        return phone;
-      }
-    }
-    return null;
-  }
-
-  async function collectPassword(promptKey) {
-    for (let attempt = 0; attempt < 3; attempt++) {
-      if (attempt > 0) await say('retry');
-      await say(promptKey);
-      uiSetMic(true);
-      const { text } = await hear(12000);
-      uiSetMic(false);
-      if (!text) { await say('noSpeech'); continue; }
-      const pw = normalizePassword(text);
-      if (pw && pw.length >= 4) {
-        uiSetBubble('🔒 ' + '•'.repeat(Math.min(pw.length, 10)));
-        return pw;
-      }
-    }
-    return null;
-  }
-
-  async function collectText(promptKey, minLen, retries) {
-    for (let attempt = 0; attempt < (retries || 3); attempt++) {
-      if (attempt > 0) await say('retry');
-      await say(promptKey);
-      uiSetMic(true);
-      const { text } = await hear(12000);
-      uiSetMic(false);
-      if (!text) { await say('noSpeech'); continue; }
-      if (text.length >= (minLen || 2)) {
-        uiSetBubble('✅ ' + toTitleCase(text));
-        return text;
-      }
-    }
-    return null;
-  }
-
-  /* ───────────────────────────────────────────────────────────────
-     10. JOB NOTIFICATION POLLING
-  ─────────────────────────────────────────────────────────────── */
-  function startJobPoll() {
-    if (jobPollTimer) return;
-    checkJobs(); // immediate first check
-    jobPollTimer = setInterval(checkJobs, 60000);
-  }
-
-  function checkJobs() {
-    if (!window.VH || window.VH.role !== 'worker') return;
-    fetch('/api/jobs').then(r => r.json()).then(jobs => {
-      if (!Array.isArray(jobs)) return;
-      const openCount = jobs.filter(j => j.status === 'open').length;
-      if (lastJobCount !== null && openCount > lastJobCount) {
-        alertNewJob();
-      }
-      lastJobCount = openCount;
-    }).catch(() => {});
-  }
-
-  function alertNewJob() {
-    const msg = getLang('jobAlert');
-    if (typeof showToast === 'function') showToast(msg, 'success');
-    // Speak alert if panel is closed (don't interrupt if user is interacting)
-    if (!isSpeaking && !isListening) say('jobAlert');
-  }
-
-  /* ───────────────────────────────────────────────────────────────
-     11. UTILITIES
-  ─────────────────────────────────────────────────────────────── */
-  function toTitleCase(str) {
-    if (!str) return '';
-    return str.replace(/\w\S*/g, t => t.charAt(0).toUpperCase() + t.slice(1).toLowerCase());
-  }
-
-  /* ───────────────────────────────────────────────────────────────
-     12. INIT — decides which flow to run based on current page
-  ─────────────────────────────────────────────────────────────── */
-  function init() {
-    if (hasInitialized) return;
-    hasInitialized = true;
-
-    // Read server-set language
-    if (window.VH && window.VH.lang) lang = window.VH.lang;
-    else {
-      const htmlLang = document.documentElement.lang;
-      if (htmlLang && LANGS[htmlLang.slice(0,2)]) lang = htmlLang.slice(0,2);
+      // Cache DOM references
+      this.dom = {
+        root: document.getElementById('vh-assistant-root'),
+        fab: document.getElementById('vh-fab-trigger'),
+        panel: document.getElementById('vh-main-panel'),
+        statusRing: document.getElementById('vh-status-ring'),
+        statusDot: document.getElementById('vh-status-dot'),
+        statusText: document.getElementById('vh-status-text'),
+        btnLang: document.getElementById('vh-btn-lang'),
+        btnSound: document.getElementById('vh-btn-sound'),
+        btnManual: document.getElementById('vh-btn-manual'),
+        btnMin: document.getElementById('vh-btn-min'),
+        btnClose: document.getElementById('vh-btn-close'),
+        langDrawer: document.getElementById('vh-lang-drawer'),
+        autoplayBanner: document.getElementById('vh-autoplay-banner'),
+        autoplayText: document.getElementById('vh-autoplay-text'),
+        startVoiceBtn: document.getElementById('vh-start-voice-btn'),
+        messages: document.getElementById('vh-messages-stream'),
+        interim: document.getElementById('vh-interim-box'),
+        micBtn: document.getElementById('vh-mic-btn'),
+        micHint: document.getElementById('vh-mic-hint'),
+        micSubhint: document.getElementById('vh-mic-subhint'),
+        wave: document.getElementById('vh-wave-indicator'),
+        repeatBtn: document.getElementById('vh-repeat-btn'),
+        typedRow: document.getElementById('vh-typed-row'),
+        typedInput: document.getElementById('vh-typed-input'),
+        typedSend: document.getElementById('vh-typed-send')
+      };
     }
 
-    buildUI();
-
-    const path = window.location.pathname;
-    const isGateway  = path === '/' || path === '/gateway' || path === '/home' || path === '/welcome';
-    const isSignup   = path.includes('/signup');
-    const isLogin    = path.includes('/login');
-    const isDashboard= path.includes('/dashboard');
-    const isWorker   = path.includes('/signup/worker') || (window.VH && window.VH.role === 'worker');
-    const isLoggedIn = window.VH && window.VH.userId;
-
-    if (isGateway && !isLoggedIn) {
-      // Auto-open + auto-start after 2s
-      setTimeout(() => {
-        openPanel();
-        // Wait for TTS voices to be ready
-        if (window.speechSynthesis.getVoices().length === 0) {
-          window.speechSynthesis.addEventListener('voiceschanged', runGatewayFlow, { once: true });
+    bindControls() {
+      // FAB open toggle
+      this.dom.fab.addEventListener('click', () => {
+        if (this.dom.panel.classList.contains('is-open')) {
+          this.close();
         } else {
-          runGatewayFlow();
+          this.open();
+          if (this.state === States.UNINITIALIZED || this.state === States.IDLE) {
+            this.startOnboarding();
+          }
         }
-      }, 2000);
-    } else if (isSignup && !isLoggedIn) {
-      setTimeout(() => {
-        openPanel();
-        runSignupPageFlow(isWorker);
-      }, 1500);
-    } else if (isLogin && !isLoggedIn) {
-      setTimeout(() => {
-        openPanel();
-        runLoginPageFlow();
-      }, 1500);
-    } else if (isDashboard && isLoggedIn) {
-      setTimeout(() => {
-        openPanel();
-        runDashboardFlow();
-        startJobPoll();
-      }, 2000);
-    } else if (isLoggedIn) {
-      // Other authenticated pages — just run job poll, no auto-open
-      startJobPoll();
+      });
+
+      // Header controls
+      this.dom.btnMin.addEventListener('click', () => this.minimize());
+      this.dom.btnClose.addEventListener('click', () => this.dismiss());
+      this.dom.btnLang.addEventListener('click', () => this.toggleLangDrawer());
+      this.dom.btnSound.addEventListener('click', () => this.toggleSound());
+      this.dom.btnManual.addEventListener('click', () => this.toggleManualMode());
+
+      // Language selection buttons in drawer
+      this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(btn => {
+        btn.addEventListener('click', () => {
+          const code = btn.dataset.code;
+          this.setLanguage(code, true);
+          this.dom.langDrawer.classList.remove('is-open');
+        });
+      });
+
+      // Autoplay unblock button
+      this.dom.startVoiceBtn.addEventListener('click', () => {
+        this.dom.autoplayBanner.classList.remove('is-visible');
+        if (this.currentUtterance) {
+          this.speechSynth.cancel();
+        }
+        this.speakCurrentInstruction();
+      });
+
+      // Typed Input fallback handling
+      if (this.dom.typedSend && this.dom.typedInput) {
+        this.dom.typedSend.addEventListener('click', () => this.handleTypedInput());
+        this.dom.typedInput.addEventListener('keydown', (e) => {
+          if (e.key === 'Enter') {
+            e.preventDefault();
+            this.handleTypedInput();
+          }
+        });
+      }
+
+      // Microphone button with rapid click debouncing
+      this.dom.micBtn.addEventListener('click', () => {
+        const now = Date.now();
+        if (now - this.lastClickTime < 350) return;
+        this.lastClickTime = now;
+        if (this.stt && this.stt.state === (window.VoiceHireVoice ? window.VoiceHireVoice.VoiceStates.LISTENING : 'LISTENING')) {
+          this.stopListening();
+        } else {
+          this.startListening();
+        }
+      });
+
+      // Repeat button
+      this.dom.repeatBtn.addEventListener('click', () => {
+        this.speakCurrentInstruction();
+      });
     }
+
+    /* ── State Transition Engine ───────────────────────────────────────── */
+    setState(newState) {
+      this.state = newState;
+      console.log(`[VoiceHire Assistant] Transition -> ${newState}`);
+    }
+
+    startOnboarding() {
+      this.clearMessages();
+      this.setState(States.GREETING);
+
+      // Play initial Hindi greeting explaining finding work or booking a worker
+      const greetingHi = DIALOGUES.greeting.hi;
+      this.addMessage(greetingHi, 'bot');
+      this.lastInstruction = greetingHi;
+
+      this.speak(greetingHi, 'hi')
+        .then(() => {
+          // Immediately advance to Language Selection
+          this.showLanguageSelection();
+        })
+        .catch(err => {
+          if (err === 'autoplay_blocked') {
+            this.showAutoplayBlockedBanner();
+            this.showLanguageSelection();
+          }
+        });
+    }
+
+    showAutoplayBlockedBanner() {
+      const bannerText = (DIALOGUES.autoplayBlockedMsg[this.currentLang] || DIALOGUES.autoplayBlockedMsg.hi);
+      const btnText = (DIALOGUES.startVoiceBtn[this.currentLang] || DIALOGUES.startVoiceBtn.hi);
+      this.dom.autoplayText.textContent = bannerText;
+      this.dom.startVoiceBtn.innerHTML = btnText;
+      this.dom.autoplayBanner.classList.add('is-visible');
+    }
+
+    showLanguageSelection() {
+      this.setState(States.LANGUAGE_SELECT);
+      const askText = DIALOGUES.askLanguage.hi;
+      this.addMessage(askText, 'bot');
+      this.lastInstruction = askText;
+
+      // Render large, visible language buttons
+      const choicesContainer = document.createElement('div');
+      choicesContainer.className = 'vh-choices';
+
+      // Required: Begin with Hindi, Punjabi, and English first, followed by verified Indian languages
+      const orderedCodes = ['hi', 'pa', 'en', 'bn', 'mr', 'ta', 'te', 'gu', 'kn', 'ml', 'or', 'ur'];
+
+      const grid = document.createElement('div');
+      grid.style.cssText = 'display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px;';
+
+      orderedCodes.forEach(code => {
+        const lang = LANGUAGES[code];
+        if (!lang) return;
+        const btn = document.createElement('button');
+        btn.className = `vh-choice-btn ${code === this.currentLang ? 'primary' : ''}`;
+        btn.innerHTML = `
+          <div class="vh-choice-icon">${lang.flag}</div>
+          <div class="vh-choice-content">
+            <span class="vh-choice-title">${lang.native}</span>
+            <span class="vh-choice-sub">${lang.name}</span>
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          this.addMessage(`${lang.flag} ${lang.native} (${lang.name})`, 'user');
+          this.setLanguage(code, false);
+          // Confirm language in chosen tongue and move to role selection
+          const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
+          this.addMessage(confirmText, 'bot');
+          this.speak(confirmText, code).then(() => {
+            this.showRoleSelection();
+          });
+        });
+        grid.appendChild(btn);
+      });
+
+      choicesContainer.appendChild(grid);
+      this.dom.messages.appendChild(choicesContainer);
+      this.scrollToBottom();
+
+      this.speak(askText, 'hi');
+    }
+
+    showRoleSelection() {
+      this.setState(States.ROLE_SELECT);
+      const lang = this.currentLang;
+      const askRoleText = DIALOGUES.askRole[lang] || DIALOGUES.askRole.hi;
+      this.addMessage(askRoleText, 'bot');
+      this.lastInstruction = askRoleText;
+
+      const workerTitle = DIALOGUES.roleWorker[lang] || DIALOGUES.roleWorker.hi;
+      const workerSub   = DIALOGUES.roleWorkerSub[lang] || DIALOGUES.roleWorkerSub.hi;
+      const custTitle   = DIALOGUES.roleCustomer[lang] || DIALOGUES.roleCustomer.hi;
+      const custSub     = DIALOGUES.roleCustomerSub[lang] || DIALOGUES.roleCustomerSub.hi;
+
+      const choices = document.createElement('div');
+      choices.className = 'vh-choices';
+
+      // Choice 1: Worker
+      const btnWorker = document.createElement('button');
+      btnWorker.className = 'vh-choice-btn primary';
+      btnWorker.innerHTML = `
+        <div class="vh-choice-icon">👷</div>
+        <div class="vh-choice-content">
+          <span class="vh-choice-title">${workerTitle}</span>
+          <span class="vh-choice-sub">${workerSub}</span>
+        </div>
+      `;
+      btnWorker.addEventListener('click', () => {
+        this.selectedRole = 'worker';
+        this.addMessage(workerTitle, 'user');
+        this.showActionSelection();
+      });
+
+      // Choice 2: Customer / Employer
+      const btnCustomer = document.createElement('button');
+      btnCustomer.className = 'vh-choice-btn primary';
+      btnCustomer.innerHTML = `
+        <div class="vh-choice-icon">🏢</div>
+        <div class="vh-choice-content">
+          <span class="vh-choice-title">${custTitle}</span>
+          <span class="vh-choice-sub">${custSub}</span>
+        </div>
+      `;
+      btnCustomer.addEventListener('click', () => {
+        this.selectedRole = 'user';
+        this.addMessage(custTitle, 'user');
+        this.showActionSelection();
+      });
+
+      choices.appendChild(btnWorker);
+      choices.appendChild(btnCustomer);
+      this.dom.messages.appendChild(choices);
+      this.scrollToBottom();
+
+      this.speak(askRoleText, lang);
+    }
+
+    showActionSelection() {
+      this.setState(States.ACTION_SELECT);
+      const lang = this.currentLang;
+      const askActionText = DIALOGUES.askAction[lang] || DIALOGUES.askAction.hi;
+      this.addMessage(askActionText, 'bot');
+      this.lastInstruction = askActionText;
+
+      const loginTitle = DIALOGUES.actionLogin[lang] || DIALOGUES.actionLogin.hi;
+      const loginSub   = DIALOGUES.actionLoginSub[lang] || DIALOGUES.actionLoginSub.hi;
+      const regTitle   = DIALOGUES.actionRegister[lang] || DIALOGUES.actionRegister.hi;
+      const regSub     = DIALOGUES.actionRegisterSub[lang] || DIALOGUES.actionRegisterSub.hi;
+
+      const choices = document.createElement('div');
+      choices.className = 'vh-choices';
+
+      // Option A: Login
+      const btnLogin = document.createElement('button');
+      btnLogin.className = 'vh-choice-btn';
+      btnLogin.innerHTML = `
+        <div class="vh-choice-icon">🔑</div>
+        <div class="vh-choice-content">
+          <span class="vh-choice-title">${loginTitle}</span>
+          <span class="vh-choice-sub">${loginSub}</span>
+        </div>
+      `;
+      btnLogin.addEventListener('click', () => {
+        this.selectedAction = 'login';
+        this.addMessage(loginTitle, 'user');
+        this.navigateToTargetPage();
+      });
+
+      // Option B: Create Account
+      const btnRegister = document.createElement('button');
+      btnRegister.className = 'vh-choice-btn primary';
+      btnRegister.innerHTML = `
+        <div class="vh-choice-icon">✨</div>
+        <div class="vh-choice-content">
+          <span class="vh-choice-title">${regTitle}</span>
+          <span class="vh-choice-sub">${regSub}</span>
+        </div>
+      `;
+      btnRegister.addEventListener('click', () => {
+        this.selectedAction = 'register';
+        this.addMessage(regTitle, 'user');
+        this.navigateToTargetPage();
+      });
+
+      choices.appendChild(btnLogin);
+      choices.appendChild(btnRegister);
+      this.dom.messages.appendChild(choices);
+      this.scrollToBottom();
+
+      this.speak(askActionText, lang);
+    }
+
+    navigateToTargetPage() {
+      this.setState(States.NAVIGATING);
+      const lang = this.currentLang;
+      const navText = DIALOGUES.navigating[lang] || DIALOGUES.navigating.hi;
+      this.addMessage(navText, 'bot');
+
+      let targetUrl = '/';
+      const role = this.selectedRole || 'worker';
+
+      if (this.selectedAction === 'login') {
+        targetUrl = `/login?role=${role}`;
+      } else {
+        targetUrl = role === 'worker' ? '/signup/worker' : '/signup/user';
+      }
+
+      this.speak(navText, lang).finally(() => {
+        setTimeout(() => {
+          window.location.href = targetUrl;
+        }, 500);
+      });
+    }
+
+    /* ── Speech Synthesis Engine ───────────────────────────────────────── */
+    speak(text, langCode) {
+      if (this.tts && this.tts.speak) {
+        return this.tts.speak(text, langCode || this.currentLang);
+      }
+      return Promise.resolve();
+    }
+
+    speakCurrentInstruction() {
+      if (this.lastInstruction) {
+        this.speak(this.lastInstruction, this.currentLang);
+      }
+    }
+
+    stopSpeaking() {
+      if (this.tts && this.tts.cancel) {
+        this.tts.cancel();
+      }
+      this.isSpeaking = false;
+      this.updateSpeakingIndicators(false);
+    }
+
+    /* ── Speech Recognition & Voice Services Engine ────────────────────── */
+    initVoiceServices() {
+      if (!this.stt || !this.stt.isSupported || !this.stt.isSupported()) {
+        this.showTypedFallbackNotice();
+        return;
+      }
+
+      this.stt.onStateChange = (state) => {
+        const VS = window.VoiceHireVoice ? window.VoiceHireVoice.VoiceStates : {};
+        if (state === (VS.LISTENING || 'LISTENING')) {
+          this.isListening = true;
+          this.dom.micBtn.classList.add('is-listening');
+          this.dom.statusRing.className = 'vh-header-ring listening';
+          this.dom.statusDot.className = 'vh-status-dot listening';
+          this.dom.statusText.textContent = DIALOGUES.micListening[this.currentLang] || 'Listening...';
+          this.dom.micHint.textContent = DIALOGUES.micListening[this.currentLang] || 'Listening...';
+          this.dom.interim.classList.add('is-active');
+          this.dom.interim.textContent = '';
+        } else {
+          this.isListening = false;
+          this.dom.micBtn.classList.remove('is-listening');
+          this.dom.statusRing.className = 'vh-header-ring';
+          this.dom.statusDot.className = 'vh-status-dot';
+          this.dom.statusText.textContent = 'Ready';
+          this.dom.micHint.textContent = 'Tap to Speak';
+          this.dom.interim.classList.remove('is-active');
+        }
+      };
+
+      this.stt.onInterim = (text) => {
+        if (this.dom.interim) {
+          this.dom.interim.textContent = text;
+        }
+      };
+
+      this.stt.onFinal = (text, confidence) => {
+        if (this.dom.interim) {
+          this.dom.interim.textContent = text;
+        }
+        this.showTranscriptConfirmation(text, confidence);
+      };
+
+      this.stt.onPermissionDenied = () => {
+        const denied = DIALOGUES.micDenied[this.currentLang] || DIALOGUES.micDenied.hi;
+        this.addMessage(denied, 'bot');
+        this.showTypedFallbackNotice();
+      };
+
+      this.stt.onError = (errType, msg) => {
+        if (errType !== 'aborted' && errType !== 'canceled') {
+          console.warn('[Assistant STT Error]', errType, msg);
+        }
+      };
+    }
+
+    startListening() {
+      this.stopSpeaking();
+      if (!this.stt || !this.stt.isSupported || !this.stt.isSupported()) {
+        this.showTypedFallbackNotice();
+        return;
+      }
+      this.stt.start(this.currentLang);
+    }
+
+    stopListening() {
+      if (this.stt && this.stt.stop) {
+        this.stt.stop();
+      }
+      this.isListening = false;
+      this.dom.micBtn.classList.remove('is-listening');
+      this.dom.statusRing.className = 'vh-header-ring';
+      this.dom.statusDot.className = 'vh-status-dot';
+      this.dom.statusText.textContent = 'Ready';
+      this.dom.micHint.textContent = 'Tap to Speak';
+      this.dom.interim.classList.remove('is-active');
+    }
+
+    cancelVoice() {
+      if (this.stt && this.stt.cancel) this.stt.cancel();
+      if (this.tts && this.tts.cancel) this.tts.cancel();
+      this.stopListening();
+      this.stopSpeaking();
+    }
+
+    showTypedFallbackNotice() {
+      if (this.dom.typedInput) {
+        this.dom.typedInput.focus();
+        this.dom.micSubhint.textContent = 'Please type below';
+      }
+    }
+
+    handleTypedInput() {
+      if (!this.dom.typedInput) return;
+      const text = this.dom.typedInput.value.trim();
+      if (!text) return;
+      this.dom.typedInput.value = '';
+      this.addMessage(text, 'user');
+      this.executeVoiceIntent(text, 1.0);
+    }
+
+    showTranscriptConfirmation(text, confidence) {
+      const card = document.createElement('div');
+      card.className = 'vh-confirm-card';
+      card.innerHTML = `
+        <div class="vh-confirm-header">
+          <i class="fa-solid fa-microphone"></i>
+          <span>Recognized speech (Review / Edit)</span>
+        </div>
+        <div class="vh-confirm-text">"${text}"</div>
+        <div class="vh-confirm-actions">
+          <button class="vh-confirm-btn primary vh-confirm-ok">
+            <i class="fa-solid fa-check"></i> Continue
+          </button>
+          <button class="vh-confirm-btn secondary vh-confirm-edit">
+            <i class="fa-solid fa-pen"></i> Edit
+          </button>
+          <button class="vh-confirm-btn secondary vh-confirm-retry">
+            <i class="fa-solid fa-rotate-right"></i> Retry
+          </button>
+        </div>
+      `;
+
+      const textEl = card.querySelector('.vh-confirm-text');
+      const editBtn = card.querySelector('.vh-confirm-edit');
+      const okBtn = card.querySelector('.vh-confirm-ok');
+      const retryBtn = card.querySelector('.vh-confirm-retry');
+
+      editBtn.addEventListener('click', () => {
+        const curText = textEl.textContent.replace(/^"|"$/g, '');
+        textEl.innerHTML = `<input type="text" class="vh-confirm-edit-input" value="${curText}" />`;
+        const input = textEl.querySelector('input');
+        input.focus();
+        editBtn.style.display = 'none';
+      });
+
+      retryBtn.addEventListener('click', () => {
+        card.remove();
+        this.startListening();
+      });
+
+      okBtn.addEventListener('click', () => {
+        const input = textEl.querySelector('input');
+        const finalText = input ? input.value.trim() : text;
+        card.remove();
+        this.executeVoiceIntent(finalText, confidence);
+      });
+
+      this.dom.messages.appendChild(card);
+      this.scrollToBottom();
+    }
+
+    async executeVoiceIntent(text, confidence = 1.0) {
+      if (!text) return;
+
+      // Call Orchestration Engine API
+      let turn = null;
+      if (window.VoiceHireVoice && window.VoiceHireVoice.VoiceIntentService && window.VoiceHireVoice.VoiceIntentService.orchestrateTurn) {
+        turn = await window.VoiceHireVoice.VoiceIntentService.orchestrateTurn(
+          text,
+          this.state || 'greeting',
+          this.currentLang
+        );
+      }
+
+      if (!turn) {
+        // Fallback to basic intent analyzer
+        if (window.VoiceHireVoice && window.VoiceHireVoice.VoiceIntentService) {
+          turn = await window.VoiceHireVoice.VoiceIntentService.processTranscript(
+            text,
+            this.currentLang,
+            confidence,
+            this.state
+          );
+        }
+      }
+
+      if (!turn) return;
+
+      // Handle speech and display
+      const displayMsg = turn.display_text || turn.speech_response || turn.clarification_prompt;
+      if (displayMsg) {
+        this.addMessage(displayMsg, 'bot');
+        this.lastInstruction = displayMsg;
+      }
+
+      const speechMsg = turn.speech_response || displayMsg;
+      if (speechMsg) {
+        this.speak(speechMsg, this.currentLang);
+      }
+
+      // Handle State Transition
+      if (turn.current_state) {
+        this.state = turn.current_state;
+      }
+
+      const action = turn.action;
+      const args = turn.action_arguments || {};
+
+      // 1. Language Selection
+      if (action === 'select_language' && args.language) {
+        this.setLanguage(args.language, false);
+      }
+
+      // 2. Role Selection
+      if (action === 'select_role' && args.role) {
+        this.selectedRole = args.role;
+      }
+
+      // 3. Form Field Auto-Filling (Non-sensitive)
+      if (action === 'set_form_field' && args.field_name && args.value) {
+        const fieldEl = document.querySelector(`input[name="${args.field_name}"], input[id="${args.field_name}"], select[name="${args.field_name}"]`);
+        if (fieldEl) {
+          fieldEl.value = args.value;
+          fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
+          fieldEl.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      }
+
+      // 4. Consequential Confirmation Request (Yes/No buttons)
+      if (turn.requires_confirmation) {
+        const confirmBox = document.createElement('div');
+        confirmBox.className = 'vh-choices';
+        confirmBox.style.marginTop = '8px';
+        confirmBox.innerHTML = `
+          <button class="vh-choice-btn" style="background:#10B981;color:#fff;" id="vh-btn-yes">
+            <i class="fa-solid fa-check"></i> हाँ, पक्का करें (Yes)
+          </button>
+          <button class="vh-choice-btn" style="background:#EF4444;color:#fff;" id="vh-btn-no">
+            <i class="fa-solid fa-xmark"></i> नहीं, रद्द करें (No)
+          </button>
+        `;
+        this.dom.messages.appendChild(confirmBox);
+        this.scrollToBottom();
+
+        const yesBtn = confirmBox.querySelector('#vh-btn-yes');
+        const noBtn = confirmBox.querySelector('#vh-btn-no');
+
+        yesBtn.addEventListener('click', () => {
+          confirmBox.remove();
+          this.executeVoiceIntent('हाँ ठीक है confirm', 1.0);
+        });
+
+        noBtn.addEventListener('click', () => {
+          confirmBox.remove();
+          this.executeVoiceIntent('नहीं cancel karo', 1.0);
+        });
+      }
+
+      // 5. Quick Replies Chips
+      if (turn.quick_replies && turn.quick_replies.length > 0 && !turn.requires_confirmation) {
+        const chipRow = document.createElement('div');
+        chipRow.style.display = 'flex';
+        chipRow.style.gap = '6px';
+        chipRow.style.flexWrap = 'wrap';
+        chipRow.style.marginTop = '6px';
+
+        turn.quick_replies.forEach(reply => {
+          const chip = document.createElement('button');
+          chip.className = 'vh-lang-card';
+          chip.style.padding = '5px 10px';
+          chip.style.fontSize = '0.78rem';
+          chip.style.borderRadius = '16px';
+          chip.style.cursor = 'pointer';
+          chip.textContent = reply;
+          chip.addEventListener('click', () => {
+            chipRow.remove();
+            this.addMessage(reply, 'user');
+            this.executeVoiceIntent(reply, 1.0);
+          });
+          chipRow.appendChild(chip);
+        });
+
+        this.dom.messages.appendChild(chipRow);
+        this.scrollToBottom();
+      }
+
+      // 6. Navigation
+      if (action === 'navigate' && args.route) {
+        setTimeout(() => {
+          window.location.href = args.route;
+        }, 800);
+      }
+    }
+
+    /* ── Visual Updates & Controls ─────────────────────────────────────── */
+    addMessage(text, sender = 'bot') {
+      const bubble = document.createElement('div');
+      bubble.className = `vh-bubble ${sender}`;
+      bubble.textContent = text;
+      this.dom.messages.appendChild(bubble);
+      this.scrollToBottom();
+    }
+
+    clearMessages() {
+      this.dom.messages.innerHTML = '';
+    }
+
+    scrollToBottom() {
+      this.dom.messages.scrollTop = this.dom.messages.scrollHeight;
+    }
+
+    updateSpeakingIndicators(active) {
+      if (active) {
+        this.dom.statusRing.className = 'vh-header-ring speaking';
+        this.dom.statusDot.className = 'vh-status-dot speaking';
+        this.dom.statusText.textContent = 'Speaking...';
+        this.dom.wave.classList.add('is-active');
+      } else {
+        this.dom.statusRing.className = 'vh-header-ring';
+        this.dom.statusDot.className = 'vh-status-dot';
+        this.dom.statusText.textContent = 'Ready';
+        this.dom.wave.classList.remove('is-active');
+      }
+    }
+
+    updateStatus(label, type = 'ready') {
+      this.dom.statusText.textContent = label;
+      this.dom.statusDot.className = `vh-status-dot ${type}`;
+    }
+
+    setLanguage(code, speakNotice = true) {
+      if (!LANGUAGES[code]) code = 'hi';
+      this.currentLang = code;
+      localStorage.setItem('vh_lang', code);
+
+      // Highlight in drawer
+      this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(c => {
+        c.classList.toggle('selected', c.dataset.code === code);
+      });
+
+      // Synchronize backend session language
+      fetch(`/set_lang/${code}`).catch(() => {});
+      if (window.VH) window.VH.lang = code;
+
+      if (speakNotice) {
+        const confText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
+        this.addMessage(confText, 'bot');
+        this.speak(confText, code).then(() => {
+          if (this.state === States.LANGUAGE_SELECT || this.state === States.GREETING) {
+            this.showRoleSelection();
+          }
+        });
+      }
+    }
+
+    toggleLangDrawer() {
+      this.dom.langDrawer.classList.toggle('is-open');
+    }
+
+    toggleSound() {
+      this.isMuted = !this.isMuted;
+      localStorage.setItem('vh_muted', this.isMuted ? 'true' : 'false');
+      if (this.isMuted) {
+        this.stopSpeaking();
+        this.dom.btnSound.classList.add('active');
+        this.dom.btnSound.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
+        this.dom.btnSound.title = 'Unmute Voice';
+      } else {
+        this.dom.btnSound.classList.remove('active');
+        this.dom.btnSound.innerHTML = '<i class="fa-solid fa-volume-high"></i>';
+        this.dom.btnSound.title = 'Mute Voice';
+        this.speakCurrentInstruction();
+      }
+    }
+
+    toggleManualMode() {
+      this.isManualMode = !this.isManualMode;
+      localStorage.setItem('vh_manual_mode', this.isManualMode ? 'true' : 'false');
+      this.dom.btnManual.classList.toggle('active', this.isManualMode);
+
+      if (this.isManualMode) {
+        this.stopSpeaking();
+        this.stopListening();
+        this.updateStatus('Manual Mode', 'ready');
+        this.addMessage('Manual Mode enabled. Voice prompts paused.', 'bot');
+      } else {
+        this.updateStatus('Ready', 'ready');
+        this.addMessage('Voice Assistant active.', 'bot');
+        this.speakCurrentInstruction();
+      }
+    }
+
+    open() {
+      this.dom.panel.classList.add('is-open');
+      this.dom.panel.setAttribute('aria-hidden', 'false');
+    }
+
+    minimize() {
+      this.stopSpeaking();
+      this.stopListening();
+      this.dom.panel.classList.remove('is-open');
+      this.dom.panel.setAttribute('aria-hidden', 'true');
+    }
+
+    close() {
+      this.minimize();
+    }
+
+    dismiss() {
+      this.close();
+      sessionStorage.setItem('vh_dismissed', 'true');
+    }
+  }
+
+  /* ── Initialize Assistant on DOM Ready ──────────────────────────────── */
+  function bootAssistant() {
+    window.VHAssistant = new VoiceHireAssistant();
   }
 
   if (document.readyState === 'loading') {
-    document.addEventListener('DOMContentLoaded', init);
+    document.addEventListener('DOMContentLoaded', bootAssistant);
   } else {
-    init();
+    bootAssistant();
   }
 
 })();

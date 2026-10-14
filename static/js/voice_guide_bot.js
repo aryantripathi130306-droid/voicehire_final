@@ -15,74 +15,74 @@
         { speak: "Great! Now, what kind of work do you do? For example, plumber, carpenter, cleaner, driver.", field: 'work', hint: 'Say your work type', icon: '🔧' },
         { speak: "Nice! In which city or area do you live?", field: 'location', hint: 'Say your city or area', icon: '📍' },
         { speak: "Please say your 10-digit mobile number slowly.", field: 'phone', hint: 'Say your phone number', icon: '📱', isPhone: true },
-        { speak: "Now create a password. Say any word or numbers you can remember easily.", field: 'password', hint: 'Say a password', icon: '🔒', isPassword: true },
-        { speak: "Wonderful! Your profile is ready. Now click the Create Account button to save it.", field: null, hint: null, icon: '🎉', isFinal: true }
+        { speak: "For your security and privacy, please type your password on screen. Do not say your password aloud.", field: 'password', hint: 'Type password on screen', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Wonderful! Your profile details are filled. Please review them and click Create Account to confirm.", field: null, hint: 'Review and click Create Account', icon: '🎉', isFinal: true, autoSubmit: false }
       ],
       hi: [
         { speak: "VoiceHire mein aapka swagat hai! Main aapka sahayak hoon. Aapka poora naam kya hai?", field: 'name', hint: 'Apna naam bolein', icon: '👤' },
         { speak: "Bahut achha! Aap kya kaam karte hain? Jaise plumber, badhhai, safaiwala, driver.", field: 'work', hint: 'Apna kaam bolein', icon: '🔧' },
         { speak: "Shaandaar! Aap kis sheher ya ilaake mein rehte hain?", field: 'location', hint: 'Apna sheher bolein', icon: '📍' },
         { speak: "Kripaya apna 10 ankon ka mobile number dheere-dheere bolein.", field: 'phone', hint: 'Phone number bolein', icon: '📱', isPhone: true },
-        { speak: "Ab ek password banaein. Koi bhi shabd ya number bolein jo aapko yaad rahe.", field: 'password', hint: 'Password bolein', icon: '🔒', isPassword: true },
-        { speak: "Bahut badhiya! Aapki profile taiyar hai. Ab Create Account button dabayein.", field: null, hint: null, icon: '🎉', isFinal: true }
+        { speak: "Suraksha ke liye, kripaya apna password screen par type karein. Password bolkar na bataein.", field: 'password', hint: 'Screen par password type karein', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Bahut badhiya! Jankari bhar gayi hai. Kripaya ise check karein aur Create Account button dabayein.", field: null, hint: 'Check karke button dabayein', icon: '🎉', isFinal: true, autoSubmit: false }
       ],
       bn: [
         { speak: "VoiceHire e aapnake swagata. Ami aapnar sahayakar. Aapnar puro naam ki?", field: 'name', hint: 'Apnar naam bolun', icon: '👤' },
         { speak: "Durdar! Apni ki kaj koren? Jemon plumber, carpenter, cleaner.", field: 'work', hint: 'Apnar kaj bolun', icon: '🔧' },
         { speak: "Apni kon shahore thaken?", field: 'location', hint: 'Apnar shahor bolun', icon: '📍' },
         { speak: "Apnar 10 sonkhyar mobile nombor bolun.", field: 'phone', hint: 'Phone nombor bolun', icon: '📱', isPhone: true },
-        { speak: "Akhon ekti password toiri korun.", field: 'password', hint: 'Password bolun', icon: '🔒', isPassword: true },
-        { speak: "Ashadharon! Apnar profile prostut. Akhon button chapon!", field: null, hint: null, icon: '🎉', isFinal: true }
+        { speak: "Nirapattar jonno, dayakore screen e password type korun. Mukhe bolben na.", field: 'password', hint: 'Screen e password type korun', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Ashadharon! Apnar profile prostut. Kripaya janch korun o Create Account click korun.", field: null, hint: 'Janch korun o button chapon', icon: '🎉', isFinal: true, autoSubmit: false }
       ],
       ta: [
         { speak: "VoiceHire l ungalai varaverkiren! Nan unkal udaviyalar. Unkal peyar enna?", field: 'name', hint: 'Unkal peyar sollunga', icon: '👤' },
         { speak: "Aruma! Neenga enna velai seikireengal?", field: 'work', hint: 'Unkal velai sollunga', icon: '🔧' },
         { speak: "Neenga entha nagaram?", field: 'location', hint: 'Unkal oor sollunga', icon: '📍' },
         { speak: "Unkal 10 ilakkam phone number sollunga.", field: 'phone', hint: 'Phone number sollunga', icon: '📱', isPhone: true },
-        { speak: "Ippo oru password urvakkuunga.", field: 'password', hint: 'Password sollunga', icon: '🔒', isPassword: true },
-        { speak: "Sirappana! Unkal profile tayar!", field: null, hint: null, icon: '🎉', isFinal: true }
+        { speak: "Pathukappirkaaga, password ai screen il type seyyavum. Vaai vazhiyaaga solla vendaam.", field: 'password', hint: 'Password type seyyavum', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Sirappana! Vivarangalai paarthuvittu Create Account click seyyavum.", field: null, hint: 'Check seithu click seyyavum', icon: '🎉', isFinal: true, autoSubmit: false }
       ],
       te: [
         { speak: "VoiceHire ki swaagatam! Nenu meeru sahayakudu. Meeru peru emiti?", field: 'name', hint: 'Meeru peru cheppandi', icon: '👤' },
         { speak: "Chala bagundi! Meeru em pani chesraaru?", field: 'work', hint: 'Meeru pani cheppandi', icon: '🔧' },
         { speak: "Meeru em nagaram lo untaaru?", field: 'location', hint: 'Meeru ooru cheppandi', icon: '📍' },
         { speak: "Meeru 10 ankela mobile number cheppandi.", field: 'phone', hint: 'Phone number cheppandi', icon: '📱', isPhone: true },
-        { speak: "Password create cheyandi.", field: 'password', hint: 'Password cheppandi', icon: '🔒', isPassword: true },
-        { speak: "Adbhutam! Meeru profile ready!", field: null, hint: null, icon: '🎉', isFinal: true }
+        { speak: "Bhadratakosam, daya chesi password ni screen pai type cheyandi. Mukhamga cheppakandi.", field: 'password', hint: 'Password type cheyandi', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Adbhutam! Vivaraalu sarichusi Create Account button click cheyandi.", field: null, hint: 'Check chesi click cheyandi', icon: '🎉', isFinal: true, autoSubmit: false }
       ],
       mr: [
         { speak: "VoiceHire madhe apale swagat! Mi tumcha madatnis ahe. Tumche poorne naav kay ahe?", field: 'name', hint: 'Tumche naav saanga', icon: '👤' },
         { speak: "Chhan! Tumhi konte kaam karta?", field: 'work', hint: 'Tumhe kaam saanga', icon: '🔧' },
         { speak: "Tumhi konathya shaharat raahtaa?", field: 'location', hint: 'Tumhe shahar saanga', icon: '📍' },
         { speak: "Tumcha 10 anki mobile number saanga.", field: 'phone', hint: 'Phone number saanga', icon: '📱', isPhone: true },
-        { speak: "Aata ek password tayaar kara.", field: 'password', hint: 'Password saanga', icon: '🔒', isPassword: true },
-        { speak: "Shaabas! Tumchi profile tayaar ahe!", field: null, hint: null, icon: '🎉', isFinal: true }
+        { speak: "Surakshecha drushtikonatun, kripaya password screen var type kara. Tondani sangu naka.", field: 'password', hint: 'Password type kara', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Shaabas! Mahiti tasalun paha aani Create Account button daba.", field: null, hint: 'Mahiti tapasa aani submit kara', icon: '🎉', isFinal: true, autoSubmit: false }
       ]
     },
     login: {
       en: [
         { speak: "Welcome back! Let me help you log in. Are you a Worker or an Employer? Say Worker or Employer.", field: 'role', hint: "Say Worker or Employer", icon: '🏷️', isRole: true },
         { speak: "Please say your 10-digit mobile number.", field: 'phone', hint: 'Say your phone number', icon: '📱', isPhone: true },
-        { speak: "Now say your password.", field: 'password', hint: 'Say your password', icon: '🔒', isPassword: true },
-        { speak: "All done! I will click Login for you now!", field: null, hint: null, icon: '✅', isFinal: true, autoSubmit: true }
+        { speak: "For your security and privacy, please type your password on screen. Do not say your password aloud.", field: 'password', hint: 'Type password on screen', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Please review your mobile number and password, then tap the Login button.", field: null, hint: 'Review and tap Login', icon: '✅', isFinal: true, autoSubmit: false }
       ],
       hi: [
         { speak: "Wapas aane par swagat hai! Mujhe bataaein, kya aap mazdoor hain ya maalik? Mazdoor ya Maalik bolein.", field: 'role', hint: "Mazdoor ya Maalik bolein", icon: '🏷️', isRole: true },
         { speak: "Apna 10 ankon ka mobile number bolein.", field: 'phone', hint: 'Phone number bolein', icon: '📱', isPhone: true },
-        { speak: "Ab apna password bolein.", field: 'password', hint: 'Password bolein', icon: '🔒', isPassword: true },
-        { speak: "Badhiya! Login button dabaa raha hoon!", field: null, hint: null, icon: '✅', isFinal: true, autoSubmit: true }
+        { speak: "Suraksha ke liye, kripaya apna password screen par type karein. Password bolkar na bataein.", field: 'password', hint: 'Screen par password type karein', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Apna number aur password check karein aur Login button dabayein.", field: null, hint: 'Check karein aur Login dabayein', icon: '✅', isFinal: true, autoSubmit: false }
       ],
       bn: [
         { speak: "Phire ashar jonnyo swagata! Apni ki shromik naki niyogakarta? Worker ba Employer bolun.", field: 'role', hint: "Worker ba Employer bolun", icon: '🏷️', isRole: true },
         { speak: "Apnar 10 sonkhyar mobile nombor bolun.", field: 'phone', hint: 'Phone nombor bolun', icon: '📱', isPhone: true },
-        { speak: "Akhon apnar password bolun.", field: 'password', hint: 'Password bolun', icon: '🔒', isPassword: true },
-        { speak: "Durdar! Login button chepchi!", field: null, hint: null, icon: '✅', isFinal: true, autoSubmit: true }
+        { speak: "Nirapattar jonno, dayakore screen e password type korun. Mukhe bolben na.", field: 'password', hint: 'Screen e password type korun', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Apnar biboron janch korun ebong Login button e click korun.", field: null, hint: 'Janch korun o Login chapon', icon: '✅', isFinal: true, autoSubmit: false }
       ],
       ta: [
         { speak: "Marupadiyum varaverkiren! Neenga worker a employer a? Worker ba Employer sollunga.", field: 'role', hint: "Worker ba Employer sollunga", icon: '🏷️', isRole: true },
         { speak: "Unkal 10 ilakkam phone number sollunga.", field: 'phone', hint: 'Phone number sollunga', icon: '📱', isPhone: true },
-        { speak: "Ippo unkal password sollunga.", field: 'password', hint: 'Password sollunga', icon: '🔒', isPassword: true },
-        { speak: "Aruma! Login pannukirein!", field: null, hint: null, icon: '✅', isFinal: true, autoSubmit: true }
+        { speak: "Pathukappirkaaga, password ai screen il type seyyavum. Vaai vazhiyaaga solla vendaam.", field: 'password', hint: 'Password type seyyavum', icon: '🔒', isPassword: true, isManualField: true },
+        { speak: "Vivorangalai sari paarthu Login button ai azhuthavum.", field: null, hint: 'Check seithu Login azhuthavum', icon: '✅', isFinal: true, autoSubmit: false }
       ]
     },
     dashboard: {
@@ -157,21 +157,16 @@
     return digits;
   }
 
-  function wordsToPassword(text) {
-    const wm = {zero:0,one:1,two:2,three:3,four:4,five:5,six:6,seven:7,eight:8,nine:9,oh:0};
-    return text.toLowerCase().trim().split(/\s+/).map(w => {
-      const c = w.replace(/[.,!?]/g, '');
-      return c in wm ? wm[c] : c;
-    }).join('');
-  }
-
   function fillField(name, value, step) {
+    if (name === 'password' || (step && step.isPassword)) {
+      // Strictly prevent collecting, speaking, or filling passwords over voice
+      return '';
+    }
     const maps = {
       name: ['name', 'w-name', 'us-name'],
       work: ['w-work', 'work_type'],
       location: ['w-location', 'location'],
-      phone: ['phone', 'w-phone', 'us-phone'],
-      password: ['password', 'w-password', 'us-password']
+      phone: ['phone', 'w-phone', 'us-phone']
     };
     const ids = maps[name] || [name];
     for (const id of ids) {
@@ -179,7 +174,6 @@
       if (el) {
         let v = value;
         if (step.isPhone) v = wordToDigits(value).slice(-10);
-        else if (step.isPassword) v = wordsToPassword(value);
         el.value = v;
         el.dispatchEvent(new Event('input', {bubbles:true}));
         el.style.transition = 'all .3s';
@@ -489,6 +483,18 @@
               if (btn) { this.addMsg('Clicking Login for you!', '✅'); btn.click(); }
             }, 1500);
           }
+          return;
+        }
+        if (step.isPassword || step.isManualField) {
+          const pwdEl = document.getElementById('password') || document.getElementById('w-password') || document.getElementById('us-password');
+          if (pwdEl) {
+            pwdEl.focus();
+            pwdEl.style.transition = 'all .3s';
+            pwdEl.style.borderColor = '#2563EB';
+            pwdEl.style.boxShadow = '0 0 0 3px rgba(37,99,235,.18)';
+            setTimeout(() => { pwdEl.style.borderColor = ''; pwdEl.style.boxShadow = ''; }, 3000);
+          }
+          this.showNextBtn(() => this.speakStep(idx + 1));
           return;
         }
         if (step.isInfo) { this.showNextBtn(() => this.speakStep(idx + 1)); return; }

@@ -902,5 +902,245 @@ Completed
 
 ---
 
-*VoiceHire API Documentation — v1.0.0*  
+## 9. Service Categories & Worker Skills
+
+### GET /api/categories
+
+Retrieve all active service categories.
+
+**Auth:** None  
+**Response (200):**
+```json
+[
+  {
+    "id": 1,
+    "name": "Plumbing",
+    "slug": "plumbing",
+    "description": "Pipes, leaks, taps and bathroom fixtures",
+    "icon": "fa-solid fa-wrench",
+    "is_active": true
+  }
+]
+```
+
+---
+
+### GET /api/worker/skills
+
+Retrieve the authenticated worker's skill profile.
+
+**Auth:** Yes (`worker`)  
+**Response (200):**
+```json
+[
+  {
+    "id": 1,
+    "worker_id": "uuid",
+    "skill_name": "Leak Detection",
+    "experience_years": 4,
+    "is_primary": true
+  }
+]
+```
+
+---
+
+### POST /api/worker/skills
+
+Add a new trade skill to worker profile.
+
+**Auth:** Yes (`worker`)  
+**Body:**
+```json
+{
+  "skill_name": "Water Heater Installation",
+  "category_id": 1,
+  "experience_years": 3,
+  "is_primary": false
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Skill added successfully",
+  "skill": { ... }
+}
+```
+
+---
+
+### DELETE /api/worker/skills/{skill_id}
+
+Remove a skill from the worker profile (enforces record ownership).
+
+**Auth:** Yes (`worker` owner)  
+**Response (200):**
+```json
+{
+  "message": "Skill deleted successfully"
+}
+```
+
+---
+
+## 10. Job Offers & Bidding
+
+### POST /api/jobs/{job_id}/offers
+
+Worker submits a bid proposal on an open job.
+
+**Auth:** Yes (`worker`)  
+**Body:**
+```json
+{
+  "proposed_price": 750,
+  "estimated_arrival_minutes": 25,
+  "message": "Available now with required tools"
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Offer submitted successfully",
+  "offer": { ... }
+}
+```
+
+---
+
+### GET /api/jobs/{job_id}/offers
+
+List offers for a job. Customer owner sees all offers; workers see only their own.
+
+**Auth:** Yes (Job owner customer or bidding worker)  
+**Response (200):** Array of job offers.
+
+---
+
+### POST /api/jobs/{job_id}/offers/{offer_id}/accept
+
+Customer accepts a specific offer. Atomically assigns job, transitions job to `accepted`, marks winning offer `accepted`, and rejects competing bids.
+
+**Auth:** Yes (Job owner customer)  
+**Response (200):**
+```json
+{
+  "message": "Offer accepted and job assigned successfully",
+  "job": { ... }
+}
+```
+
+---
+
+## 11. Payments
+
+### POST /api/payments
+
+Process and record payment for completed booking or job. Enforces server-side price validation, party authorization, and idempotency deduplication.
+
+**Auth:** Yes (Customer party to booking/job)  
+**Body:**
+```json
+{
+  "booking_id": 12,
+  "payment_method": "upi",
+  "idempotency_key": "optional-client-uuid",
+  "notes": "Paid upon completion"
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Payment processed successfully",
+  "payment": {
+    "id": 1,
+    "amount": 750.0,
+    "currency": "INR",
+    "payment_method": "upi",
+    "payment_status": "completed",
+    "transaction_ref": "VH-TXN-..."
+  }
+}
+```
+
+---
+
+### GET /api/payments
+
+List payment transaction history for logged-in user.
+
+**Auth:** Yes  
+**Query Params:** `page` (default 1), `limit` (default 20)  
+**Response (200):** Array of payment records.
+
+---
+
+## 12. In-App Notifications
+
+### GET /api/notifications
+
+Retrieve notifications for the current authenticated user.
+
+**Auth:** Yes  
+**Query Params:** `unread_only=true|false`, `limit=20`  
+**Response (200):** Array of notification objects.
+
+---
+
+### POST /api/notifications/{id}/read
+
+Mark a single notification as read (enforces recipient ownership).
+
+**Auth:** Yes  
+**Response (200):** `{"message": "Notification marked as read"}`
+
+---
+
+### POST /api/notifications/read-all
+
+Mark all unread notifications for current user as read.
+
+**Auth:** Yes  
+**Response (200):** `{"message": "All notifications marked as read"}`
+
+---
+
+## 13. Dispute & Moderation Reports
+
+### POST /api/reports
+
+File a safety or fulfillment dispute against a counterparty for a job or booking.
+
+**Auth:** Yes  
+**Body:**
+```json
+{
+  "reported_id": "uuid",
+  "reported_role": "worker",
+  "reason": "No Show",
+  "description": "Worker did not arrive at the agreed time slot",
+  "booking_id": 12
+}
+```
+**Response (201):**
+```json
+{
+  "message": "Report submitted successfully. Our safety team is investigating.",
+  "report_id": 1
+}
+```
+
+---
+
+### GET /api/reports
+
+List reports filed by the logged-in user.
+
+**Auth:** Yes  
+**Response (200):** Array of report records.
+
+---
+
+*VoiceHire API Documentation — v2.0.0*  
 *Last updated: October 2026*
+

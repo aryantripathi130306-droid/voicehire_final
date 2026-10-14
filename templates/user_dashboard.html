@@ -23,14 +23,14 @@
                 <span class="nav-badge" id="pending-count" style="display:none;"></span>
             </a>
             <div class="nav-section-label">Account</div>
-            <a href="#" class="nav-item">
+            <a href="#stats" class="nav-item" onclick="document.querySelector('.stats-grid')?.scrollIntoView({behavior:'smooth'}); return false;">
                 <i class="fa-solid fa-wallet nav-icon"></i> Payments
             </a>
-            <a href="#" class="nav-item">
+            <a href="#profile" class="nav-item" onclick="openUserProfileModal(); return false;">
                 <i class="fa-solid fa-user nav-icon"></i> Profile
             </a>
-            <a href="#" class="nav-item">
-                <i class="fa-solid fa-gear nav-icon"></i> Settings
+            <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
+                <i class="fa-solid fa-calendar-check nav-icon"></i> History
             </a>
         </nav>
         <div class="sidebar-bottom">
@@ -121,28 +121,8 @@
                         <a href="{{ url_for('my_bookings_page') }}">View All</a>
                     </div>
                     <div class="workers-grid" id="workers-list">
-                        <!-- Sample worker cards -->
-                        <div class="worker-card">
-                            <div class="worker-card-avatar" style="background:var(--primary);color:white;">RK</div>
-                            <div class="worker-card-name">Ramesh Kumar</div>
-                            <div class="worker-card-work"><i class="fa-solid fa-bolt mr-1"></i> Electrician</div>
-                            <div class="worker-card-loc"><i class="fa-solid fa-location-dot"></i> 2 km away</div>
-                            <div class="worker-stars">⭐⭐⭐⭐⭐ <span style="color:var(--muted); font-size:.6875rem;">(4.8)</span></div>
-                            <div style="display:flex; gap:8px;">
-                                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm" style="flex:1;">Book</a>
-                                <button class="btn btn-ghost btn-sm"><i class="fa-solid fa-volume-high"></i></button>
-                            </div>
-                        </div>
-                        <div class="worker-card">
-                            <div class="worker-card-avatar" style="background:var(--success);color:white;">SD</div>
-                            <div class="worker-card-name">Suresh Deva</div>
-                            <div class="worker-card-work"><i class="fa-solid fa-wrench mr-1"></i> Plumber</div>
-                            <div class="worker-card-loc"><i class="fa-solid fa-location-dot"></i> 5 km away</div>
-                            <div class="worker-stars">⭐⭐⭐⭐⭐ <span style="color:var(--muted); font-size:.6875rem;">(4.6)</span></div>
-                            <div style="display:flex; gap:8px;">
-                                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm" style="flex:1;">Book</a>
-                                <button class="btn btn-ghost btn-sm"><i class="fa-solid fa-volume-high"></i></button>
-                            </div>
+                        <div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--muted);">
+                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading available workers...
                         </div>
                     </div>
                 </div>
@@ -161,6 +141,36 @@
         </div>
     </main>
 </div>
+
+<!-- Customer Profile Modal -->
+<div id="user-profile-modal" class="modal-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
+    <div style="background:var(--card-bg, #fff); border-radius:var(--radius-xl, 16px); width:100%; max-width:440px; box-shadow:var(--shadow-xl); overflow:hidden; border:1px solid var(--border);">
+        <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
+            <h3 style="margin:0; font-size:1.125rem; font-weight:600;">Customer Profile</h3>
+            <button onclick="closeUserProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
+            <div style="display:flex; align-items:center; gap:16px;">
+                <div class="sidebar-avatar" style="width:56px; height:56px; font-size:1.5rem; background:var(--success);">{{ user.name[0].upper() if user and user.name else 'U' }}</div>
+                <div>
+                    <h4 style="margin:0; font-size:1.125rem;">{{ user.name if user else 'Customer' }}</h4>
+                    <span class="badge badge-success">Employer / Customer</span>
+                </div>
+            </div>
+            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.875rem; color:var(--text-secondary);">
+                <div><strong style="color:var(--text-main);">Phone:</strong> {{ user.phone if user and user.phone else 'Not provided' }}</div>
+                <div><strong style="color:var(--text-main);">Role:</strong> Customer / Job Poster</div>
+                <div><strong style="color:var(--text-main);">Status:</strong> Active</div>
+            </div>
+            <div style="display:flex; gap:10px; margin-top:8px;">
+                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-secondary btn-sm" style="flex:1; text-align:center;">
+                    <i class="fa-solid fa-calendar-check mr-1"></i> My Bookings
+                </a>
+                <button onclick="closeUserProfileModal()" class="btn btn-primary btn-sm" style="flex:1;">Close</button>
+            </div>
+        </div>
+    </div>
+</div>
 {% endblock %}
 
 {% block extra_scripts %}
@@ -172,6 +182,29 @@ function openSidebar() {
 function closeSidebar() {
     document.getElementById('sidebar').classList.remove('open');
     document.getElementById('sidebar-overlay').classList.remove('open');
+}
+
+function openUserProfileModal() {
+    const m = document.getElementById('user-profile-modal');
+    if (m) { m.style.display = 'flex'; }
+}
+function closeUserProfileModal() {
+    const m = document.getElementById('user-profile-modal');
+    if (m) { m.style.display = 'none'; }
+}
+
+let activeAudio = null;
+function playVoiceBio(url) {
+    if (!url) return;
+    if (activeAudio) {
+        activeAudio.pause();
+        activeAudio = null;
+    }
+    const audioUrl = url.startsWith('/') ? url : `/${url}`;
+    activeAudio = new Audio(audioUrl);
+    activeAudio.play().catch(e => {
+        console.warn('Could not play voice bio:', e);
+    });
 }
 
 async function loadBookings() {
@@ -192,21 +225,81 @@ async function loadBookings() {
                 </div>
             `).join('');
             const active = data.filter(b => b.status === 'Booked' || b.status === 'Pending').length;
+            const completed = data.filter(b => b.status === 'Completed');
+            const totalSpent = completed.reduce((sum, b) => sum + (parseFloat(b.total_price || b.price) || 0), 0);
+            
             document.getElementById('stat-active').textContent = active;
-            document.getElementById('stat-hired').textContent = data.filter(b => b.status === 'Completed').length;
+            document.getElementById('stat-hired').textContent = completed.length;
+            document.getElementById('stat-spent').textContent = `₹${totalSpent.toLocaleString('en-IN')}`;
         } else {
             list.innerHTML = `
                 <div class="empty-state">
                     <i class="fa-solid fa-calendar-xmark"></i>
                     <h3>No bookings yet</h3>
                     <p>Book a worker to get started.</p>
-                    <a href="${window.location.href}" class="btn btn-primary btn-sm">Find Workers</a>
+                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm">Find Workers</a>
                 </div>`;
+            document.getElementById('stat-active').textContent = '0';
+            document.getElementById('stat-hired').textContent = '0';
+            document.getElementById('stat-spent').textContent = '₹0';
         }
     } catch(e) {
         document.getElementById('bookings-list').innerHTML = `<div class="empty-state"><p>Could not load bookings.</p></div>`;
     }
 }
+
+async function loadAvailableWorkers() {
+    const list = document.getElementById('workers-list');
+    try {
+        const res = await fetch('/get_workers?limit=6');
+        if (!res.ok) throw new Error('API error ' + res.status);
+        const workers = await res.json();
+        if (workers && workers.length > 0) {
+            list.innerHTML = workers.map(w => {
+                const name = w.name || 'Worker';
+                const initial = (name.trim().charAt(0) || 'W').toUpperCase();
+                const work = w.work || 'Specialist';
+                const loc = w.location || 'Nearby';
+                const rating = w.avg_rating ? w.avg_rating.toFixed(1) : '5.0';
+                const reviewCount = w.review_count ? `(${w.review_count})` : '';
+                const hasVoice = !!w.voice_note;
+                const bookUrl = `/book/${w.id}`;
+                return `
+                    <div class="worker-card">
+                        <div class="worker-card-avatar" style="background:var(--primary);color:white;">${initial}</div>
+                        <div class="worker-card-name">${name}</div>
+                        <div class="worker-card-work"><i class="fa-solid fa-briefcase mr-1"></i> ${work}</div>
+                        <div class="worker-card-loc"><i class="fa-solid fa-location-dot"></i> ${loc}</div>
+                        <div class="worker-stars">⭐⭐⭐⭐⭐ <span style="color:var(--muted); font-size:.6875rem;">(${rating} ${reviewCount})</span></div>
+                        <div style="display:flex; gap:8px;">
+                            <a href="${bookUrl}" class="btn btn-primary btn-sm" style="flex:1;">Book</a>
+                            ${hasVoice ? `<button class="btn btn-ghost btn-sm" onclick="playVoiceBio('${w.voice_note}')" title="Listen to Voice Bio"><i class="fa-solid fa-volume-high"></i></button>` : ''}
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        } else {
+            list.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1; padding: 32px 16px; text-align: center;">
+                    <i class="fa-solid fa-users-slash" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
+                    <h3 style="font-size: 1rem; margin-bottom: 4px;">No Workers Available Yet</h3>
+                    <p style="font-size: 0.875rem; color: var(--muted); margin: 0;">Verified service providers in your area will appear here.</p>
+                </div>
+            `;
+        }
+    } catch(err) {
+        list.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1; padding: 32px 16px; text-align: center;">
+                <i class="fa-solid fa-users" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
+                <h3 style="font-size: 1rem; margin-bottom: 4px;">Explore Service Providers</h3>
+                <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">Browse our verified directory of local trade professionals.</p>
+                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm">Find Workers</a>
+            </div>
+        `;
+    }
+}
+
 loadBookings();
+loadAvailableWorkers();
 </script>
 {% endblock %}
