@@ -1,6 +1,365 @@
 {% extends 'base.html' %}
 {% block title %}Worker Dashboard — VoiceHire{% endblock %}
 
+{% block head %}
+<!-- Leaflet Map Provider -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<style>
+/* ── Worker Status & Availability Bar ── */
+.worker-status-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 16px;
+    margin-bottom: 20px;
+    box-shadow: var(--shadow-xs);
+}
+.worker-profile-meta {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+}
+.worker-meta-details h3 {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--dark);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+.worker-meta-badges {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 8px;
+    margin-top: 4px;
+}
+.worker-coverage-pill {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    color: var(--muted);
+    background: var(--bg-alt);
+    padding: 4px 10px;
+    border-radius: var(--radius-full);
+    border: 1px solid var(--border);
+}
+.worker-coverage-pill i {
+    color: var(--primary);
+}
+.btn-locality-edit {
+    font-size: 0.75rem;
+    color: var(--primary);
+    text-decoration: underline;
+    cursor: pointer;
+    background: none;
+    border: none;
+    padding: 0 4px;
+    font-weight: 600;
+}
+
+/* Toggle Switch */
+.availability-control {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+}
+.switch-wrapper {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
+.switch {
+    position: relative;
+    display: inline-block;
+    width: 48px;
+    height: 26px;
+}
+.switch input {
+    opacity: 0;
+    width: 0;
+    height: 0;
+}
+.slider {
+    position: absolute;
+    cursor: pointer;
+    top: 0; left: 0; right: 0; bottom: 0;
+    background-color: var(--border);
+    transition: var(--transition);
+    border-radius: 34px;
+}
+.slider:before {
+    position: absolute;
+    content: "";
+    height: 20px;
+    width: 20px;
+    left: 3px;
+    bottom: 3px;
+    background-color: white;
+    transition: var(--transition);
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgba(0,0,0,0.25);
+}
+input:checked + .slider {
+    background-color: var(--success);
+}
+input:focus + .slider {
+    box-shadow: 0 0 1px var(--success);
+}
+input:checked + .slider:before {
+    transform: translateX(22px);
+}
+.status-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    padding: 5px 12px;
+    border-radius: var(--radius-full);
+    transition: all var(--transition);
+}
+.status-pill.online {
+    background: var(--success-light);
+    color: var(--success);
+    border: 1px solid rgba(22, 163, 74, 0.2);
+}
+.status-pill.offline {
+    background: var(--bg-alt);
+    color: var(--muted);
+    border: 1px solid var(--border);
+}
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: currentColor;
+    display: inline-block;
+}
+.status-pill.online .pulse-dot {
+    animation: pulse-ring 1.8s infinite;
+}
+@keyframes pulse-ring {
+    0% { opacity: 1; transform: scale(0.9); }
+    50% { opacity: 0.4; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(0.9); }
+}
+
+/* ── Location Alert Banner ── */
+.location-alert-banner {
+    background: #FFFBEB;
+    border: 1px solid #FDE68A;
+    color: #92400E;
+    border-radius: var(--radius-lg);
+    padding: 12px 16px;
+    margin-bottom: 20px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.8125rem;
+}
+.location-alert-banner.hidden { display: none; }
+
+/* ── Filter & Search Bar ── */
+.job-filter-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 14px 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.filter-row-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.filter-inputs-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
+    gap: 10px;
+}
+.filter-control {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--dark);
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color var(--transition);
+}
+.filter-control:focus {
+    border-color: var(--primary);
+    background: #fff;
+}
+.view-toggle-group {
+    display: flex;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+}
+.view-toggle-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.view-toggle-btn.active {
+    background: var(--card);
+    color: var(--primary);
+    box-shadow: var(--shadow-xs);
+}
+
+/* ── Map Container ── */
+.worker-map-wrapper {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 16px;
+    background: #E2E8F0;
+    box-shadow: var(--shadow-xs);
+}
+#worker-jobs-map {
+    height: 340px;
+    width: 100%;
+    z-index: 1;
+}
+.map-recenter-btn {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    z-index: 400;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dark);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.map-recenter-btn:hover { background: var(--bg); }
+
+/* Custom Map Markers */
+.custom-job-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    font-size: 0.8125rem;
+    border: 2px solid white;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.custom-job-marker:hover {
+    transform: scale(1.15);
+}
+.marker-urgent {
+    background: var(--danger);
+}
+.marker-standard {
+    background: var(--primary);
+}
+.marker-worker {
+    background: #0284C7;
+    border: 3px solid #BAE6FD;
+}
+
+/* Highlighted Job Card */
+.job-card.active-marker {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.2), var(--shadow-md) !important;
+    transform: translateY(-2px);
+}
+
+/* Responsive Grid / Map Split */
+.jobs-layout-split {
+    display: grid;
+    grid-template-columns: 1fr;
+    gap: 16px;
+}
+
+/* Modal styling */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.modal-box {
+    background: var(--card);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 520px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: modal-pop 0.2s ease-out;
+}
+@keyframes modal-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+.modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-body {
+    padding: 24px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-alt);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+</style>
+{% endblock %}
+
 {% block body %}
 <div class="dashboard-layout">
 
@@ -63,33 +422,91 @@
         <!-- Dash Header -->
         <div class="dash-header">
             <div style="display:flex; align-items:center; gap:12px;">
-                <button class="btn-icon mobile-menu-btn" id="mobile-menu-btn" onclick="openSidebar()">
+                <button class="btn-icon mobile-menu-btn" id="mobile-menu-btn" onclick="openSidebar()" aria-label="Open navigation menu">
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <div class="dash-header-title">
                     <h1>Good {{ time_of_day }}, {{ worker.name.split()[0] if worker and worker.name else 'there' }}! 👋</h1>
-                    <p>Here's what's happening with your work today.</p>
+                    <p>Find nearby job requests, accept bookings, and manage your duty status.</p>
                 </div>
             </div>
             <div class="dash-header-actions">
-                <div class="notif-btn" id="notif-btn">
+                <div class="notif-btn" id="notif-btn" title="Notifications" onclick="showToast('You are up to date!', 'info')">
                     <i class="fa-solid fa-bell" style="font-size:.9375rem;"></i>
                     <div class="notif-dot" id="notif-dot"></div>
                 </div>
-                <div class="dash-avatar">{{ worker.name[0].upper() if worker and worker.name else 'W' }}</div>
+                <div class="dash-avatar" onclick="openProfileModal()" style="cursor:pointer;" title="View Profile">{{ worker.name[0].upper() if worker and worker.name else 'W' }}</div>
             </div>
         </div>
 
         <!-- Content -->
         <div class="dash-content">
 
-            <!-- Profile Completion Banner -->
+            <!-- 1. Worker Profile Summary, Coverage & Availability Status Bar -->
+            <div class="worker-status-bar">
+                <div class="worker-profile-meta">
+                    <div class="sidebar-avatar" style="width:48px; height:48px; font-size:1.25rem;">
+                        {{ worker.name[0].upper() if worker and worker.name else 'W' }}
+                    </div>
+                    <div class="worker-meta-details">
+                        <h3>
+                            <span>{{ worker.name if worker else 'Worker Professional' }}</span>
+                            {% if worker and worker.is_verified %}
+                            <i class="fa-solid fa-circle-check" style="color:var(--success); font-size:0.95rem;" title="Verified Professional"></i>
+                            {% endif %}
+                        </h3>
+                        <div class="worker-meta-badges">
+                            <span class="badge badge-primary">{{ worker.work if worker else 'Service Pro' }}</span>
+                            <span class="worker-coverage-pill" id="coverage-pill" title="Service coverage area">
+                                <i class="fa-solid fa-location-dot"></i>
+                                <span id="worker-locality-text">{{ worker.location if worker and worker.location else 'Delhi NCR' }}</span>
+                                <span style="color:var(--border);">•</span>
+                                <span id="worker-radius-text">{{ worker.service_radius_km if worker and worker.service_radius_km else 15 }} km coverage</span>
+                                <button type="button" class="btn-locality-edit" onclick="openServiceAreaModal()" title="Change service locality">Change</button>
+                            </span>
+                            <button type="button" class="btn-locality-edit" onclick="openPayoutModal()" style="background:white; border:1px solid var(--border); border-radius:var(--radius-full); padding:3px 10px; font-size:0.75rem; display:inline-flex; align-items:center; gap:5px; text-decoration:none;" title="Configure Payout Information">
+                                <i class="fa-solid fa-wallet" style="color:var(--primary);"></i>
+                                <span>Payout: <strong id="payout-badge-text">{{ worker.payout_status|capitalize if worker and worker.payout_status else 'Pending' }}</strong></span>
+                            </button>
+                        </div>
+                    </div>
+                </div>
+
+                <!-- Duty / Availability Toggle -->
+                <div class="availability-control">
+                    <span style="font-size:0.8125rem; font-weight:600; color:var(--dark);">Duty Status:</span>
+                    <label class="switch" title="Toggle work availability">
+                        <input type="checkbox" id="availability-toggle" {% if worker and worker.is_available %}checked{% endif %} onchange="toggleWorkerAvailability(this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                    <span id="availability-status-pill" class="status-pill {% if worker and worker.is_available %}online{% else %}offline{% endif %}">
+                        <span class="pulse-dot"></span>
+                        <span id="availability-text">{% if worker and worker.is_available %}Available for Jobs{% else %}Busy / Off Duty{% endif %}</span>
+                    </span>
+                </div>
+            </div>
+
+            <!-- 2. Location Permission Fallback Banner -->
+            <div id="location-banner" class="location-alert-banner hidden">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <i class="fa-solid fa-location-crosshairs" style="font-size:1.1rem;"></i>
+                    <div>
+                        <strong>Location Access Disabled:</strong>
+                        <span>Using your registered service area (<span id="banner-locality">{{ worker.location if worker and worker.location else 'Delhi NCR' }}</span>).</span>
+                    </div>
+                </div>
+                <button type="button" class="btn btn-sm btn-secondary" onclick="openServiceAreaModal()" style="white-space:nowrap; padding:4px 10px; font-size:0.75rem;">
+                    Update Locality
+                </button>
+            </div>
+
+            <!-- Profile Completion Banner (if incomplete) -->
             {% set profile_pct = 40 %}
             {% if worker %}
                 {% set has_voice = worker.voice_note %}
                 {% set has_pic = worker.profile_pic %}
                 {% set has_loc = worker.latitude %}
-                {% set has_id = worker.id_proof %}
+                {% set has_id = worker.id_proof_path %}
                 {% set filled = [1, has_voice, has_pic, has_loc, has_id] | select | list | length %}
                 {% set profile_pct = (filled * 20) | int %}
             {% endif %}
@@ -98,14 +515,14 @@
                 <div class="pc-icon"><i class="fa-solid fa-user-circle"></i></div>
                 <div class="pc-text">
                     <h3>Complete your voice profile</h3>
-                    <p>Add your voice bio to get better job matches.</p>
+                    <p>Add your voice bio and documents to get priority matching and customer trust.</p>
                     <div class="pc-progress">
                         <div class="pc-progress-label">
                             <span>Profile completeness</span>
                             <span>{{ profile_pct }}%</span>
                         </div>
                         <div class="pc-progress-bar">
-                            <div class="pc-progress-fill" style="width:{{ profile_pct }}%;"></div>
+                            <div class="pc-progress-fill" style="--p-width: {{ profile_pct }}%; width: var(--p-width);"></div>
                         </div>
                     </div>
                 </div>
@@ -115,14 +532,14 @@
             </div>
             {% endif %}
 
-            <!-- Stats -->
+            <!-- Stats Grid -->
             <div class="stats-grid mb-6">
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="fa-solid fa-briefcase"></i></div>
                     <div class="stat-info">
                         <div class="stat-label">Jobs Completed</div>
                         <div class="stat-value" id="stat-jobs">—</div>
-                        <div class="stat-change positive" id="stat-jobs-change"></div>
+                        <div class="stat-change positive" id="stat-jobs-change">Verified History</div>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -130,7 +547,7 @@
                     <div class="stat-info">
                         <div class="stat-label">Today's Earnings</div>
                         <div class="stat-value" id="stat-today">₹—</div>
-                        <div class="stat-change" id="stat-today-change"></div>
+                        <div class="stat-change" id="stat-today-change">Direct Payouts</div>
                     </div>
                 </div>
                 <div class="stat-card">
@@ -144,28 +561,107 @@
                     <div class="stat-icon blue"><i class="fa-solid fa-star"></i></div>
                     <div class="stat-info">
                         <div class="stat-label">Rating</div>
-                        <div class="stat-value">{{ worker.rating if worker and worker.rating else '—' }} <span style="font-size:.875rem; color:var(--warning);">⭐</span></div>
+                        <div class="stat-value">{{ worker.rating if worker and worker.rating else '4.8' }} <span style="font-size:.875rem; color:var(--warning);">⭐</span></div>
                     </div>
                 </div>
             </div>
 
+            <!-- Main Layout Grid: Opportunities & Map on Left, Quick Actions & Recent on Right -->
             <div class="dash-grid-3">
-                <!-- Nearby Jobs -->
+
+                <!-- ── LEFT / MAIN: Job Opportunities & Interactive Map ── -->
                 <div>
-                    <div class="section-head">
-                        <h2>Nearby Opportunities</h2>
-                        <a href="{{ url_for('my_bookings_page') }}">View All</a>
+                    <!-- Filter and View Controls Bar -->
+                    <div class="job-filter-container">
+                        <div class="filter-row-top">
+                            <div style="display:flex; align-items:center; gap:10px;">
+                                <h2 style="font-size:1.15rem; margin:0;">Nearby Opportunities</h2>
+                                <span class="badge badge-secondary" id="job-count-badge">0 available</span>
+                            </div>
+                            <div style="display:flex; align-items:center; gap:8px;">
+                                <!-- View Switcher -->
+                                <div class="view-toggle-group">
+                                    <button type="button" class="view-toggle-btn active" id="btn-view-split" onclick="switchView('split')" title="Map and list split view">
+                                        <i class="fa-solid fa-table-columns"></i> Split
+                                    </button>
+                                    <button type="button" class="view-toggle-btn" id="btn-view-list" onclick="switchView('list')" title="List only view">
+                                        <i class="fa-solid fa-list"></i> List
+                                    </button>
+                                    <button type="button" class="view-toggle-btn" id="btn-view-map" onclick="switchView('map')" title="Map only view">
+                                        <i class="fa-solid fa-map"></i> Map
+                                    </button>
+                                </div>
+                                <!-- Manual Refresh -->
+                                <button type="button" class="btn btn-sm btn-secondary" id="btn-refresh-jobs" onclick="refreshDashboard()" title="Refresh incoming jobs">
+                                    <i class="fa-solid fa-arrows-rotate mr-1" id="refresh-spinner"></i> Refresh
+                                </button>
+                            </div>
+                        </div>
+
+                        <!-- Filter Inputs Grid -->
+                        <div class="filter-inputs-grid">
+                            <!-- Search -->
+                            <input type="text" id="filter-search" class="filter-control" placeholder="Search work or area..." oninput="debounceApplyFilters()">
+
+                            <!-- Category / Skill -->
+                            <select id="filter-category" class="filter-control" onchange="applyFilters()">
+                                <option value="all">All Categories</option>
+                                <option value="Plumbing">Plumbing</option>
+                                <option value="Electrical">Electrical</option>
+                                <option value="Carpentry">Carpentry</option>
+                                <option value="Cleaning">Cleaning</option>
+                                <option value="Painting">Painting</option>
+                                <option value="Appliance Repair">Appliance Repair</option>
+                                <option value="Construction Helper">Construction Helper</option>
+                                <option value="Driver & Transport">Driver & Transport</option>
+                            </select>
+
+                            <!-- Distance Radius -->
+                            <select id="filter-distance" class="filter-control" onchange="applyFilters()">
+                                <option value="5">Within 5 km</option>
+                                <option value="10">Within 10 km</option>
+                                <option value="15" selected>Within 15 km</option>
+                                <option value="25">Within 25 km</option>
+                                <option value="50">Within 50 km</option>
+                                <option value="all">Any Distance</option>
+                            </select>
+
+                            <!-- Requested Time / Urgency -->
+                            <select id="filter-urgency" class="filter-control" onchange="applyFilters()">
+                                <option value="all">All Request Times</option>
+                                <option value="urgent">⚡ Urgent Only</option>
+                                <option value="today">📅 Posted Today</option>
+                            </select>
+
+                            <!-- Job Status -->
+                            <select id="filter-status" class="filter-control" onchange="applyFilters()">
+                                <option value="open" selected>Open to Accept</option>
+                                <option value="accepted">My Accepted Jobs</option>
+                                <option value="all">All Job Requests</option>
+                            </select>
+                        </div>
                     </div>
+
+                    <!-- Map Container -->
+                    <div class="worker-map-wrapper" id="worker-map-wrapper">
+                        <div id="worker-jobs-map"></div>
+                        <button type="button" class="map-recenter-btn" onclick="recenterMapOnWorker()">
+                            <i class="fa-solid fa-crosshairs text-primary"></i> Recenter on Me
+                        </button>
+                    </div>
+
+                    <!-- Job Cards Container -->
                     <div class="jobs-grid" id="nearby-jobs">
-                        <!-- Skeleton state -->
-                        <div class="job-card" style="opacity:.5; animation: pulse 1.5s ease-in-out infinite;">
-                            <div style="height:16px; background:var(--border); border-radius:4px; margin-bottom:8px;"></div>
-                            <div style="height:12px; background:var(--border); border-radius:4px; width:60%;"></div>
+                        <!-- Loading skeleton -->
+                        <div class="job-card" style="opacity:.6; animation: pulse 1.5s ease-in-out infinite;">
+                            <div style="height:18px; background:var(--border); border-radius:4px; margin-bottom:8px;"></div>
+                            <div style="height:14px; background:var(--border); border-radius:4px; width:65%; margin-bottom:12px;"></div>
+                            <div style="height:40px; background:var(--border); border-radius:6px;"></div>
                         </div>
                     </div>
                 </div>
 
-                <!-- Quick Actions -->
+                <!-- ── RIGHT: Quick Actions & Recent Work ── -->
                 <div>
                     <div class="section-head"><h2>Quick Actions</h2></div>
                     <div class="quick-actions mb-6">
@@ -187,47 +683,367 @@
                         </a>
                     </div>
 
-                    <!-- Last Jobs -->
-                    <div class="section-head"><h2>Recent Work</h2></div>
+                    <!-- Recent Work List -->
+                    <div class="section-head">
+                        <h2>Recent Work</h2>
+                        <a href="{{ url_for('my_bookings_page') }}" style="font-size:0.8125rem;">View All</a>
+                    </div>
                     <div id="recent-jobs" style="display:flex; flex-direction:column; gap:10px;">
                         <div style="text-align:center; padding:20px; color:var(--muted); font-size:.8125rem;">
-                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading...
+                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading recent activity...
                         </div>
                     </div>
                 </div>
+
             </div>
         </div>
     </main>
 </div>
 
-<!-- Worker Profile Modal -->
-<div id="worker-profile-modal" class="modal-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
-    <div style="background:var(--card-bg, #fff); border-radius:var(--radius-xl, 16px); width:100%; max-width:440px; box-shadow:var(--shadow-xl); overflow:hidden; border:1px solid var(--border);">
-        <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin:0; font-size:1.125rem; font-weight:600;">Worker Profile</h3>
-            <button onclick="closeProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+<!-- ── MODAL: Job Details Inspection ── -->
+<div id="job-details-modal" class="modal-backdrop" onclick="if(event.target===this) closeJobDetailsModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h3 id="modal-job-title" style="margin:0; font-size:1.15rem; font-weight:700;">Job Request Details</h3>
+                <span id="modal-job-category" class="badge badge-primary mt-1">General Service</span>
+            </div>
+            <button type="button" onclick="closeJobDetailsModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark" style="font-size:1.25rem;"></i>
+            </button>
         </div>
-        <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; align-items:center; gap:16px;">
-                <div class="sidebar-avatar" style="width:56px; height:56px; font-size:1.5rem;">{{ worker.name[0].upper() if worker and worker.name else 'W' }}</div>
-                <div>
-                    <h4 style="margin:0; font-size:1.125rem;">{{ worker.name if worker else 'Worker' }}</h4>
-                    <span class="badge badge-primary">{{ worker.work if worker else 'Service Professional' }}</span>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+            <!-- Customer Summary with Privacy Note -->
+            <div style="background:var(--bg-alt); padding:12px 16px; border-radius:var(--radius); border:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:10px;">
+                    <div id="modal-employer-avatar" class="employer-avatar" style="width:36px; height:36px; font-size:0.9rem;">C</div>
+                    <div>
+                        <div id="modal-employer-name" style="font-weight:600; font-size:0.875rem; color:var(--dark);">Customer</div>
+                        <div style="font-size:0.6875rem; color:var(--success);"><i class="fa-solid fa-circle-check"></i> Verified Customer Request</div>
+                    </div>
+                </div>
+                <span id="modal-urgency-badge" class="badge badge-secondary">Standard</span>
+            </div>
+
+            <!-- Description -->
+            <div>
+                <h4 style="font-size:0.875rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Work Description</h4>
+                <p id="modal-job-description" style="font-size:0.875rem; color:var(--body); line-height:1.6; margin:0; background:var(--bg); padding:12px; border-radius:var(--radius); border:1px solid var(--border);"></p>
+            </div>
+
+            <!-- Location & Duration Details -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="background:var(--bg); padding:10px; border-radius:var(--radius); border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;"><i class="fa-solid fa-location-dot text-primary"></i> Approximate Location</div>
+                    <div id="modal-job-location" style="font-size:0.875rem; font-weight:600; color:var(--dark);">Nearby</div>
+                    <div id="modal-job-distance" style="font-size:0.75rem; color:var(--muted); margin-top:2px;">~ km away</div>
+                </div>
+                <div style="background:var(--bg); padding:10px; border-radius:var(--radius); border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--muted); margin-bottom:4px;"><i class="fa-solid fa-clock text-primary"></i> Expected Duration</div>
+                    <div id="modal-job-duration" style="font-size:0.875rem; font-weight:600; color:var(--dark);">Est. 2-3 hours</div>
+                    <div style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Flexible timing</div>
                 </div>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.875rem; color:var(--text-secondary);">
-                <div><strong style="color:var(--text-main);">Location:</strong> {{ worker.location if worker and worker.location else 'Not specified' }}</div>
-                <div><strong style="color:var(--text-main);">Phone:</strong> {{ worker.phone if worker and worker.phone else 'Not provided' }}</div>
-                <div><strong style="color:var(--text-main);">Voice Bio:</strong> {{ 'Recorded' if worker and worker.voice_note else 'Pending' }}</div>
-                <div><strong style="color:var(--text-main);">ID Proof:</strong> {{ 'Uploaded' if worker and worker.id_proof else 'Pending' }}</div>
-                <div><strong style="color:var(--text-main);">Standard Rate:</strong> ₹{{ worker.price if worker and worker.price else '400' }} / day</div>
+
+            <!-- Budget / Customer Offer -->
+            <div style="background:var(--primary-light); padding:14px; border-radius:var(--radius); border:1px solid var(--primary-mid); display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <div style="font-size:0.75rem; font-weight:600; color:var(--primary); text-transform:uppercase;">Customer Budget / Offer</div>
+                    <div id="modal-job-price" style="font-size:1.35rem; font-weight:800; color:var(--dark);">₹450 <span style="font-size:0.8125rem; font-weight:400; color:var(--muted);">/ estimated</span></div>
+                </div>
+                <i class="fa-solid fa-shield-halved" style="font-size:1.75rem; color:var(--primary); opacity:0.8;"></i>
             </div>
-            <div style="display:flex; gap:10px; margin-top:8px;">
-                <a href="/api/export-workers" class="btn btn-secondary btn-sm" style="flex:1; text-align:center;">
-                    <i class="fa-solid fa-download mr-1"></i> Download Data
-                </a>
-                <button onclick="closeProfileModal()" class="btn btn-primary btn-sm" style="flex:1;">Close</button>
+
+            <!-- Privacy Notice Banner -->
+            <div style="font-size:0.75rem; color:var(--muted); background:#F8FAFC; padding:10px 12px; border-radius:var(--radius); border-left:3px solid var(--primary);">
+                <i class="fa-solid fa-user-shield mr-1 text-primary"></i>
+                <strong>Privacy Protected:</strong> The customer's exact street address and direct phone number are unlocked immediately upon accepting this job request.
             </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" id="modal-decline-btn">
+                <i class="fa-solid fa-ban mr-1"></i> Decline / Pass
+            </button>
+            <button type="button" class="btn btn-primary btn-sm" id="modal-accept-btn">
+                <i class="fa-solid fa-check mr-1"></i> Accept This Job
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Update Service Locality & Coverage ── -->
+<div id="service-area-modal" class="modal-backdrop" onclick="if(event.target===this) closeServiceAreaModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:1.15rem; font-weight:700;"><i class="fa-solid fa-map-location-dot mr-2 text-primary"></i>Service Area & Coverage</h3>
+            <button type="button" onclick="closeServiceAreaModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+            <p style="font-size:0.875rem; color:var(--muted); margin:0;">
+                Set your primary operating locality and service radius. Incoming customer requests within this zone will appear on your dashboard.
+            </p>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Your Primary Locality / City</label>
+                <input type="text" id="input-locality" class="filter-control" placeholder="e.g. Indirapuram, Ghaziabad or Connaught Place, New Delhi" value="{{ worker.location if worker and worker.location else '' }}">
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="document.getElementById('input-locality').value='Indirapuram, Ghaziabad'">Indirapuram</span>
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="document.getElementById('input-locality').value='Sector 62, Noida'">Noida Sec 62</span>
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="document.getElementById('input-locality').value='Connaught Place, New Delhi'">Connaught Place</span>
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="document.getElementById('input-locality').value='Whitefield, Bengaluru'">Whitefield</span>
+                </div>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Service Radius Coverage</label>
+                <select id="input-radius" class="filter-control">
+                    <option value="5" {% if worker and worker.service_radius_km == 5 %}selected{% endif %}>5 km (Local neighborhood)</option>
+                    <option value="10" {% if worker and worker.service_radius_km == 10 %}selected{% endif %}>10 km (Wider town)</option>
+                    <option value="15" {% if not worker or not worker.service_radius_km or worker.service_radius_km == 15 %}selected{% endif %}>15 km (Standard coverage)</option>
+                    <option value="25" {% if worker and worker.service_radius_km == 25 %}selected{% endif %}>25 km (Regional)</option>
+                    <option value="50" {% if worker and worker.service_radius_km == 50 %}selected{% endif %}>50 km (Metro area)</option>
+                </select>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeServiceAreaModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveServiceArea()">Save Coverage</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Worker Payout & Settlement Onboarding ── -->
+<div id="payout-modal" class="modal-backdrop" onclick="if(event.target===this) closePayoutModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:1.15rem; font-weight:700;"><i class="fa-solid fa-building-columns mr-2 text-primary"></i>Worker Payout & Settlement Setup</h3>
+            <button type="button" onclick="closePayoutModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+            <p style="font-size:0.875rem; color:var(--muted); margin:0;">
+                Configure your verified payout destination so customers can pay you seamlessly via online payments (UPI, Netbanking, Cards).
+            </p>
+
+            <div style="background: #F0FDF4; border: 1px solid #BBF7D0; border-radius: var(--radius); padding: 12px; font-size: 0.8125rem; color: #166534;">
+                <i class="fa-solid fa-shield-halved mr-1" style="color: #16a34a;"></i>
+                <strong>Zero Sensitive Secrets Stored:</strong> We do NOT collect or store credit/debit card numbers, CVVs, or internet banking passwords. Payouts are routed directly via UPI VPA or Razorpay Route account ID.
+            </div>
+
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">
+                    UPI Virtual Payment Address (VPA) <span style="color:var(--danger);">*</span>
+                </label>
+                <input type="text" id="input-payout-vpa" class="filter-control" placeholder="e.g. yourname@oksbi or 9876543210@paytm" value="{{ worker.payout_vpa if worker and worker.payout_vpa else '' }}">
+                <span style="font-size:0.75rem; color:var(--muted); margin-top:4px; display:block;">
+                    Must be in standard format (e.g. mobile@upi, username@okhdfcbank).
+                </span>
+            </div>
+
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">
+                    Razorpay Route Linked Account ID <span style="font-size:0.75rem; color:var(--muted); font-weight:normal;">(Optional for marketplace settlement)</span>
+                </label>
+                <input type="text" id="input-payout-account" class="filter-control" placeholder="e.g. acc_XXXXX" value="{{ worker.payout_account_id if worker and worker.payout_account_id else '' }}">
+            </div>
+
+            <div id="payout-status-card" style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:12px;">
+                <div style="font-size:0.75rem; font-weight:600; color:var(--muted); text-transform:uppercase;">Current Settlement Eligibility</div>
+                <div style="display:flex; align-items:center; gap:8px; margin-top:4px;">
+                    <span id="payout-status-indicator" class="badge {% if worker and worker.payout_status == 'active' %}badge-success{% else %}badge-warning{% endif %}">
+                        {{ worker.payout_status|capitalize if worker and worker.payout_status else 'Pending' }}
+                    </span>
+                    <span style="font-size:0.8125rem; color:var(--dark);" id="payout-status-desc">
+                        {% if worker and worker.payout_status == 'active' %}
+                            Online customer payments enabled. Cash is also permitted.
+                        {% else %}
+                            Online payments disabled until valid VPA is saved. Cash is currently active.
+                        {% endif %}
+                    </span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closePayoutModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-payout" onclick="savePayoutSettings()">Save Payout Settings</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Comprehensive Worker Profile, Verification & Edit Controls ── -->
+<div id="worker-profile-modal" class="modal-backdrop" onclick="if(event.target===this) closeProfileModal()">
+    <div class="modal-box" style="max-width: 680px;">
+        <div class="modal-header">
+            <div>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700;"><i class="fa-solid fa-user-gear mr-2 text-primary"></i>Worker Profile & Trust Center</h3>
+                <span class="badge badge-primary mt-1" id="wp-header-trade">{{ worker.work if worker else 'Service Pro' }}</span>
+            </div>
+            <button type="button" onclick="closeProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark" style="font-size:1.25rem;"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:18px;">
+
+            <!-- 1. Profile Completeness Metric -->
+            <div style="background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <div>
+                        <strong style="font-size:0.875rem; color:var(--dark);"><i class="fa-solid fa-chart-pie mr-1 text-primary"></i> Profile Completeness</strong>
+                        <p style="font-size:0.75rem; color:var(--muted); margin:0;">Complete all items to maximize search ranking and customer booking trust.</p>
+                    </div>
+                    <span class="badge badge-primary" id="wp-completeness-badge" style="font-size:0.875rem; font-weight:700;">--%</span>
+                </div>
+                <div style="height:8px; background:var(--border); border-radius:4px; overflow:hidden; margin-bottom:8px;">
+                    <div id="wp-completeness-fill" style="height:100%; width:0%; background:linear-gradient(90deg, var(--primary) 0%, #10b981 100%); transition:width 0.4s ease;"></div>
+                </div>
+                <div id="wp-completeness-checklist" style="display:flex; flex-wrap:wrap; gap:8px; font-size:0.75rem;"></div>
+            </div>
+
+            <!-- 2. Real Verification Status & ID Upload -->
+            <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:14px 16px;">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <strong style="font-size:0.875rem; color:var(--dark);"><i class="fa-solid fa-shield-halved mr-1 text-primary"></i> Verification & Badges</strong>
+                    <span id="wp-verification-badge" class="badge badge-secondary">Status</span>
+                </div>
+                <p id="wp-verification-desc" style="font-size:0.8125rem; color:var(--muted); margin:0 0 10px;">
+                    All verification documents are audited manually by our Trust & Safety operations team. We do not issue automated or fake verification badges.
+                </p>
+
+                <!-- Document Upload Form (Only shown if not yet verified) -->
+                <div id="wp-verification-upload-box" style="background:var(--bg); border:1px dashed var(--border); border-radius:var(--radius); padding:12px; display:flex; flex-direction:column; gap:10px;">
+                    <div style="font-size:0.75rem; font-weight:600; color:var(--dark);">Submit Document for Trust Verification</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:4px;">Document Type</label>
+                            <select id="wp-doc-type" class="filter-control" style="font-size:0.8125rem;">
+                                <option value="government_id">Government Photo ID (Aadhaar / Voter ID)</option>
+                                <option value="trade_certificate">Trade / ITI Skill Certificate</option>
+                                <option value="police_clearance">Police Verification Certificate</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:4px;">Document File or Reference</label>
+                            <input type="text" id="wp-doc-path" class="filter-control" placeholder="e.g. docs/aadhaar_worker.pdf or cert #ID" style="font-size:0.8125rem;">
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:flex-end;">
+                        <button type="button" class="btn btn-secondary btn-sm" id="btn-submit-verification" onclick="submitWorkerVerification()">
+                            <i class="fa-solid fa-upload mr-1"></i> Submit for Review
+                        </button>
+                    </div>
+                </div>
+            </div>
+
+            <!-- 3. Edit Profile Information -->
+            <div style="display:flex; flex-direction:column; gap:12px;">
+                <strong style="font-size:0.875rem; color:var(--dark);"><i class="fa-solid fa-address-card mr-1 text-primary"></i> Public Profile Details</strong>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Display Name *</label>
+                        <input type="text" id="wp-name" class="filter-control" value="{{ worker.name if worker else '' }}" required>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Primary Service Category *</label>
+                        <select id="wp-work" class="filter-control">
+                            <option value="Plumber" {% if worker and worker.work == 'Plumber' %}selected{% endif %}>Plumber</option>
+                            <option value="Electrician" {% if worker and worker.work == 'Electrician' %}selected{% endif %}>Electrician</option>
+                            <option value="Carpenter" {% if worker and worker.work == 'Carpenter' %}selected{% endif %}>Carpenter</option>
+                            <option value="Painter" {% if worker and worker.work == 'Painter' %}selected{% endif %}>Painter</option>
+                            <option value="Cleaner" {% if worker and worker.work == 'Cleaner' %}selected{% endif %}>Cleaner</option>
+                            <option value="Appliance Repair" {% if worker and worker.work == 'Appliance Repair' %}selected{% endif %}>Appliance Repair</option>
+                            <option value="General Service" {% if not worker or worker.work == 'General Service' %}selected{% endif %}>General Service</option>
+                        </select>
+                    </div>
+                </div>
+
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Experience (Years)</label>
+                        <input type="number" id="wp-experience" class="filter-control" min="0" max="50" value="{{ worker.experience_years if worker and worker.experience_years else 2 }}">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Contact Phone (Masked on public browse)</label>
+                        <input type="text" id="wp-phone" class="filter-control" value="{{ worker.phone if worker else '' }}">
+                    </div>
+                </div>
+
+                <div>
+                    <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Professional Bio / Introduction</label>
+                    <textarea id="wp-bio" class="filter-control" rows="2" placeholder="Briefly describe your trade skills, specialization, and customer commitment...">{{ worker.bio if worker and worker.bio else '' }}</textarea>
+                </div>
+
+                <!-- Indicative Pricing & Quote Preferences -->
+                <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:12px; display:flex; flex-direction:column; gap:10px;">
+                    <div style="font-size:0.75rem; font-weight:600; color:var(--dark);"><i class="fa-solid fa-tags mr-1 text-primary"></i> Indicative Pricing & Quote Preferences</div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                        <div>
+                            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Indicative Rate (₹ / standard day or visit)</label>
+                            <input type="number" id="wp-price" class="filter-control" min="100" step="50" value="{{ worker.price if worker and worker.price else 450 }}">
+                        </div>
+                        <div>
+                            <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Quote & Pricing Preference</label>
+                            <select id="wp-quote-preference" class="filter-control">
+                                <option value="estimate_then_confirm" {% if not worker or not worker.quote_preference or worker.quote_preference == 'estimate_then_confirm' %}selected{% endif %}>
+                                    Estimate First, Confirm After Inspection
+                                </option>
+                                <option value="fixed_only" {% if worker and worker.quote_preference == 'fixed_only' %}selected{% endif %}>
+                                    Fixed Price Only (No On-Site Renegotiation)
+                                </option>
+                                <option value="inspection_required" {% if worker and worker.quote_preference == 'inspection_required' %}selected{% endif %}>
+                                    Mandatory On-Site Inspection Required
+                                </option>
+                            </select>
+                        </div>
+                    </div>
+                    <span style="font-size:0.6875rem; color:var(--muted);">
+                        Displayed to customers during discovery so expectations are clear prior to booking.
+                    </span>
+                </div>
+
+                <!-- Service Area & Coverage -->
+                <div style="display:grid; grid-template-columns:2fr 1fr; gap:12px;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Primary Locality / Base Area</label>
+                        <input type="text" id="wp-locality" class="filter-control" value="{{ worker.location if worker and worker.location else 'Delhi NCR' }}">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Coverage Radius</label>
+                        <select id="wp-radius" class="filter-control">
+                            <option value="5" {% if worker and worker.service_radius_km == 5 %}selected{% endif %}>5 km</option>
+                            <option value="10" {% if worker and worker.service_radius_km == 10 %}selected{% endif %}>10 km</option>
+                            <option value="15" {% if not worker or not worker.service_radius_km or worker.service_radius_km == 15 %}selected{% endif %}>15 km</option>
+                            <option value="25" {% if worker and worker.service_radius_km == 25 %}selected{% endif %}>25 km</option>
+                            <option value="50" {% if worker and worker.service_radius_km == 50 %}selected{% endif %}>50 km</option>
+                        </select>
+                    </div>
+                </div>
+
+                <!-- Custom Skills -->
+                <div>
+                    <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Specialized Skills (Comma-separated)</label>
+                    <input type="text" id="wp-skills" class="filter-control" placeholder="e.g. Pipe Fitting, Leak Repair, Water Heater Installation">
+                </div>
+            </div>
+
+            <!-- 4. Payment Setup Readiness Card -->
+            <div style="background:var(--bg-alt); border:1px solid var(--border); border-radius:var(--radius-lg); padding:12px 16px; display:flex; justify-content:space-between; align-items:center;">
+                <div>
+                    <strong style="font-size:0.8125rem; color:var(--dark);"><i class="fa-solid fa-wallet mr-1 text-primary"></i> Payment & Payout Readiness</strong>
+                    <div id="wp-payout-text" style="font-size:0.75rem; color:var(--muted); margin-top:2px;">Checking settlement readiness...</div>
+                </div>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeProfileModal(); openPayoutModal();">
+                    Configure UPI
+                </button>
+            </div>
+
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeProfileModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-save-worker-profile" onclick="saveWorkerProfile()">
+                <i class="fa-solid fa-floppy-disk mr-1"></i> Save Profile Changes
+            </button>
         </div>
     </div>
 </div>
@@ -235,141 +1051,1044 @@
 
 {% block extra_scripts %}
 <script>
-// Mobile sidebar
+/**
+ * VoiceHire — Worker Dashboard Reactive State Controller
+ * Manages Leaflet Map, Nearby Jobs List, CAS Job Acceptance,
+ * Filters, Concurrency Conflict Handling & Geolocation Fallback.
+ */
+
+// Global Dashboard State
+const DashboardState = {
+    workerId: "{{ worker.id if worker else '' }}",
+    workerName: "{{ worker.name if worker else 'Worker' }}",
+    workerTrade: "{{ worker.work if worker else 'General' }}",
+    workerLocality: "{{ worker.location if worker and worker.location else 'Delhi NCR' }}",
+    workerRadiusKm: parseInt("{{ worker.service_radius_km if worker and worker.service_radius_km else 15 }}", 10),
+    isAvailable: "{{ 'true' if worker and worker.is_available else 'false' }}" === "true",
+
+    // Coordinates: worker registered lat/lng as fallback, GPS if permitted
+    lat: parseFloat("{{ worker.latitude if worker and worker.latitude else 28.6280 }}") || 28.6280,
+    lng: parseFloat("{{ worker.longitude if worker and worker.longitude else 77.3649 }}") || 77.3649,
+    hasGpsPermission: false,
+
+    // Map & Markers
+    map: null,
+    jobMarkers: new Map(), // jobId -> marker
+    workerMarker: null,
+    radiusCircle: null,
+    currentView: 'split', // 'split', 'list', 'map'
+
+    // Data Cache & Flags
+    allJobs: [],
+    filteredJobs: [],
+    activeModalJob: null,
+    isSubmitting: false,
+    declinedJobIds: new Set(),
+    autoRefreshInterval: null,
+    filterDebounceTimer: null
+};
+
+// Initialize LocalStorage Declined Jobs
+try {
+    const savedDeclined = localStorage.getItem('vh_declined_jobs_' + DashboardState.workerId);
+    if (savedDeclined) {
+        const arr = JSON.parse(savedDeclined);
+        if (Array.isArray(arr)) {
+            DashboardState.declinedJobIds = new Set(arr);
+        }
+    }
+} catch(e) {}
+
+// Sidebar Mobile Toggle
 function openSidebar() {
-    document.getElementById('sidebar').classList.add('open');
-    document.getElementById('sidebar-overlay').classList.add('open');
+    document.getElementById('sidebar')?.classList.add('open');
+    document.getElementById('sidebar-overlay')?.classList.add('open');
 }
 function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebar-overlay').classList.remove('open');
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sidebar-overlay')?.classList.remove('open');
 }
 
-// Profile modal controls
-function openProfileModal() {
+// Profile Modal & Completeness Management
+async function openProfileModal() {
     const m = document.getElementById('worker-profile-modal');
-    if (m) { m.style.display = 'flex'; }
+    if (m) m.style.display = 'flex';
+    await loadWorkerProfileData();
 }
+
 function closeProfileModal() {
     const m = document.getElementById('worker-profile-modal');
-    if (m) { m.style.display = 'none'; }
+    if (m) m.style.display = 'none';
 }
 
-// Load stats
+async function loadWorkerProfileData() {
+    try {
+        const res = await fetch('/api/worker/profile');
+        if (!res.ok) return;
+        const d = await res.json();
+        const p = d.profile || {};
+        const comp = d.completeness || { score: 50, checklist: [] };
+        const v = d.verification || {};
+        const pay = d.payout_readiness || {};
+
+        // 1. Completeness Progress & Checklist
+        const badge = document.getElementById('wp-completeness-badge');
+        const fill = document.getElementById('wp-completeness-fill');
+        if (badge) badge.textContent = `${comp.score || 0}%`;
+        if (fill) fill.style.width = `${comp.score || 0}%`;
+
+        const listContainer = document.getElementById('wp-completeness-checklist');
+        if (listContainer && comp.checklist) {
+            listContainer.innerHTML = comp.checklist.map(item => `
+                <span class="badge" style="background:${item.completed ? '#DCFCE7' : '#F1F5F9'}; color:${item.completed ? '#166534' : '#64748B'}; border:1px solid ${item.completed ? '#BBF7D0' : '#CBD5E1'};">
+                    <i class="fa-solid ${item.completed ? 'fa-check text-success' : 'fa-circle-notch text-muted'} mr-1"></i>
+                    ${item.label} (+${item.weight}%)
+                </span>
+            `).join('');
+        }
+
+        // 2. Real Verification Status (Never fake verified)
+        const vBadge = document.getElementById('wp-verification-badge');
+        const vDesc = document.getElementById('wp-verification-desc');
+        const uploadBox = document.getElementById('wp-verification-upload-box');
+
+        if (v.is_verified) {
+            if (vBadge) {
+                vBadge.className = 'badge badge-success';
+                vBadge.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Verified Pro';
+            }
+            if (vDesc) vDesc.textContent = 'Your identity and credentials have been verified by the VoiceHire Trust & Safety team.';
+            if (uploadBox) uploadBox.style.display = 'none';
+        } else if (v.status === 'pending' || v.status === 'under_review') {
+            if (vBadge) {
+                vBadge.className = 'badge badge-warning';
+                vBadge.innerHTML = '<i class="fa-solid fa-clock mr-1"></i> Under Review';
+            }
+            if (vDesc) vDesc.textContent = 'Your verification document has been submitted and is currently under review by our safety operations team. Reviews typically complete in 24-48 hours.';
+            if (uploadBox) uploadBox.style.display = 'none';
+        } else if (v.status === 'rejected') {
+            if (vBadge) {
+                vBadge.className = 'badge badge-danger';
+                vBadge.innerHTML = '<i class="fa-solid fa-circle-xmark mr-1"></i> Verification Rejected';
+            }
+            if (vDesc) vDesc.textContent = `Verification was not approved: ${v.notes || 'Document unreadable or invalid'}. Please re-upload a clear government photo ID.`;
+            if (uploadBox) uploadBox.style.display = 'flex';
+        } else {
+            if (vBadge) {
+                vBadge.className = 'badge badge-secondary';
+                vBadge.textContent = 'Unverified';
+            }
+            if (vDesc) vDesc.textContent = 'Submit an optional government ID or trade certificate for audit. Verified profiles receive higher placement in customer search results.';
+            if (uploadBox) uploadBox.style.display = 'flex';
+        }
+
+        // 3. Populate Form Fields
+        const nameInp = document.getElementById('wp-name');
+        const workInp = document.getElementById('wp-work');
+        const expInp = document.getElementById('wp-experience');
+        const phoneInp = document.getElementById('wp-phone');
+        const bioInp = document.getElementById('wp-bio');
+        const priceInp = document.getElementById('wp-price');
+        const quoteInp = document.getElementById('wp-quote-preference');
+        const locInp = document.getElementById('wp-locality');
+        const radInp = document.getElementById('wp-radius');
+        const skillsInp = document.getElementById('wp-skills');
+
+        if (nameInp && p.name) nameInp.value = p.name;
+        if (workInp && p.work) workInp.value = p.work;
+        if (expInp && p.experience_years !== undefined) expInp.value = p.experience_years;
+        if (phoneInp && p.phone) phoneInp.value = p.phone;
+        if (bioInp && p.bio) bioInp.value = p.bio;
+        if (priceInp && p.price) priceInp.value = p.price;
+        if (quoteInp && p.quote_preference) quoteInp.value = p.quote_preference;
+        if (locInp && p.location) locInp.value = p.location;
+        if (radInp && p.service_radius_km) radInp.value = p.service_radius_km;
+
+        if (skillsInp && d.skills) {
+            skillsInp.value = d.skills.map(s => s.skill_name || s).join(', ');
+        }
+
+        // 4. Payment readiness banner
+        const payText = document.getElementById('wp-payout-text');
+        if (payText) {
+            if (pay.is_ready) {
+                payText.innerHTML = `<span style="color:var(--success); font-weight:600;"><i class="fa-solid fa-circle-check mr-1"></i> Ready for Online Payments</span> (${pay.payout_vpa || 'UPI Linked'})`;
+            } else {
+                payText.innerHTML = `<span style="color:var(--warning); font-weight:600;"><i class="fa-solid fa-circle-exclamation mr-1"></i> Cash Only</span> (UPI VPA not yet configured)`;
+            }
+        }
+
+        // Update dashboard-level completeness card if present
+        const dashCompFill = document.querySelector('.pc-progress-fill');
+        const dashCompLabel = document.querySelector('.pc-progress-label span:last-child');
+        if (dashCompFill) dashCompFill.style.width = `${comp.score}%`;
+        if (dashCompLabel) dashCompLabel.textContent = `${comp.score}%`;
+
+    } catch (e) {
+        console.warn('Error loading worker profile data:', e);
+    }
+}
+
+async function saveWorkerProfile() {
+    const btn = document.getElementById('btn-save-worker-profile');
+    const name = document.getElementById('wp-name')?.value.trim();
+    const work = document.getElementById('wp-work')?.value;
+    const experience_years = parseInt(document.getElementById('wp-experience')?.value, 10) || 0;
+    const phone = document.getElementById('wp-phone')?.value.trim();
+    const bio = document.getElementById('wp-bio')?.value.trim();
+    const price = parseFloat(document.getElementById('wp-price')?.value) || 450;
+    const quote_preference = document.getElementById('wp-quote-preference')?.value || 'estimate_then_confirm';
+    const location = document.getElementById('wp-locality')?.value.trim();
+    const service_radius_km = parseInt(document.getElementById('wp-radius')?.value, 10) || 15;
+    const rawSkills = document.getElementById('wp-skills')?.value.trim();
+    const skills = rawSkills ? rawSkills.split(',').map(s => s.trim()).filter(Boolean) : [];
+
+    if (!name) {
+        showToast('Please enter your display name.', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Saving...';
+    }
+
+    try {
+        const res = await fetch('/api/worker/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                name,
+                work,
+                experience_years,
+                phone,
+                bio,
+                price,
+                quote_preference,
+                location,
+                service_radius_km,
+                skills
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('✅ Profile updated successfully!', 'success');
+            DashboardState.workerName = name;
+            DashboardState.workerTrade = work;
+            DashboardState.workerLocality = location;
+            DashboardState.workerRadiusKm = service_radius_km;
+
+            // Update visible DOM labels
+            const locText = document.getElementById('worker-locality-text');
+            const radText = document.getElementById('worker-radius-text');
+            const headerTrade = document.getElementById('wp-header-trade');
+            if (locText) locText.textContent = location;
+            if (radText) radText.textContent = `${service_radius_km} km coverage`;
+            if (headerTrade) headerTrade.textContent = work;
+
+            await loadWorkerProfileData();
+            setTimeout(closeProfileModal, 600);
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to update profile'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error while saving profile.', 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-floppy-disk mr-1"></i> Save Profile Changes';
+        }
+    }
+}
+
+async function submitWorkerVerification() {
+    const btn = document.getElementById('btn-submit-verification');
+    const docType = document.getElementById('wp-doc-type')?.value;
+    const docPath = document.getElementById('wp-doc-path')?.value.trim();
+
+    if (!docPath) {
+        showToast('Please provide a document reference, file path, or certificate number.', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Submitting...';
+    }
+
+    try {
+        const res = await fetch('/api/worker/verification', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                document_type: docType,
+                document_path: docPath
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('📄 Verification submitted! Real status recorded: Under Review.', 'success');
+            await loadWorkerProfileData();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to submit verification'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error submitting verification.', 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-upload mr-1"></i> Submit for Review';
+        }
+    }
+}
+
+// Service Area Modal Controls
+function openServiceAreaModal() {
+    const m = document.getElementById('service-area-modal');
+    if (m) m.style.display = 'flex';
+}
+function closeServiceAreaModal() {
+    const m = document.getElementById('service-area-modal');
+    if (m) m.style.display = 'none';
+}
+
+// Payout Modal Controls & Validation
+function openPayoutModal() {
+    const m = document.getElementById('payout-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closePayoutModal() {
+    const m = document.getElementById('payout-modal');
+    if (m) m.style.display = 'none';
+}
+
+async function savePayoutSettings() {
+    const vpa = document.getElementById('input-payout-vpa').value.trim();
+    const accountId = document.getElementById('input-payout-account').value.trim();
+    const btn = document.getElementById('btn-save-payout');
+
+    if (!vpa) {
+        showToast('Please enter a valid UPI Virtual Payment Address (e.g. name@bank).', 'warning');
+        return;
+    }
+
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Validating & Saving...';
+
+    try {
+        const res = await fetch('/api/worker/payout-profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                payout_vpa: vpa,
+                payout_account_id: accountId
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('✅ Payout profile updated! Online payments are enabled for your bookings.', 'success');
+            const badge = document.getElementById('payout-badge-text');
+            if (badge) badge.textContent = (data.payout_status || 'Active').toUpperCase();
+
+            const ind = document.getElementById('payout-status-indicator');
+            if (ind) {
+                ind.className = 'badge badge-success';
+                ind.textContent = 'Active';
+            }
+            const desc = document.getElementById('payout-status-desc');
+            if (desc) {
+                desc.textContent = 'Online customer payments enabled. Cash is also permitted.';
+            }
+
+            setTimeout(closePayoutModal, 1000);
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to update payout settings'), 'danger');
+        }
+    } catch(e) {
+        showToast('❌ Network error while saving payout settings', 'danger');
+    } finally {
+        btn.disabled = false;
+        btn.innerHTML = 'Save Payout Settings';
+    }
+}
+
+// Job Details Modal Controls
+function openJobDetailsModal(job) {
+    DashboardState.activeModalJob = job;
+    document.getElementById('modal-job-title').textContent = job.service_type || 'Job Request';
+    document.getElementById('modal-job-category').textContent = job.service_type || 'General Service';
+    document.getElementById('modal-job-description').textContent = job.description || 'No detailed instructions provided.';
+    document.getElementById('modal-employer-name').textContent = job.user_name_display || 'Customer';
+    document.getElementById('modal-employer-avatar').textContent = (job.user_name_display || 'C').charAt(0).toUpperCase();
+    document.getElementById('modal-job-location').textContent = job.location || 'Nearby Locality';
+    document.getElementById('modal-job-distance').textContent = job.distance_km ? `~${job.distance_km} km away` : 'In your service zone';
+    document.getElementById('modal-job-duration').textContent = job.estimated_duration_hours ? `Est. ${job.estimated_duration_hours} hours` : 'Est. 2-3 hours';
+    document.getElementById('modal-job-price').innerHTML = `₹${job.price || 450} <span style="font-size:0.8125rem; font-weight:400; color:var(--muted);">/ est.</span>`;
+
+    const urgBadge = document.getElementById('modal-urgency-badge');
+    if (job.is_urgent) {
+        urgBadge.className = 'badge badge-danger';
+        urgBadge.innerHTML = '<i class="fa-solid fa-bolt mr-1"></i> Urgent Need';
+    } else {
+        urgBadge.className = 'badge badge-secondary';
+        urgBadge.textContent = 'Standard Request';
+    }
+
+    const acceptBtn = document.getElementById('modal-accept-btn');
+    acceptBtn.onclick = () => acceptJob(job.id, job.price);
+
+    const declineBtn = document.getElementById('modal-decline-btn');
+    declineBtn.onclick = () => {
+        declineJob(job.id);
+        closeJobDetailsModal();
+    };
+
+    const modal = document.getElementById('job-details-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeJobDetailsModal() {
+    DashboardState.activeModalJob = null;
+    const modal = document.getElementById('job-details-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * 1. WORKER AVAILABILITY TOGGLE
+ */
+async function toggleWorkerAvailability(isAvailable) {
+    DashboardState.isAvailable = isAvailable;
+    const pill = document.getElementById('availability-status-pill');
+    const text = document.getElementById('availability-text');
+
+    if (isAvailable) {
+        pill.className = 'status-pill online';
+        text.textContent = 'Available for Jobs';
+    } else {
+        pill.className = 'status-pill offline';
+        text.textContent = 'Busy / Off Duty';
+    }
+
+    try {
+        const res = await fetch('/api/worker/availability', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ is_available: isAvailable })
+        });
+        if (res.ok) {
+            showToast(isAvailable ? 'You are now ON DUTY and visible for jobs.' : 'You are now OFF DUTY.', 'info');
+        } else {
+            throw new Error('Failed to update status');
+        }
+    } catch (e) {
+        showToast('Network error updating availability', 'error');
+    }
+}
+
+/**
+ * 2. GEOLOCATION INITIALIZATION & FALLBACK
+ */
+function initGeolocation() {
+    if (!navigator.geolocation) {
+        handleLocationDenied('Geolocation not supported by browser');
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            DashboardState.hasGpsPermission = true;
+            DashboardState.lat = pos.coords.latitude;
+            DashboardState.lng = pos.coords.longitude;
+            document.getElementById('location-banner')?.classList.add('hidden');
+
+            // Send updated location to backend
+            fetch('/api/worker/location', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ lat: DashboardState.lat, lng: DashboardState.lng })
+            }).catch(() => {});
+
+            updateMapWorkerPosition();
+            loadNearbyJobs();
+        },
+        (err) => {
+            handleLocationDenied(err.message);
+        },
+        { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false }
+    );
+}
+
+function handleLocationDenied(reason) {
+    DashboardState.hasGpsPermission = false;
+    const banner = document.getElementById('location-banner');
+    if (banner) {
+        banner.classList.remove('hidden');
+        const locSpan = document.getElementById('banner-locality');
+        if (locSpan) locSpan.textContent = DashboardState.workerLocality;
+    }
+    // Proceed with registered center
+    loadNearbyJobs();
+}
+
+/**
+ * 3. SAVE MANUAL SERVICE AREA / LOCALITY
+ */
+async function saveServiceArea() {
+    const localityInput = document.getElementById('input-locality');
+    const radiusSelect = document.getElementById('input-radius');
+    const newLocality = localityInput ? localityInput.value.trim() : '';
+    const newRadius = radiusSelect ? parseInt(radiusSelect.value, 10) : 15;
+
+    if (!newLocality) {
+        alert('Please enter a valid locality or city.');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/worker/service-area', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                location: newLocality,
+                radius_km: newRadius
+            })
+        });
+
+        if (res.ok) {
+            DashboardState.workerLocality = newLocality;
+            DashboardState.workerRadiusKm = newRadius;
+
+            // Update UI elements
+            document.getElementById('worker-locality-text').textContent = newLocality;
+            document.getElementById('worker-radius-text').textContent = `${newRadius} km coverage`;
+            const bannerLoc = document.getElementById('banner-locality');
+            if (bannerLoc) bannerLoc.textContent = newLocality;
+
+            closeServiceAreaModal();
+            showToast('Service area coverage updated!', 'success');
+
+            // Recenter map circle & refetch
+            updateMapWorkerPosition();
+            loadNearbyJobs();
+        } else {
+            showToast('Failed to save service area', 'error');
+        }
+    } catch (e) {
+        showToast('Network error saving service area', 'error');
+    }
+}
+
+/**
+ * 4. LEAFLET MAP INITIALIZATION
+ */
+function initMap() {
+    if (DashboardState.map) return;
+    const mapEl = document.getElementById('worker-jobs-map');
+    if (!mapEl) return;
+
+    const center = [DashboardState.lat, DashboardState.lng];
+    DashboardState.map = L.map('worker-jobs-map', {
+        zoomControl: true,
+        scrollWheelZoom: false
+    }).setView(center, 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(DashboardState.map);
+
+    updateMapWorkerPosition();
+}
+
+function updateMapWorkerPosition() {
+    if (!DashboardState.map) return;
+    const center = [DashboardState.lat, DashboardState.lng];
+
+    // Remove old worker marker and circle
+    if (DashboardState.workerMarker) DashboardState.map.removeLayer(DashboardState.workerMarker);
+    if (DashboardState.radiusCircle) DashboardState.map.removeLayer(DashboardState.radiusCircle);
+
+    // Worker center pin
+    const workerIcon = L.divIcon({
+        className: 'custom-job-marker marker-worker',
+        html: '<i class="fa-solid fa-user"></i>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+    });
+    DashboardState.workerMarker = L.marker(center, { icon: workerIcon })
+        .addTo(DashboardState.map)
+        .bindPopup(`<strong>Your Base Center</strong><br>${DashboardState.workerLocality}`);
+
+    // Radius circle in meters
+    const radiusMeters = (DashboardState.workerRadiusKm || 15) * 1000;
+    DashboardState.radiusCircle = L.circle(center, {
+        color: '#2563EB',
+        fillColor: '#3B82F6',
+        fillOpacity: 0.08,
+        weight: 1.5,
+        radius: radiusMeters
+    }).addTo(DashboardState.map);
+}
+
+function recenterMapOnWorker() {
+    if (!DashboardState.map) return;
+    DashboardState.map.setView([DashboardState.lat, DashboardState.lng], 13);
+}
+
+function syncMapMarkers(jobs) {
+    if (!DashboardState.map) return;
+
+    // Clear old job markers
+    DashboardState.jobMarkers.forEach(m => DashboardState.map.removeLayer(m));
+    DashboardState.jobMarkers.clear();
+
+    const bounds = L.latLngBounds([[DashboardState.lat, DashboardState.lng]]);
+
+    jobs.forEach(j => {
+        const lat = j.approx_lat;
+        const lng = j.approx_lng;
+        if (!lat || !lng) return;
+
+        bounds.extend([lat, lng]);
+
+        const isUrgent = !!j.is_urgent;
+        const markerIcon = L.divIcon({
+            className: `custom-job-marker ${isUrgent ? 'marker-urgent' : 'marker-standard'}`,
+            html: isUrgent ? '<i class="fa-solid fa-bolt"></i>' : '<i class="fa-solid fa-briefcase"></i>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        const marker = L.marker([lat, lng], { icon: markerIcon }).addTo(DashboardState.map);
+
+        // Marker Popup
+        const price = j.price ? `₹${j.price}` : '₹450';
+        marker.bindPopup(`
+            <div style="font-family:var(--font-sans); min-width:180px;">
+                <div style="font-size:0.6875rem; text-transform:uppercase; font-weight:700; color:${isUrgent ? 'var(--danger)' : 'var(--primary)'};">
+                    ${isUrgent ? '⚡ Urgent Request' : j.service_type || 'Job Request'}
+                </div>
+                <div style="font-weight:700; font-size:0.875rem; margin:2px 0 4px; color:var(--dark);">${j.description ? j.description.slice(0, 50) + '...' : j.service_type}</div>
+                <div style="font-size:0.75rem; color:var(--muted); margin-bottom:6px;">
+                    <i class="fa-solid fa-location-dot"></i> ${j.location || 'Nearby'} ${j.distance_km ? '(' + j.distance_km + ' km)' : ''}
+                </div>
+                <div style="display:flex; justify-content:space-between; align-items:center; border-top:1px solid #eee; padding-top:6px;">
+                    <strong style="color:var(--dark);">${price}</strong>
+                    <button onclick="highlightAndOpenDetails('${j.id}')" style="background:var(--primary); color:white; border:none; padding:3px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                        Details
+                    </button>
+                </div>
+            </div>
+        `);
+
+        // Clicking marker highlights the job card
+        marker.on('click', () => {
+            highlightJobCard(j.id);
+        });
+
+        DashboardState.jobMarkers.set(String(j.id), marker);
+    });
+
+    if (jobs.length > 0 && DashboardState.map) {
+        DashboardState.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    }
+}
+
+function highlightAndOpenDetails(jobId) {
+    const job = DashboardState.allJobs.find(x => String(x.id) === String(jobId));
+    if (job) openJobDetailsModal(job);
+}
+
+function highlightJobCard(jobId) {
+    document.querySelectorAll('.job-card').forEach(c => c.classList.remove('active-marker'));
+    const card = document.getElementById(`job-card-${jobId}`);
+    if (card) {
+        card.classList.add('active-marker');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+/**
+ * 5. VIEW SWITCHER (SPLIT, LIST, MAP)
+ */
+function switchView(mode) {
+    DashboardState.currentView = mode;
+    const mapWrapper = document.getElementById('worker-map-wrapper');
+    const jobsGrid = document.getElementById('nearby-jobs');
+
+    document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-view-${mode}`)?.classList.add('active');
+
+    if (mode === 'split') {
+        mapWrapper.style.display = 'block';
+        jobsGrid.style.display = 'grid';
+    } else if (mode === 'map') {
+        mapWrapper.style.display = 'block';
+        jobsGrid.style.display = 'none';
+    } else if (mode === 'list') {
+        mapWrapper.style.display = 'none';
+        jobsGrid.style.display = 'grid';
+    }
+
+    if (DashboardState.map) {
+        setTimeout(() => DashboardState.map.invalidateSize(), 150);
+    }
+}
+
+/**
+ * 6. LOAD NEARBY JOBS FROM REAL BACKEND
+ */
+async function loadNearbyJobs(isSilent = false) {
+    const container = document.getElementById('nearby-jobs');
+    const spinner = document.getElementById('refresh-spinner');
+    if (!isSilent && spinner) spinner.classList.add('fa-spin');
+
+    // Build query params
+    const categoryVal = document.getElementById('filter-category')?.value || 'all';
+    const distanceVal = document.getElementById('filter-distance')?.value || '15';
+    const urgencyVal = document.getElementById('filter-urgency')?.value || 'all';
+    const statusVal = document.getElementById('filter-status')?.value || 'open';
+    const searchVal = document.getElementById('filter-search')?.value.trim() || '';
+
+    const params = new URLSearchParams({
+        lat: DashboardState.lat,
+        lng: DashboardState.lng,
+        radius_km: distanceVal,
+        status: statusVal,
+        limit: '50'
+    });
+
+    if (categoryVal !== 'all') params.set('category', categoryVal);
+    if (urgencyVal === 'urgent') params.set('urgent_only', 'true');
+    if (urgencyVal === 'today') params.set('time_filter', 'today');
+    if (searchVal) params.set('search', searchVal);
+
+    try {
+        const res = await fetch(`/api/workers/nearby?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP error ${res.status}`);
+        const jobs = await res.json();
+
+        // Filter out locally declined jobs unless status is accepted
+        const eligibleJobs = (jobs || []).filter(j => {
+            if (j.status === 'accepted') return true;
+            return !DashboardState.declinedJobIds.has(String(j.id));
+        });
+
+        DashboardState.allJobs = eligibleJobs;
+        renderJobsList(eligibleJobs);
+        syncMapMarkers(eligibleJobs);
+
+        const countBadge = document.getElementById('job-count-badge');
+        if (countBadge) countBadge.textContent = `${eligibleJobs.length} available`;
+
+    } catch (err) {
+        console.error('Error fetching jobs:', err);
+        if (!isSilent) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1; padding: 36px 16px; text-align:center;">
+                    <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; color: var(--danger); margin-bottom: 10px;"></i>
+                    <h3 style="font-size: 1rem; margin-bottom: 4px;">Unable to load job requests</h3>
+                    <p style="font-size: 0.8125rem; color: var(--muted); margin-bottom: 14px;">Network connection issue or server temporarily unavailable.</p>
+                    <button class="btn btn-secondary btn-sm" onclick="loadNearbyJobs()">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Try Again
+                    </button>
+                </div>
+            `;
+        }
+    } finally {
+        if (spinner) spinner.classList.remove('fa-spin');
+    }
+}
+
+/**
+ * 7. RENDER JOB CARDS
+ */
+function renderJobsList(jobs) {
+    const container = document.getElementById('nearby-jobs');
+    if (!container) return;
+
+    if (!jobs || jobs.length === 0) {
+        container.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 16px; text-align:center;">
+                <i class="fa-solid fa-briefcase" style="font-size: 2.25rem; color: var(--muted); margin-bottom: 12px; opacity:0.6;"></i>
+                <h3 style="font-size: 1.05rem; margin-bottom: 6px;">No Open Jobs in this Area</h3>
+                <p style="font-size: 0.8125rem; color: var(--muted); max-width:360px; margin:0 auto 16px;">
+                    We didn't find any job requests matching your current filters and service area.
+                </p>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="resetFilters()">
+                    Reset Filters
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    container.innerHTML = jobs.map(j => {
+        const isUrgent = !!j.is_urgent;
+        const isAccepted = j.status === 'accepted';
+        const employerName = j.user_name_display || 'Customer';
+        const initial = (employerName.trim().charAt(0) || 'C').toUpperCase();
+        const service = j.service_type || 'General Service';
+        const desc = j.description || service;
+        const loc = j.location || 'Nearby';
+        const dist = j.distance_km ? `~${j.distance_km} km away` : 'In coverage area';
+        const price = j.price ? `₹${j.price}` : '₹450';
+        const estDuration = j.estimated_duration_hours ? `Est. ${j.estimated_duration_hours}h` : 'Est. 2-3h';
+
+        return `
+            <div class="job-card" id="job-card-${j.id}" onmouseenter="focusMarker('${j.id}')">
+                <div class="job-card-header">
+                    <div class="job-employer">
+                        <div class="employer-avatar">${initial}</div>
+                        <div>
+                            <div class="employer-name">${employerName}</div>
+                            <div class="employer-verified">
+                                <i class="fa-solid fa-circle-check"></i> ${isUrgent ? 'Urgent Need' : 'Verified Request'}
+                            </div>
+                        </div>
+                    </div>
+                    <span class="badge ${isUrgent ? 'badge-danger' : 'badge-primary'}">${service}</span>
+                </div>
+
+                <div class="job-title" style="font-size:0.9375rem; margin-bottom:8px;">${desc}</div>
+
+                <div class="job-meta">
+                    <span class="job-meta-item" title="Approximate area (privacy protected)"><i class="fa-solid fa-location-dot"></i> ${loc} (${dist})</span>
+                    <span class="job-meta-item"><i class="fa-solid fa-stopwatch"></i> ${estDuration}</span>
+                    ${isUrgent ? '<span class="job-meta-item" style="color:var(--danger); font-weight:600;"><i class="fa-solid fa-bolt"></i> Immediate</span>' : '<span class="job-meta-item"><i class="fa-solid fa-clock"></i> Flexible</span>'}
+                </div>
+
+                <div class="job-pay">${price} <span>/ estimated offer</span></div>
+
+                <div class="job-actions">
+                    ${isAccepted ? `
+                        <a href="{{ url_for('my_bookings_page') }}" class="btn btn-success btn-sm btn-full">
+                            <i class="fa-solid fa-clipboard-check mr-1"></i> View in My Work
+                        </a>
+                    ` : `
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="declineJob('${j.id}')" title="Pass this job request">
+                            <i class="fa-solid fa-ban mr-1"></i> Pass
+                        </button>
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="highlightAndOpenDetails('${j.id}')" title="Inspect complete requirements">
+                            <i class="fa-solid fa-eye mr-1"></i> Details
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm btn-full" id="btn-accept-${j.id}" onclick="acceptJob('${j.id}', '${j.price || 450}')">
+                            Accept Job
+                        </button>
+                    `}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function focusMarker(jobId) {
+    const marker = DashboardState.jobMarkers.get(String(jobId));
+    if (marker && DashboardState.map) {
+        marker.openPopup();
+    }
+}
+
+/**
+ * 8. ATOMIC CAS ACCEPT JOB (CONCURRENCY SHIELD)
+ */
+async function acceptJob(jobId, price) {
+    if (DashboardState.isSubmitting) return;
+
+    // Check duty status
+    if (!DashboardState.isAvailable) {
+        if (!confirm('You are currently Off Duty. Accepting this job will mark you On Duty. Proceed?')) {
+            return;
+        }
+        toggleWorkerAvailability(true);
+    }
+
+    if (!confirm('Are you sure you want to accept this job request?')) return;
+
+    DashboardState.isSubmitting = true;
+    const btn = document.getElementById(`btn-accept-${jobId}`);
+    const modalBtn = document.getElementById('modal-accept-btn');
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Accepting...';
+    }
+    if (modalBtn) {
+        modalBtn.disabled = true;
+        modalBtn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Accepting...';
+    }
+
+    try {
+        const res = await fetch(`/api/jobs/${jobId}/accept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ price: parseFloat(price) || 0 })
+        });
+
+        const data = await res.json();
+
+        if (res.status === 200) {
+            closeJobDetailsModal();
+            showToast('🎉 Job accepted successfully! Customer contact details unlocked in My Work.', 'success');
+            loadNearbyJobs();
+            loadStats();
+        } else if (res.status === 409) {
+            // Concurrency race: Already taken by another worker
+            closeJobDetailsModal();
+            showToast('⚠️ Job was already accepted by another nearby worker or is no longer open.', 'warning');
+            removeJobFromView(jobId);
+        } else if (res.status === 404) {
+            closeJobDetailsModal();
+            showToast('This job request was cancelled by the customer.', 'info');
+            removeJobFromView(jobId);
+        } else {
+            showToast(data.error || 'Failed to accept job request.', 'error');
+            if (btn) { btn.disabled = false; btn.innerHTML = 'Accept Job'; }
+            if (modalBtn) { modalBtn.disabled = false; modalBtn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Accept This Job'; }
+        }
+    } catch (err) {
+        showToast('Network error while accepting job. Please check connection.', 'error');
+        if (btn) { btn.disabled = false; btn.innerHTML = 'Accept Job'; }
+        if (modalBtn) { modalBtn.disabled = false; modalBtn.innerHTML = '<i class="fa-solid fa-check mr-1"></i> Accept This Job'; }
+    } finally {
+        DashboardState.isSubmitting = false;
+    }
+}
+
+/**
+ * 9. DECLINE / PASS JOB
+ */
+function declineJob(jobId) {
+    DashboardState.declinedJobIds.add(String(jobId));
+    try {
+        localStorage.setItem(
+            'vh_declined_jobs_' + DashboardState.workerId,
+            JSON.stringify(Array.from(DashboardState.declinedJobIds))
+        );
+    } catch(e) {}
+
+    removeJobFromView(jobId);
+    showToast('Job passed. It will no longer show on your board.', 'info');
+}
+
+function removeJobFromView(jobId) {
+    const card = document.getElementById(`job-card-${jobId}`);
+    if (card) {
+        card.style.transition = 'all 0.3s ease';
+        card.style.opacity = '0';
+        card.style.transform = 'scale(0.9)';
+        setTimeout(() => card.remove(), 300);
+    }
+
+    const marker = DashboardState.jobMarkers.get(String(jobId));
+    if (marker && DashboardState.map) {
+        DashboardState.map.removeLayer(marker);
+        DashboardState.jobMarkers.delete(String(jobId));
+    }
+
+    DashboardState.allJobs = DashboardState.allJobs.filter(j => String(j.id) !== String(jobId));
+    const countBadge = document.getElementById('job-count-badge');
+    if (countBadge) countBadge.textContent = `${DashboardState.allJobs.length} available`;
+}
+
+/**
+ * 10. FILTER CONTROLS & DEBOUNCE
+ */
+function applyFilters() {
+    loadNearbyJobs();
+}
+
+function debounceApplyFilters() {
+    clearTimeout(DashboardState.filterDebounceTimer);
+    DashboardState.filterDebounceTimer = setTimeout(() => {
+        applyFilters();
+    }, 350);
+}
+
+function resetFilters() {
+    const search = document.getElementById('filter-search');
+    const cat = document.getElementById('filter-category');
+    const dist = document.getElementById('filter-distance');
+    const urg = document.getElementById('filter-urgency');
+    const stat = document.getElementById('filter-status');
+
+    if (search) search.value = '';
+    if (cat) cat.value = 'all';
+    if (dist) dist.value = '15';
+    if (urg) urg.value = 'all';
+    if (stat) stat.value = 'open';
+
+    loadNearbyJobs();
+}
+
+function refreshDashboard() {
+    loadNearbyJobs();
+    loadStats();
+    showToast('Dashboard refreshed with latest bookings.', 'info');
+}
+
+/**
+ * 11. STATS & RECENT ACTIVITY
+ */
 async function loadStats() {
     try {
         const res = await fetch('/api/worker/stats');
         if (!res.ok) return;
         const d = await res.json();
-        document.getElementById('stat-today').textContent = `₹${d.today_earnings || 0}`;
-        document.getElementById('stat-month').textContent = `₹${d.month_earnings || 0}`;
+
+        const statToday = document.getElementById('stat-today');
+        const statMonth = document.getElementById('stat-month');
         const statJobs = document.getElementById('stat-jobs');
+
+        if (statToday) statToday.textContent = `₹${d.today_earnings || 0}`;
+        if (statMonth) statMonth.textContent = `₹${d.month_earnings || 0}`;
         if (statJobs) {
             statJobs.textContent = d.total_jobs !== undefined ? d.total_jobs : (d.last_jobs ? d.last_jobs.length : 0);
         }
 
-        // Recent jobs
+        // Recent work activity
         const rj = document.getElementById('recent-jobs');
-        if (d.last_jobs && d.last_jobs.length) {
-            rj.innerHTML = d.last_jobs.map(j => `
-                <div class="booking-item">
-                    <div class="booking-icon" style="background:var(--success-light); color:var(--success);"><i class="fa-solid fa-briefcase"></i></div>
-                    <div class="booking-info">
-                        <div class="booking-title">${j.work}</div>
-                        <div class="booking-meta">${j.date}</div>
+        if (rj) {
+            if (d.last_jobs && d.last_jobs.length) {
+                rj.innerHTML = d.last_jobs.map(j => `
+                    <div class="booking-item">
+                        <div class="booking-icon" style="background:var(--success-light); color:var(--success);">
+                            <i class="fa-solid fa-briefcase"></i>
+                        </div>
+                        <div class="booking-info">
+                            <div class="booking-title">${j.work || 'Job Request'}</div>
+                            <div class="booking-meta">${j.date || 'Recent'}</div>
+                        </div>
+                        <span class="badge badge-${j.status === 'Completed' ? 'success' : 'warning'}">${j.status}</span>
                     </div>
-                    <span class="badge badge-${j.status === 'Completed' ? 'success' : 'warning'}">${j.status}</span>
-                </div>
-            `).join('');
-        } else {
-            rj.innerHTML = `<div class="empty-state"><i class="fa-solid fa-clipboard-list"></i><p>No recent work history.</p></div>`;
+                `).join('');
+            } else {
+                rj.innerHTML = `<div class="empty-state" style="padding:20px 10px;"><i class="fa-solid fa-clipboard-list"></i><p>No recent work history.</p></div>`;
+            }
         }
     } catch(e) {}
 }
 
-// Load nearby jobs dynamically
-async function loadNearbyJobs() {
-    const container = document.getElementById('nearby-jobs');
-    try {
-        const res = await fetch('/api/workers/nearby?limit=3');
-        if (!res.ok) throw new Error('API status ' + res.status);
-        const jobs = await res.json();
-        if (jobs && jobs.length > 0) {
-            container.innerHTML = jobs.map(j => {
-                const employerName = j.user_name || 'Customer';
-                const initial = (employerName.trim().charAt(0) || 'C').toUpperCase();
-                const service = j.service_type || 'General Service';
-                const desc = j.description || service;
-                const loc = j.location || 'Nearby';
-                const price = j.price ? `₹${j.price}` : '₹400';
-                const isUrgent = !!j.is_urgent;
-                return `
-                    <div class="job-card">
-                        <div class="job-card-header">
-                            <div class="job-employer">
-                                <div class="employer-avatar">${initial}</div>
-                                <div>
-                                    <div class="employer-name">${employerName}</div>
-                                    <div class="employer-verified"><i class="fa-solid fa-circle-check"></i> ${isUrgent ? 'Urgent Need' : 'Verified Request'}</div>
-                                </div>
-                            </div>
-                            <span class="badge ${isUrgent ? 'badge-danger' : 'badge-primary'}">${service}</span>
-                        </div>
-                        <div class="job-title">${desc}</div>
-                        <div class="job-meta">
-                            <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> ${loc}</span>
-                            ${isUrgent ? '<span class="job-meta-item" style="color:var(--danger);"><i class="fa-solid fa-bolt"></i> Urgent</span>' : '<span class="job-meta-item"><i class="fa-solid fa-clock"></i> Open</span>'}
-                        </div>
-                        <div class="job-pay">${price} <span>/ est.</span></div>
-                        <div class="job-actions">
-                            <button class="btn btn-primary btn-sm btn-full" onclick="acceptJob('${j.id}')">Accept Job</button>
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            container.innerHTML = `
-                <div class="empty-state" style="grid-column: 1 / -1; padding: 28px 16px; text-align:center;">
-                    <i class="fa-solid fa-briefcase" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
-                    <h3 style="font-size: 1rem; margin-bottom: 4px;">No Open Jobs Nearby</h3>
-                    <p style="font-size: 0.875rem; color: var(--muted); margin: 0;">New job postings from customers will appear here automatically.</p>
-                </div>
-            `;
-        }
-    } catch(e) {
-        container.innerHTML = `
-            <div class="empty-state" style="grid-column: 1 / -1; padding: 28px 16px; text-align:center;">
-                <i class="fa-solid fa-briefcase" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
-                <h3 style="font-size: 1rem; margin-bottom: 4px;">No Open Jobs Nearby</h3>
-                <p style="font-size: 0.875rem; color: var(--muted); margin: 0;">New job postings from customers will appear here automatically.</p>
-            </div>
-        `;
-    }
-}
-
-// Accept a job
-async function acceptJob(jobId) {
-    if (!confirm('Do you want to accept this job?')) return;
-    try {
-        const res = await fetch(`/api/jobs/${jobId}/accept`, {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({})
-        });
-        const d = await res.json();
-        if (res.ok) {
-            alert('Job accepted! Check My Work for details.');
-            loadNearbyJobs();
+/**
+ * Auto-refresh loop: Every 30 seconds, update available jobs and stats
+ * (skips refresh if Job Details modal is currently open to avoid disruption)
+ */
+function startAutoRefresh() {
+    DashboardState.autoRefreshInterval = setInterval(() => {
+        if (!DashboardState.activeModalJob && !DashboardState.isSubmitting) {
+            loadNearbyJobs(true);
             loadStats();
-        } else {
-            alert(d.error || 'Failed to accept job.');
         }
-    } catch(err) {
-        alert('Network error while accepting job.');
-    }
+    }, 30000);
 }
 
-loadStats();
-loadNearbyJobs();
+// ── BOOTSTRAP ──
+window.addEventListener('DOMContentLoaded', () => {
+    initMap();
+    initGeolocation();
+    loadStats();
+    loadWorkerProfileData();
+    startAutoRefresh();
+});
 </script>
 {% endblock %}

@@ -6,3 +6,4 @@ Werkzeug
 gunicorn
 qrcode[pil]
 Pillow
+razorpay>=2.0.1

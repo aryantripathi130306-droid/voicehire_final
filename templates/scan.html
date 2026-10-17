@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Scan QR Code — VoiceHire{% endblock %}
+{% block title %}{{ t('Scan QR Code') }} — VoiceHire{% endblock %}
 
 {% block body %}
 <div class="dashboard-layout">
@@ -12,18 +12,18 @@
         </div>
         <nav class="sidebar-nav">
             <a href="{{ url_for('worker_dashboard') }}" class="nav-item">
-                <i class="fa-solid fa-house nav-icon"></i> Home
+                <i class="fa-solid fa-house nav-icon"></i> {{ t('Home') }}
             </a>
             <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
-                <i class="fa-solid fa-clipboard-list nav-icon"></i> My Work
+                <i class="fa-solid fa-clipboard-list nav-icon"></i> {{ t('My Work') }}
             </a>
             <a href="{{ url_for('scan_page') }}" class="nav-item active">
-                <i class="fa-solid fa-qrcode nav-icon"></i> Scan QR
+                <i class="fa-solid fa-qrcode nav-icon"></i> {{ t('Scan QR') }}
             </a>
         </nav>
         <div class="sidebar-bottom">
             <a href="{{ url_for('logout') }}" class="nav-item" style="color:#FDA4AF;">
-                <i class="fa-solid fa-right-from-bracket nav-icon"></i> Logout
+                <i class="fa-solid fa-right-from-bracket nav-icon"></i> {{ t('Logout') }}
             </a>
         </div>
     </aside>
@@ -33,10 +33,10 @@
     <main class="dashboard-main">
         <div class="dash-header">
             <div style="display:flex; align-items:center; gap:12px;">
-                <button class="btn-icon mobile-menu-btn" onclick="openSidebar()"><i class="fa-solid fa-bars"></i></button>
+                <button class="btn-icon mobile-menu-btn" onclick="openSidebar()" aria-label="{{ t('Menu') }}"><i class="fa-solid fa-bars"></i></button>
                 <div class="dash-header-title">
-                    <h1>Scan QR Code</h1>
-                    <p>Scan the employer's QR code to check in or complete a job</p>
+                    <h1>{{ t('Scan QR Code') }}</h1>
+                    <p>{{ t("Scan the employer's QR code to check in or complete a job") }}</p>
                 </div>
             </div>
         </div>
@@ -49,42 +49,42 @@
                         <div style="width:64px; height:64px; border-radius:50%; background:var(--primary-light); color:var(--primary); display:flex; align-items:center; justify-content:center; font-size:1.75rem; margin:0 auto 16px;">
                             <i class="fa-solid fa-qrcode"></i>
                         </div>
-                        <h2 style="font-size:1.125rem; margin-bottom:6px;">Job QR Check-In</h2>
-                        <p style="font-size:.875rem; max-width:320px; margin:0 auto 20px;">Ask your employer for the QR code provided in their booking confirmation.</p>
+                        <h2 style="font-size:1.125rem; margin-bottom:6px;">{{ t('Job QR Check-In') }}</h2>
+                        <p style="font-size:.875rem; max-width:320px; margin:0 auto 20px;">{{ t('Ask your employer for the QR code provided in their booking confirmation.') }}</p>
 
                         <div class="scan-box" id="scan-box">
                             <video id="qr-video" autoplay playsinline></video>
                             <div class="scan-line"></div>
                         </div>
 
-                        <div id="scan-status" class="alert alert-info mt-4" style="text-align:left;">
+                        <div id="scan-status" class="alert alert-info mt-4" style="text-align:left;" role="status">
                             <i class="fa-solid fa-circle-info"></i>
-                            Point your camera at the employer's QR code.
+                            {{ t("Point your camera at the employer's QR code.") }}
                         </div>
 
                         <div style="display:flex; gap:12px; justify-content:center; margin-top:16px;">
                             <button class="btn btn-primary" id="start-scan-btn" onclick="startScan()">
-                                <i class="fa-solid fa-camera mr-2"></i> Start Camera
+                                <i class="fa-solid fa-camera mr-2"></i> {{ t('Start Camera') }}
                             </button>
                             <button class="btn btn-ghost" id="stop-scan-btn" onclick="stopScan()" style="display:none;">
-                                <i class="fa-solid fa-stop mr-2"></i> Stop
+                                <i class="fa-solid fa-stop mr-2"></i> {{ t('Stop') }}
                             </button>
                         </div>
                     </div>
                 </div>
 
-                <!-- Manual Entry -->
+                <!-- Manual Entry Alternative -->
                 <div class="card">
                     <h3 style="font-size:.9375rem; margin-bottom:12px;">
-                        <i class="fa-solid fa-keyboard mr-2 text-primary"></i> Enter Code Manually
+                        <i class="fa-solid fa-keyboard mr-2 text-primary"></i> {{ t('Enter Code Manually') }}
                     </h3>
-                    <p class="text-sm mb-3">Can't scan? Ask your employer for the job code and enter it below.</p>
+                    <p class="text-sm mb-3">{{ t("Can't scan? Ask your employer for the job code and enter it below.") }}</p>
                     <div class="input-icon-wrap mb-3">
                         <i class="fa-solid fa-hashtag input-icon"></i>
-                        <input type="text" id="manual-code" class="form-control" placeholder="Enter job completion code">
+                        <input type="text" id="manual-code" class="form-control" placeholder="{{ t('Enter job completion code') }}" aria-label="{{ t('Enter job completion code') }}">
                     </div>
                     <button class="btn btn-primary btn-full" onclick="submitManualCode()">
-                        <i class="fa-solid fa-check mr-2"></i> Submit Code
+                        <i class="fa-solid fa-check mr-2"></i> {{ t('Submit Code') }}
                     </button>
                 </div>
             </div>
@@ -118,7 +118,7 @@ function startScan() {
         },
         (err) => {}
     ).catch(err => {
-        setStatus('Camera access denied. Please use manual entry below.', 'error');
+        setStatus("{{ t('Camera access denied. Please use manual entry below.') }}", 'error');
         document.getElementById('start-scan-btn').style.display = 'inline-flex';
         document.getElementById('stop-scan-btn').style.display = 'none';
     });
@@ -139,7 +139,7 @@ function setStatus(msg, type='info') {
 
 function submitManualCode() {
     const code = document.getElementById('manual-code').value.trim();
-    if (!code) { showToast('Please enter a job code', 'error'); return; }
+    if (!code) { showToast("{{ t('Please enter a job code') }}", 'error'); return; }
     window.location.href = '/complete-job/' + code;
 }
 </script>

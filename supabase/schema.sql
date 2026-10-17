@@ -15,7 +15,13 @@ CREATE TABLE IF NOT EXISTS users (
   phone       TEXT        UNIQUE NOT NULL,
   password    TEXT        NOT NULL,           -- Werkzeug hashed
   profile_pic TEXT,                           -- relative path in static/uploads
-  created_at  TIMESTAMPTZ DEFAULT now()
+  locality    TEXT,                           -- preferred service locality / city
+  preferred_lang TEXT DEFAULT 'hi',
+  language_preference TEXT DEFAULT 'hi',
+  voice_settings JSONB DEFAULT '{"voice": "alloy", "speed": 1.0, "auto_speak": true}'::jsonb,
+  is_active   BOOLEAN     DEFAULT true,
+  created_at  TIMESTAMPTZ DEFAULT now(),
+  updated_at  TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_users_phone ON users(phone);
@@ -44,7 +50,25 @@ CREATE TABLE IF NOT EXISTS workers (
   is_available         BOOLEAN     DEFAULT true,
   is_verified          BOOLEAN     DEFAULT false,
   price                NUMERIC     DEFAULT 0, -- per-service / per-day rate (INR)
-  created_at           TIMESTAMPTZ DEFAULT now()
+  payout_vpa           TEXT,                  -- UPI VPA for worker payout settlements
+  payout_account_id    TEXT,                  -- Provider linked account ID (e.g. Razorpay Route acc_xxx)
+  payout_status        TEXT        DEFAULT 'unconfigured', -- unconfigured | pending | active
+  service_radius_km    INT         DEFAULT 15,
+  experience_years     INT         DEFAULT 1,
+  bio                  TEXT,
+  quote_preference     TEXT        DEFAULT 'estimate_then_confirm', -- fixed_only | estimate_then_confirm | inspection_required
+  verification_status  TEXT        DEFAULT 'unsubmitted', -- unsubmitted | pending | under_review | verified | rejected
+  verification_type    TEXT,                  -- aadhaar | pan | trade_license | skill_certificate
+  verification_notes   TEXT,
+  verification_submitted_at TIMESTAMPTZ,
+  verification_reviewed_at  TIMESTAMPTZ,
+  profile_completeness INT         DEFAULT 40,
+  avg_rating           NUMERIC(3, 2) DEFAULT 0.00,
+  review_count         INT         DEFAULT 0,
+  approx_lat           FLOAT,
+  approx_lng           FLOAT,
+  created_at           TIMESTAMPTZ DEFAULT now(),
+  updated_at           TIMESTAMPTZ DEFAULT now()
 );
 
 CREATE INDEX IF NOT EXISTS idx_workers_phone ON workers(phone);
@@ -113,6 +137,7 @@ CREATE INDEX IF NOT EXISTS idx_bookings_status ON bookings(status);
 CREATE TABLE IF NOT EXISTS reviews (
   id         BIGINT      GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
   job_id     BIGINT      REFERENCES jobs(id) ON DELETE SET NULL,
+  booking_id BIGINT      REFERENCES bookings(id) ON DELETE CASCADE,
   worker_id  UUID        REFERENCES workers(id) ON DELETE CASCADE,
   user_id    UUID        REFERENCES users(id) ON DELETE SET NULL,
   rating     INT         NOT NULL CHECK (rating BETWEEN 1 AND 5),
@@ -120,9 +145,32 @@ CREATE TABLE IF NOT EXISTS reviews (
   created_at TIMESTAMPTZ DEFAULT now()
 );
 
--- Ensure only one review per job
-CREATE UNIQUE INDEX IF NOT EXISTS uq_reviews_job ON reviews (job_id);
+-- Ensure only one review per job and one review per booking
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reviews_job ON reviews (job_id) WHERE job_id IS NOT NULL;
+CREATE UNIQUE INDEX IF NOT EXISTS uq_reviews_booking ON reviews (booking_id) WHERE booking_id IS NOT NULL;
 CREATE INDEX IF NOT EXISTS idx_reviews_worker_id ON reviews(worker_id);
+CREATE INDEX IF NOT EXISTS idx_reviews_booking_id ON reviews(booking_id);
+
+-- =====================================================================
+-- TABLE: customer_saved_addresses
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS customer_saved_addresses (
+  id              BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  user_id         UUID NOT NULL REFERENCES users(id) ON DELETE CASCADE,
+  label           TEXT NOT NULL DEFAULT 'Home',
+  street_address  TEXT NOT NULL,
+  landmark        TEXT,
+  locality        TEXT NOT NULL,
+  city            TEXT NOT NULL DEFAULT 'Delhi NCR',
+  pincode         TEXT,
+  latitude        FLOAT,
+  longitude       FLOAT,
+  is_default      BOOLEAN DEFAULT false,
+  created_at      TIMESTAMPTZ DEFAULT now(),
+  updated_at      TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_saved_addresses_user ON customer_saved_addresses(user_id);
 
 -- =====================================================================
 -- TABLE: service_categories
@@ -245,10 +293,17 @@ CREATE TABLE IF NOT EXISTS payments (
   payee_id         UUID NOT NULL REFERENCES workers(id) ON DELETE CASCADE,
   amount           NUMERIC NOT NULL CHECK (amount >= 0),
   currency         TEXT DEFAULT 'INR',
-  payment_method   TEXT DEFAULT 'cash' CHECK (payment_method IN ('cash', 'upi', 'qr', 'wallet', 'card')),
+  payment_method   TEXT DEFAULT 'cash' CHECK (payment_method IN ('cash', 'upi', 'qr', 'wallet', 'card', 'netbanking')),
   payment_status   TEXT DEFAULT 'pending' CHECK (payment_status IN ('pending', 'authorized', 'captured', 'completed', 'failed', 'refunded')),
   idempotency_key  TEXT UNIQUE,
   transaction_ref  TEXT,
+  gateway_order_id TEXT,
+  gateway_payment_id TEXT,
+  gateway_signature TEXT,
+  verification_type TEXT DEFAULT 'electronic_signature',
+  gateway_name     TEXT DEFAULT 'razorpay',
+  error_code       TEXT,
+  error_description TEXT,
   notes            TEXT,
   created_at       TIMESTAMPTZ DEFAULT now(),
   updated_at       TIMESTAMPTZ DEFAULT now()
@@ -257,6 +312,22 @@ CREATE TABLE IF NOT EXISTS payments (
 CREATE INDEX IF NOT EXISTS idx_payments_booking ON payments(booking_id);
 CREATE INDEX IF NOT EXISTS idx_payments_job ON payments(job_id);
 CREATE INDEX IF NOT EXISTS idx_payments_status ON payments(payment_status);
+CREATE INDEX IF NOT EXISTS idx_payments_gateway_order ON payments(gateway_order_id);
+CREATE INDEX IF NOT EXISTS idx_payments_gateway_payment ON payments(gateway_payment_id);
+
+-- =====================================================================
+-- TABLE: payment_webhooks
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS payment_webhooks (
+  id          BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  event_id    TEXT UNIQUE NOT NULL,
+  event_type  TEXT NOT NULL,
+  payload     JSONB,
+  status      TEXT DEFAULT 'processed',
+  created_at  TIMESTAMPTZ DEFAULT now()
+);
+
+CREATE INDEX IF NOT EXISTS idx_pw_event_id ON payment_webhooks(event_id);
 
 -- =====================================================================
 -- TABLE: payment_status_history
@@ -330,6 +401,20 @@ CREATE TABLE IF NOT EXISTS audit_events (
   created_at    TIMESTAMPTZ DEFAULT now()
 );
 
-CREATE INDEX IF NOT EXISTS idx_audit_event_type ON audit_events(event_type);
-CREATE INDEX IF NOT EXISTS idx_audit_resource ON audit_events(resource_type, resource_id);
+-- =====================================================================
+-- TABLE: blocked_users (Safety & Abuse Protection)
+-- =====================================================================
+CREATE TABLE IF NOT EXISTS blocked_users (
+  id           BIGINT GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+  blocker_id   UUID NOT NULL,
+  blocker_role TEXT NOT NULL CHECK (blocker_role IN ('user', 'worker')),
+  blocked_id   UUID NOT NULL,
+  blocked_role TEXT NOT NULL CHECK (blocked_role IN ('user', 'worker')),
+  reason       TEXT,
+  created_at   TIMESTAMPTZ DEFAULT now(),
+  CONSTRAINT uq_blocker_blocked UNIQUE (blocker_id, blocked_id)
+);
+
+CREATE INDEX IF NOT EXISTS idx_blocked_blocker ON blocked_users(blocker_id);
+CREATE INDEX IF NOT EXISTS idx_blocked_blocked ON blocked_users(blocked_id);
 

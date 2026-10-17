@@ -1,15 +1,15 @@
 <!DOCTYPE html>
-<html lang="{{ session.get('lang', 'en') }}">
+<html lang="{{ current_lang }}">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>{% block title %}VoiceHire — Your Voice Can Work For You{% endblock %}</title>
     <meta name="description" content="{% block meta_desc %}VoiceHire helps informal workers find local job opportunities using voice, regional languages, and simple mobile-first design.{% endblock %}">
 
-    <!-- Fonts -->
+    <!-- Fonts: Inter, Outfit, and Indian Regional Scripts (Devanagari, Gurmukhi) -->
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700&family=Noto+Sans+Devanagari:wght@400;600;700&family=Noto+Sans+Gurmukhi:wght@400;600;700&family=Outfit:wght@500;600;700;800&display=swap" rel="stylesheet">
 
     <!-- Icons -->
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.0/css/all.min.css">
@@ -18,9 +18,22 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/responsive.css') }}">
 
+    <style>
+        :focus-visible { outline: 3px solid var(--primary, #2563EB) !important; outline-offset: 2px !important; }
+        .offline-banner { position: fixed; top: 0; left: 0; right: 0; background: #DC2626; color: white; padding: 8px 16px; font-size: 0.8125rem; font-weight: 600; text-align: center; z-index: 99999; display: none; align-items: center; justify-content: center; gap: 8px; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
+        .lang-switcher-select { background: white; border: 1px solid var(--border, #cbd5e1); border-radius: 8px; padding: 4px 10px; font-size: 0.8125rem; font-weight: 600; color: var(--dark, #0f172a); cursor: pointer; }
+        .lang-switcher-select:focus { outline: 2px solid var(--primary, #2563eb); }
+    </style>
+
     {% block head %}{% endblock %}
 </head>
 <body class="{% block body_class %}{% endblock %}">
+
+<!-- Offline Alert Banner -->
+<div id="vh-offline-banner" class="offline-banner" role="alert">
+    <i class="fa-solid fa-wifi"></i>
+    <span>{{ t('You are offline. Your safe draft has been preserved.') }}</span>
+</div>
 
 <!-- Toast Container -->
 <div class="toast-container" id="toast-container"></div>
@@ -34,33 +47,33 @@
 <!-- AI Assistant Widget (shown on authenticated pages) -->
 {% if session.get('user_id') %}
 <div class="ai-widget" id="ai-widget">
-    <button class="ai-toggle-btn" id="ai-toggle-btn" title="VoiceHire Assistant">
+    <button class="ai-toggle-btn" id="ai-toggle-btn" title="{{ t('VoiceHire Assistant') }}" aria-label="{{ t('VoiceHire Assistant') }}">
         <i class="fa-solid fa-robot"></i>
     </button>
     <div class="ai-panel" id="ai-panel">
         <div class="ai-panel-header">
             <div class="ai-panel-avatar"><i class="fa-solid fa-robot"></i></div>
             <div>
-                <div class="ai-panel-title">VoiceHire Assistant</div>
-                <div class="ai-panel-status">● Online · Hindi/English</div>
+                <div class="ai-panel-title">{{ t('VoiceHire Assistant') }}</div>
+                <div class="ai-panel-status">● {{ t('Online · Voice Ready') }}</div>
             </div>
-            <button class="ai-close" id="ai-close"><i class="fa-solid fa-xmark"></i></button>
+            <button class="ai-close" id="ai-close" aria-label="{{ t('Close') }}"><i class="fa-solid fa-xmark"></i></button>
         </div>
         <div class="ai-messages" id="ai-messages">
             <div class="ai-msg bot">
-                <div class="ai-msg-bubble">Namaste! Main VoiceHire Assistant hoon. Aapko kis cheez mein help chahiye? 😊</div>
+                <div class="ai-msg-bubble">{{ t('Hello! I am your VoiceHire assistant. How can I help you today?') }}</div>
             </div>
         </div>
         <div class="ai-suggestions">
-            <span class="ai-sug" data-msg="Find jobs near me">Find Jobs</span>
-            <span class="ai-sug" data-msg="Check my applications">My Applications</span>
-            <span class="ai-sug" data-msg="Check my wallet">Wallet</span>
-            <span class="ai-sug" data-msg="Help me create voice profile">Voice Profile</span>
+            <span class="ai-sug" data-msg="{{ t('Find Jobs') }}">{{ t('Find Jobs') }}</span>
+            <span class="ai-sug" data-msg="{{ t('My Bookings') }}">{{ t('My Bookings') }}</span>
+            <span class="ai-sug" data-msg="{{ t('Wallet') }}">{{ t('Wallet') }}</span>
+            <span class="ai-sug" data-msg="{{ t('Voice Profile') }}">{{ t('Voice Profile') }}</span>
         </div>
         <div class="ai-input-row">
-            <input class="ai-input" id="ai-input" type="text" placeholder="Type a message...">
-            <button class="ai-mic-btn" id="ai-mic-btn" title="Voice input"><i class="fa-solid fa-microphone"></i></button>
-            <button class="ai-send-btn" id="ai-send-btn"><i class="fa-solid fa-paper-plane"></i></button>
+            <input class="ai-input" id="ai-input" type="text" placeholder="{{ t('Type a message or tap mic...') }}" aria-label="{{ t('Type a message...') }}">
+            <button class="ai-mic-btn" id="ai-mic-btn" title="{{ t('Tap to Speak') }}" aria-label="{{ t('Tap to Speak') }}"><i class="fa-solid fa-microphone"></i></button>
+            <button class="ai-send-btn" id="ai-send-btn" aria-label="{{ t('Send') }}"><i class="fa-solid fa-paper-plane"></i></button>
         </div>
     </div>
 </div>
@@ -80,10 +93,60 @@
 <script>
     window.VH = {
         role:     "{{ session.get('role', '') }}",
-        lang:     "{{ session.get('lang', 'hi') }}",
+        lang:     "{{ current_lang or session.get('lang', 'hi') }}",
         userId:   "{{ session.get('user_id', '') }}",
-        userName: "{{ session.get('name', '') }}"
+        userName: "{{ session.get('name', '') }}",
+        saveDraft: function(key, data) {
+            if (!key || !data) return;
+            try {
+                const safe = { ...data };
+                const sensitiveKeys = ['password', 'confirm_password', 'token', 'pin', 'otp', 'card', 'cvv', 'secret'];
+                sensitiveKeys.forEach(k => delete safe[k]);
+                localStorage.setItem('vh_draft_' + key, JSON.stringify({ ts: Date.now(), data: safe }));
+            } catch(e) {}
+        },
+        getDraft: function(key) {
+            if (!key) return null;
+            try {
+                const raw = localStorage.getItem('vh_draft_' + key);
+                if (!raw) return null;
+                const parsed = JSON.parse(raw);
+                return parsed && parsed.data ? parsed.data : null;
+            } catch(e) { return null; }
+        },
+        clearDraft: function(key) {
+            try { localStorage.removeItem('vh_draft_' + key); } catch(e) {}
+        },
+        changeLanguage: function(langCode) {
+            window.location.href = '/set_lang/' + encodeURIComponent(langCode);
+        }
     };
+
+    // Offline / Online network banner & notifications
+    window.addEventListener('online', function() {
+        const b = document.getElementById('vh-offline-banner');
+        if (b) b.classList.remove('active');
+        showToast(
+            window.VH.lang === 'hi' ? 'इंटरनेट कनेक्शन वापस आ गया है।' : 
+            (window.VH.lang === 'pa' ? 'ਇੰਟਰਨੈੱਟ ਕੁਨੈਕਸ਼ਨ ਵਾਪਸ ਆ ਗਿਆ ਹੈ।' : 'Internet connection restored.'), 
+            'success'
+        );
+    });
+    window.addEventListener('offline', function() {
+        const b = document.getElementById('vh-offline-banner');
+        if (b) b.classList.add('active');
+        showToast(
+            window.VH.lang === 'hi' ? 'आप ऑफलाइन हैं। नेटवर्क जांचें।' : 
+            (window.VH.lang === 'pa' ? 'ਤੁਸੀਂ ਆਫ਼ਲਾਈਨ ਹੋ। ਨੈੱਟਵਰਕ ਦੀ ਜਾਂਚ ਕਰੋ।' : 'You are currently offline. Check network.'), 
+            'warning'
+        );
+    });
+    if (typeof navigator !== 'undefined' && !navigator.onLine) {
+        document.addEventListener('DOMContentLoaded', function() {
+            const b = document.getElementById('vh-offline-banner');
+            if (b) b.classList.add('active');
+        });
+    }
 </script>
 
 <script src="{{ url_for('static', filename='js/app.js') }}"></script>
@@ -98,6 +161,7 @@
     function showToast(msg, type = 'info') {
         const icons = { success: 'fa-check', error: 'fa-xmark', info: 'fa-circle-info', warning: 'fa-triangle-exclamation' };
         const c = document.getElementById('toast-container');
+        if (!c) return;
         const t = document.createElement('div');
         t.className = `toast toast-${type}`;
         t.innerHTML = `<div class="toast-icon"><i class="fa-solid ${icons[type]||icons.info}"></i></div><p>${msg}</p><button class="toast-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>`;
@@ -132,6 +196,51 @@
         });
         aiInput && aiInput.addEventListener('keydown', e => { if (e.key === 'Enter') aiSend.click(); });
     }
+
+    // Push-to-talk mic button for assistant (manual tap only, no auto-restart)
+    const aiMic = document.getElementById('ai-mic-btn');
+    if (aiMic) {
+        let assistantRecognition = null;
+        aiMic.addEventListener('click', function() {
+            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
+            if (!SpeechRec) {
+                showToast(window.VH.lang === 'pa' ? 'ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਬੋਲਣ ਦੀ ਸਹੂਲਤ ਨਹੀਂ ਹੈ।' : (window.VH.lang === 'en' ? 'Speech recognition not supported in this browser.' : 'इस ब्राउज़र में स्पीच सपोर्ट नहीं है।'), 'warning');
+                return;
+            }
+            if (assistantRecognition) {
+                assistantRecognition.stop();
+                assistantRecognition = null;
+                aiMic.classList.remove('recording');
+                return;
+            }
+            assistantRecognition = new SpeechRec();
+            const langMap = { hi: 'hi-IN', pa: 'pa-IN', en: 'en-IN' };
+            assistantRecognition.lang = langMap[window.VH.lang] || 'hi-IN';
+            assistantRecognition.continuous = false;
+            assistantRecognition.interimResults = false;
+            aiMic.classList.add('recording');
+
+            assistantRecognition.onresult = function(e) {
+                const text = e.results[0][0].transcript;
+                aiMic.classList.remove('recording');
+                assistantRecognition = null;
+                if (aiInput) aiInput.value = text;
+                addAiMsg(text, 'user');
+                setTimeout(() => addAiMsg(getAiReply(text), 'bot'), 600);
+            };
+            assistantRecognition.onerror = function() {
+                aiMic.classList.remove('recording');
+                assistantRecognition = null;
+                showToast(window.VH.lang === 'pa' ? 'ਸਮਝ ਨਹੀਂ ਆਇਆ, ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।' : (window.VH.lang === 'en' ? 'Could not recognize speech, please try typing.' : 'आवाज़ समझ नहीं आई, कृपया टाइप करें।'), 'info');
+            };
+            assistantRecognition.onend = function() {
+                aiMic.classList.remove('recording');
+                assistantRecognition = null;
+            };
+            assistantRecognition.start();
+        });
+    }
+
     function addAiMsg(text, who) {
         const msgs = document.getElementById('ai-messages');
         if (!msgs) return;
@@ -142,12 +251,57 @@
         msgs.scrollTop = msgs.scrollHeight;
     }
     function getAiReply(msg) {
-        msg = msg.toLowerCase();
-        if (msg.includes('job') || msg.includes('kaam')) return 'Bilkul! Aapke area mein jobs dhundhne ke liye <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">yahan click karein</a>.';
-        if (msg.includes('wallet') || msg.includes('payment')) return 'Aapka wallet section mein aap apni earnings dekh sakte hain.';
-        if (msg.includes('profile') || msg.includes('voice')) return 'Voice profile banana bahut aasaan hai. Microphone icon click karein aur bol dein!';
-        if (msg.includes('application')) return 'Aapki applications "My Applications" section mein milegi.';
-        return 'Main samajh gaya. Koi aur help chahiye? Seedha Support se baat karein.';
+        if (typeof window.customAiReply === 'function') {
+            const custom = window.customAiReply(msg);
+            if (custom) return custom;
+        }
+        const m = (msg || '').toLowerCase();
+        const lang = window.VH.lang || 'hi';
+        
+        if (lang === 'pa') {
+            if (m.includes('job') || m.includes('kaam') || m.includes('ਕੰਮ') || m.includes('ਨੌਕਰੀ')) {
+                return 'ਬਿਲਕੁਲ! ਤੁਹਾਡੇ ਇਲਾਕੇ ਵਿੱਚ ਕੰਮ ਲੱਭਣ ਲਈ <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">ਇੱਥੇ ਕਲਿੱਕ ਕਰੋ</a>।';
+            }
+            if (m.includes('wallet') || m.includes('payment') || m.includes('ਪੈਸੇ') || m.includes('ਕਮਾਈ')) {
+                return 'ਤੁਸੀਂ ਵਾਲਿਟ ਭਾਗ ਵਿੱਚ ਆਪਣੀ ਕੁੱਲ ਕਮਾਈ ਅਤੇ ਨਿਕਾਸੀ ਦੇਖ ਸਕਦੇ ਹੋ।';
+            }
+            if (m.includes('profile') || m.includes('voice') || m.includes('ਆਵਾਜ਼')) {
+                return 'ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ ਬਣਾਉਣਾ ਬਹੁਤ ਆਸਾਨ ਹੈ। ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਆਈਕਨ \'ਤੇ ਟੈਪ ਕਰੋ ਅਤੇ ਬੋਲੋ!';
+            }
+            if (m.includes('booking') || m.includes('order') || m.includes('ਬੁਕਿੰਗ')) {
+                return 'ਤੁਹਾਡੀਆਂ ਸਾਰੀਆਂ ਬੁਕਿੰਗਾਂ "ਮੇਰਾ ਕੰਮ" (My Work) ਭਾਗ ਵਿੱਚ ਦਿਖਾਈ ਦੇਣਗੀਆਂ।';
+            }
+            return 'ਮੈਂ ਸਮਝ ਗਿਆ। ਕੀ ਤੁਹਾਨੂੰ ਕਿਸੇ ਹੋਰ ਮਦਦ ਦੀ ਲੋੜ ਹੈ? ਸਾਡੀ ਸਹਾਇਤਾ ਟੀਮ ਹਮੇਸ਼ਾ ਤਿਆਰ ਹੈ।';
+        } else if (lang === 'en') {
+            if (m.includes('job') || m.includes('work') || m.includes('hire')) {
+                return 'Sure! To find jobs near your location, <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">click here</a>.';
+            }
+            if (m.includes('wallet') || m.includes('payment') || m.includes('earning')) {
+                return 'You can track all your earnings and payout history in the Wallet section.';
+            }
+            if (m.includes('profile') || m.includes('voice')) {
+                return 'Creating a voice profile is simple. Tap the microphone button and speak clearly!';
+            }
+            if (m.includes('booking') || m.includes('order')) {
+                return 'All your active bookings can be tracked from the Bookings page.';
+            }
+            return 'Got it! Need help with something else? You can reach our support team anytime.';
+        } else {
+            // Hindi / Hinglish default
+            if (m.includes('job') || m.includes('kaam') || m.includes('काम') || m.includes('नौकरी')) {
+                return 'बिल्कुल! अपने इलाके में काम ढूँढने के लिए <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">यहाँ क्लिक करें</a>।';
+            }
+            if (m.includes('wallet') || m.includes('payment') || m.includes('पैसे') || m.includes('कमाई')) {
+                return 'वॉलेट सेक्शन में आप अपनी कुल कमाई और भुगतान इतिहास देख सकते हैं।';
+            }
+            if (m.includes('profile') || m.includes('voice') || m.includes('आवाज़')) {
+                return 'वॉइस प्रोफाइल बनाना बहुत आसान है। माइक्रोफ़ोन आइकन पर टैप करें और बोलें!';
+            }
+            if (m.includes('booking') || m.includes('ऑर्डर') || m.includes('बुकिंग')) {
+                return 'आपकी सभी बुकिंग "माई बुकिंग्स" सेक्शन में मिलेंगी।';
+            }
+            return 'मैं समझ गया। कोई और मदद चाहिए? आप कभी भी सपोर्ट टीम से संपर्क कर सकते हैं।';
+        }
     }
 </script>
 {% block extra_scripts %}{% endblock %}

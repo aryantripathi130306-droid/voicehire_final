@@ -25,39 +25,58 @@
         <div class="pub-nav-actions">
             <!-- Language Selector (compact) -->
             <div class="lang-dropdown" id="lang-dropdown">
-                <button class="lang-btn-compact" onclick="toggleLangMenu()" id="lang-btn">
+                <button class="lang-btn-compact" onclick="toggleLangMenu()" id="lang-btn" aria-label="{{ t('Select Language') }}">
                     <i class="fa-solid fa-globe"></i>
-                    <span id="current-lang-label">{{ session.get('lang', 'en') | upper }}</span>
+                    <span id="current-lang-label">{{ (current_lang or session.get('lang', 'hi')) | upper }}</span>
                     <i class="fa-solid fa-chevron-down" style="font-size:.6rem;"></i>
                 </button>
-                <div class="lang-menu" id="lang-menu">
-                    <a href="{{ url_for('set_lang', lang_code='en') }}" class="lang-menu-item {% if session.get('lang','en') == 'en' %}active{% endif %}">🇮🇳 English</a>
-                    <a href="{{ url_for('set_lang', lang_code='hi') }}" class="lang-menu-item {% if session.get('lang') == 'hi' %}active{% endif %}">हिंदी</a>
-                    <a href="{{ url_for('set_lang', lang_code='mr') }}" class="lang-menu-item {% if session.get('lang') == 'mr' %}active{% endif %}">मराठी</a>
-                    <a href="{{ url_for('set_lang', lang_code='bn') }}" class="lang-menu-item {% if session.get('lang') == 'bn' %}active{% endif %}">বাংলা</a>
-                    <a href="{{ url_for('set_lang', lang_code='ta') }}" class="lang-menu-item {% if session.get('lang') == 'ta' %}active{% endif %}">தமிழ்</a>
-                    <a href="{{ url_for('set_lang', lang_code='te') }}" class="lang-menu-item {% if session.get('lang') == 'te' %}active{% endif %}">తెలుగు</a>
-                    <a href="{{ url_for('set_lang', lang_code='gu') }}" class="lang-menu-item {% if session.get('lang') == 'gu' %}active{% endif %}">ગુજરાતી</a>
+                <div class="lang-menu" id="lang-menu" style="min-width: 190px;">
+                    <div style="padding: 4px 10px; font-size: 0.65rem; font-weight: 700; color: var(--primary); text-transform: uppercase;">
+                        <i class="fa-solid fa-circle-check mr-1"></i> {{ t('Verified Voice & Interface') }}
+                    </div>
+                    <a href="{{ url_for('set_lang', lang_code='hi') }}" class="lang-menu-item {% if (current_lang or session.get('lang', 'hi')) == 'hi' %}active{% endif %}" style="display: flex; justify-content: space-between; align-items: center;">
+                        <span>🇮🇳 हिंदी (Hindi)</span>
+                        <span class="badge sm primary" style="font-size: 0.55rem; padding: 2px 4px;">{{ t('Default') }}</span>
+                    </a>
+                    <a href="{{ url_for('set_lang', lang_code='pa') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'pa' %}active{% endif %}">
+                        🇮🇳 ਪੰਜਾਬੀ (Punjabi)
+                    </a>
+                    <a href="{{ url_for('set_lang', lang_code='en') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'en' %}active{% endif %}">
+                        🇮🇳 English
+                    </a>
+                    <div style="border-top: 1px solid var(--border); margin: 4px 0; padding: 4px 10px; font-size: 0.65rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase;">
+                        {{ t('Regional (Beta Preview)') }}
+                    </div>
+                    <a href="{{ url_for('set_lang', lang_code='mr') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'mr' %}active{% endif %}">मराठी (Marathi)</a>
+                    <a href="{{ url_for('set_lang', lang_code='bn') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'bn' %}active{% endif %}">বাংলা (Bengali)</a>
+                    <a href="{{ url_for('set_lang', lang_code='ta') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'ta' %}active{% endif %}">தமிழ் (Tamil)</a>
+                    <a href="{{ url_for('set_lang', lang_code='te') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'te' %}active{% endif %}">తెలుగు (Telugu)</a>
+                    <a href="{{ url_for('set_lang', lang_code='gu') }}" class="lang-menu-item {% if (current_lang or session.get('lang')) == 'gu' %}active{% endif %}">ગુજરાતી (Gujarati)</a>
                 </div>
             </div>
 
-            <a href="{{ url_for('login_page', role='user') }}" class="btn btn-ghost btn-sm">Login</a>
-            <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm">Sign Up Free</a>
+            <a href="{{ url_for('login_page', role='user') }}" class="btn btn-ghost btn-sm">{{ t('Login') }}</a>
+            <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm">{{ t('Sign Up Free') }}</a>
         </div>
 
         <!-- Mobile menu button -->
-        <button class="pub-mobile-menu-btn" onclick="toggleMobileMenu()" id="pub-mobile-btn">
+        <button class="pub-mobile-menu-btn" onclick="toggleMobileMenu()" id="pub-mobile-btn" aria-label="{{ t('Menu') }}">
             <i class="fa-solid fa-bars"></i>
         </button>
     </div>
 
     <!-- Mobile Nav Drawer -->
     <div class="pub-mobile-nav" id="pub-mobile-nav">
-        <a href="#how-it-works" onclick="closeMobileMenu()">How It Works</a>
-        <a href="#for-workers" onclick="closeMobileMenu()">For Workers</a>
-        <a href="#for-employers" onclick="closeMobileMenu()">For Employers</a>
-        <a href="{{ url_for('login_page', role='user') }}">Login</a>
-        <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm" style="margin-top:8px;">Sign Up Free</a>
+        <div style="padding: 10px 0; border-bottom: 1px solid var(--border); display: flex; gap: 8px;">
+            <a href="{{ url_for('set_lang', lang_code='hi') }}" class="btn btn-sm {% if (current_lang or session.get('lang', 'hi')) == 'hi' %}btn-primary{% else %}btn-ghost{% endif %}" style="flex:1; text-align:center;">हिंदी</a>
+            <a href="{{ url_for('set_lang', lang_code='pa') }}" class="btn btn-sm {% if (current_lang or session.get('lang')) == 'pa' %}btn-primary{% else %}btn-ghost{% endif %}" style="flex:1; text-align:center;">ਪੰਜਾਬੀ</a>
+            <a href="{{ url_for('set_lang', lang_code='en') }}" class="btn btn-sm {% if (current_lang or session.get('lang')) == 'en' %}btn-primary{% else %}btn-ghost{% endif %}" style="flex:1; text-align:center;">EN</a>
+        </div>
+        <a href="#how-it-works" onclick="closeMobileMenu()">{{ t('How It Works') }}</a>
+        <a href="#for-workers" onclick="closeMobileMenu()">{{ t('For Workers') }}</a>
+        <a href="#for-employers" onclick="closeMobileMenu()">{{ t('For Employers') }}</a>
+        <a href="{{ url_for('login_page', role='user') }}">{{ t('Login') }}</a>
+        <a href="{{ url_for('signup') }}" class="btn btn-primary btn-sm" style="margin-top:8px;">{{ t('Sign Up Free') }}</a>
     </div>
 </header>
 

@@ -9,6 +9,7 @@ import json
 import base64
 import io
 import csv
+import math
 from io import StringIO
 from datetime import datetime, timedelta, date
 from collections import defaultdict
@@ -18,7 +19,19 @@ from flask import Flask, render_template, request, jsonify, session, redirect, u
 from flask_cors import CORS
 from dotenv import load_dotenv
 from supabase import create_client, Client
-from translations import get_translation
+from translations import (
+    get_translation,
+    get_verified_language,
+    format_currency,
+    format_date,
+    format_number,
+    format_relative_time,
+    get_localized_status,
+    get_localized_validation,
+    get_all_translations_for_lang,
+    VERIFIED_LANGUAGES,
+    DEFAULT_LANGUAGE
+)
 from voice_service import analyze_voice_intent, get_voice_capabilities, get_verified_language
 from orchestration_engine import orchestration_engine, ConversationState, AssistantAction
 import qrcode
@@ -31,8 +44,14 @@ from backend_service import (
     CheckinEventLogger,
     JobConcurrencyShield,
     PaymentManager,
+    RazorpayGatewayService,
     ServiceCategoryManager,
     WorkerSkillsManager,
+    BookingWorkflowManager,
+    BookingCheckinSecurity,
+    WorkerProfileManager,
+    CustomerProfileManager,
+    TrustAndSafetyManager,
     VALID_JOB_TRANSITIONS,
     VALID_BOOKING_TRANSITIONS,
     VALID_PAYMENT_TRANSITIONS,
@@ -101,19 +120,73 @@ def try_select(table, columns, filters=None, in_filters=None):
             return resp
         raise e
 
-# ---- TRANSLATION CONFIG ----
+# ---- TRANSLATION & LOCALIZATION CONFIG ----
+@app.before_request
+def ensure_language_preference():
+    if 'lang' not in session:
+        cookie_lang = request.cookies.get('voicehire_lang')
+        if cookie_lang:
+            session['lang'] = get_verified_language(cookie_lang)
+        else:
+            session['lang'] = DEFAULT_LANGUAGE
+
 @app.context_processor
 def inject_translation():
-    def t(text):
-        lang = session.get('lang', 'en')
-        return get_translation(lang, text)
-    return dict(t=t)
+    lang = session.get('lang', DEFAULT_LANGUAGE)
+    return dict(
+        t=lambda text, **kwargs: get_translation(lang, text, **kwargs),
+        format_currency=lambda amt, include_words=False: format_currency(amt, lang, include_words=include_words),
+        format_date=lambda d, fmt='medium': format_date(d, lang, fmt),
+        format_number=lambda n: format_number(n, lang),
+        format_relative_time=lambda dt: format_relative_time(dt, lang),
+        localized_status=lambda s: get_localized_status(s, lang),
+        localized_validation=lambda k: get_localized_validation(k, lang),
+        current_lang=lang,
+        verified_languages=VERIFIED_LANGUAGES
+    )
 
-@app.route('/set_lang/<lang_code>')
+@app.route('/set_lang/<lang_code>', methods=['GET', 'POST'])
 def set_lang(lang_code):
-    session['lang'] = lang_code
-    # Stay on landing page after language change
-    return redirect(url_for('index'))
+    clean_code = get_verified_language(lang_code)
+    session['lang'] = clean_code
+
+    # If logged in, persist to database
+    if 'user_id' in session:
+        uid = session['user_id']
+        role = session.get('role', 'user')
+        try:
+            tbl = 'workers' if role == 'worker' else 'users'
+            supabase.table(tbl).update({'language_preference': clean_code}).eq('id', uid).execute()
+        except Exception:
+            pass
+
+    is_ajax = (
+        request.headers.get('Accept') == 'application/json' or
+        request.headers.get('X-Requested-With') == 'XMLHttpRequest' or
+        request.args.get('format') == 'json' or
+        request.is_json
+    )
+    if is_ajax:
+        resp = jsonify({'success': True, 'lang': clean_code})
+    else:
+        target = request.referrer or url_for('index')
+        resp = redirect(target)
+
+    resp.set_cookie('voicehire_lang', clean_code, max_age=30*24*3600, path='/', samesite='Lax')
+    return resp
+
+@app.route('/api/translations', methods=['GET'])
+def get_translations_api():
+    """Retrieve full translation bundle and localization metadata for active or requested language."""
+    requested_lang = request.args.get('lang') or session.get('lang', DEFAULT_LANGUAGE)
+    clean_lang = get_verified_language(requested_lang)
+    translations_bundle = get_all_translations_for_lang(clean_lang)
+    return jsonify({
+        'lang': clean_lang,
+        'default_language': DEFAULT_LANGUAGE,
+        'verified_languages': VERIFIED_LANGUAGES,
+        'translations': translations_bundle
+    }), 200
 
 # ---- TEMPLATE ROUTES ----
 
@@ -240,9 +313,10 @@ def complete_job_via_qr(token):
 
 @app.route('/api/auth/signup/user', methods=['POST'])
 def signup_user():
-    name = safe_str(request.form.get('name'))
-    phone = safe_str(request.form.get('phone'))
-    password = safe_str(request.form.get('password'))
+    data = (request.get_json(silent=True) if request.is_json else None) or {}
+    name = safe_str(request.form.get('name') or data.get('name'))
+    phone = safe_str(request.form.get('phone') or data.get('phone'))
+    password = safe_str(request.form.get('password') or data.get('password'))
 
     if not all([name, phone, password]):
         return jsonify({'error': 'All fields are required'}), 400
@@ -287,25 +361,38 @@ def signup_user():
             else: raise e
 
         user_id = response.data[0]['id']
-        # Session rotation & authoritative role persistence
+        # Session rotation & authoritative role persistence with language preservation
+        cur_lang = session.get('lang') or request.cookies.get('voicehire_lang') or DEFAULT_LANGUAGE
+        clean_lang = get_verified_language(cur_lang)
         session.clear()
         session['user_id'] = user_id
         session['role'] = 'user'
         session['name'] = name
         session['phone'] = phone
+        session['lang'] = clean_lang
 
-        return jsonify({'message': 'User registered successfully', 'role': 'user', 'redirect': url_for('user_dashboard')}), 201
+        resp = jsonify({
+            'message': 'User registered successfully',
+            'role': 'user',
+            'user_id': user_id,
+            'user': {'id': user_id, 'name': name},
+            'redirect': url_for('user_dashboard'),
+            'lang': clean_lang
+        })
+        resp.set_cookie('voicehire_lang', clean_lang, max_age=30*24*3600, path='/', samesite='Lax')
+        return resp, 201
     except Exception as e:
         print("Error during user signup:\n", traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
 
 @app.route('/api/auth/signup/worker', methods=['POST'])
 def signup_worker():
-    name = safe_str(request.form.get('name'))
-    work = safe_str(request.form.get('work'))
-    location = safe_str(request.form.get('location'))
-    phone = safe_str(request.form.get('phone'))
-    password = safe_str(request.form.get('password'))
+    data = (request.get_json(silent=True) if request.is_json else None) or {}
+    name = safe_str(request.form.get('name') or data.get('name'))
+    work = safe_str(request.form.get('work') or data.get('work'))
+    location = safe_str(request.form.get('location') or data.get('location') or 'Delhi NCR')
+    phone = safe_str(request.form.get('phone') or data.get('phone'))
+    password = safe_str(request.form.get('password') or data.get('password'))
 
     if not all([name, work, location, phone, password]):
         return jsonify({'error': 'All textual fields are required'}), 400
@@ -393,14 +480,26 @@ def signup_worker():
             else: raise e
 
         worker_id = response.data[0]['id']
-        # Session rotation & authoritative role persistence
+        # Session rotation & authoritative role persistence with language preservation
+        cur_lang = session.get('lang') or request.cookies.get('voicehire_lang') or DEFAULT_LANGUAGE
+        clean_lang = get_verified_language(cur_lang)
         session.clear()
         session['user_id'] = worker_id
         session['role'] = 'worker'
         session['name'] = name
         session['phone'] = phone
+        session['lang'] = clean_lang
 
-        return jsonify({'message': 'Worker registered successfully', 'role': 'worker', 'redirect': url_for('worker_dashboard')}), 201
+        resp = jsonify({
+            'message': 'Worker registered successfully',
+            'role': 'worker',
+            'worker_id': worker_id,
+            'worker': {'id': worker_id, 'name': name},
+            'redirect': url_for('worker_dashboard'),
+            'lang': clean_lang
+        })
+        resp.set_cookie('voicehire_lang', clean_lang, max_age=30*24*3600, path='/', samesite='Lax')
+        return resp, 201
     except Exception as e:
         print("Error during worker signup:\n", traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
@@ -452,19 +551,25 @@ def login():
             auth_shield.record_success(rate_key)
             auth_shield.record_success(phone)
 
-            # Prevent session fixation by rotating session
+            # Prevent session fixation by rotating session while preserving language preference
+            saved_lang = user.get('language_preference') or session.get('lang') or request.cookies.get('voicehire_lang') or DEFAULT_LANGUAGE
+            clean_lang = get_verified_language(saved_lang)
             session.clear()
             session['user_id'] = user['id']
             session['role'] = role
             session['name'] = user['name']
             session['phone'] = user['phone']
+            session['lang'] = clean_lang
 
             redirect_url = url_for('user_dashboard') if role == 'user' else url_for('worker_dashboard')
-            return jsonify({
+            resp = jsonify({
                 'message': 'Login successful',
                 'role': role,
-                'redirect': redirect_url
-            }), 200
+                'redirect': redirect_url,
+                'lang': clean_lang
+            })
+            resp.set_cookie('voicehire_lang', clean_lang, max_age=30*24*3600, path='/', samesite='Lax')
+            return resp, 200
 
         # Primary failed: Check if user exists in the alternate role table
         alt_response = supabase.table(alternate_table).select("*").eq("phone", phone).execute()
@@ -815,11 +920,226 @@ def update_availability():
         print("Error updating availability:\n", traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
 
+@app.route('/api/worker/profile', methods=['GET'])
+def get_worker_profile():
+    """Return profile summary, skills, completeness, availability and verification status for the authenticated worker."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Worker access only'}), 401
+    try:
+        worker_id = session['user_id']
+        resp = supabase.table("workers").select("*").eq("id", worker_id).execute()
+        if not resp.data:
+            return jsonify({'error': 'Worker not found'}), 404
+        worker = resp.data[0]
+        # Never leak password hash
+        worker.pop('password', None)
+        worker.pop('password_hash', None)
+
+        # Attach worker skills
+        skills = WorkerSkillsManager.get_worker_skills(supabase, worker_id)
+        worker['skills'] = skills
+
+        # Mask payout VPA for safety
+        vpa = worker.get('payout_vpa')
+        if vpa:
+            if '@' in str(vpa):
+                u, d = str(vpa).split('@', 1)
+                worker['payout_vpa_masked'] = f"{u[:2]}***{u[-1]}@{d}" if len(u) > 3 else f"***@{d}"
+            else:
+                worker['payout_vpa_masked'] = "Configured"
+
+        # Calculate profile completeness
+        completeness = WorkerProfileManager.calculate_completeness(worker, skills)
+        worker['completeness'] = completeness
+        worker['profile_completeness'] = completeness['score']
+
+        # Payout readiness
+        gw_ok, _ = RazorpayGatewayService.is_gateway_configured()
+        worker['is_payout_ready'] = bool(worker.get('payout_vpa') and worker.get('payout_status') == 'active' and gw_ok)
+
+        return jsonify(worker), 200
+    except Exception as e:
+        print("Error fetching worker profile:\n", traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
+
+@app.route('/api/worker/profile', methods=['POST'])
+def update_worker_profile_api():
+    """
+    POST /api/worker/profile
+    Worker edits public display info, trade categories, pricing, quote preferences, and service area.
+    """
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Worker access only'}), 401
+
+    worker_id = session['user_id']
+    try:
+        data = request.get_json(silent=True) or request.form.to_dict() or {}
+    except Exception:
+        data = {}
+
+    updates = {"updated_at": utc_now_iso()}
+    allowed_fields = [
+        'name', 'work', 'location', 'phone', 'price',
+        'service_radius_km', 'quote_preference', 'bio', 'experience_years', 'language_preference'
+    ]
+
+    for field in allowed_fields:
+        if field in data and data[field] not in (None, ''):
+            val = data[field]
+            if field in ('price', 'experience_years', 'service_radius_km'):
+                try:
+                    updates[field] = float(val) if field == 'price' else int(val)
+                except (ValueError, TypeError):
+                    pass
+            elif field == 'phone':
+                clean_phone = safe_str(val)
+                if not is_valid_phone(clean_phone):
+                    return jsonify({'error': 'Invalid Indian phone number (10 digits starting with 6-9)'}), 400
+                updates[field] = clean_phone
+            elif field == 'quote_preference':
+                q_pref = str(val).strip().lower()
+                if q_pref in ('fixed_only', 'estimate_then_confirm', 'inspection_required'):
+                    updates['quote_preference'] = q_pref
+            elif field == 'language_preference':
+                clean_lang = get_verified_language(val)
+                updates['language_preference'] = clean_lang
+                session['lang'] = clean_lang
+            else:
+                updates[field] = safe_str(val)
+
+    if not updates or len(updates) <= 1:
+        return jsonify({'error': 'No valid fields provided for update'}), 400
+
+    try:
+        resp = supabase.table("workers").update(updates).eq("id", worker_id).execute()
+        if not resp.data:
+            return jsonify({'error': 'Worker record not found'}), 404
+
+        updated_worker = resp.data[0]
+        updated_worker.pop('password', None)
+        updated_worker.pop('password_hash', None)
+
+        if 'name' in updates:
+            session['name'] = updates['name']
+
+        skills = WorkerSkillsManager.get_worker_skills(supabase, worker_id)
+        completeness = WorkerProfileManager.calculate_completeness(updated_worker, skills)
+        updated_worker['completeness'] = completeness
+
+        AuditLogger.log_event(
+            supabase, actor_id=worker_id, actor_role="worker",
+            event_type="profile_update", resource_type="worker",
+            resource_id=worker_id, action="update_profile",
+            ip_address=request.remote_addr, metadata={"updated_fields": list(updates.keys())}
+        )
+
+        return jsonify({
+            'message': 'Profile updated successfully',
+            'worker': updated_worker,
+            'completeness': completeness
+        }), 200
+    except Exception as e:
+        print(f"Error updating worker profile: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': f'Server error: {e}'}), 500
+
+
+@app.route('/api/worker/verification', methods=['POST'])
+def submit_worker_verification():
+    """
+    POST /api/worker/verification
+    Worker submits government ID proof or trade certification.
+    Sets status to 'pending' / 'under_review'.
+    CRITICAL: Never automatically marks as verified! Requires human review.
+    """
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Worker access only'}), 401
+
+    worker_id = session['user_id']
+    doc_type = safe_str(request.form.get('verification_type') or request.form.get('doc_type', 'trade_license')).lower()
+    id_file = request.files.get('id_proof') or request.files.get('document')
+
+    if not id_file or id_file.filename == '':
+        return jsonify({'error': 'Verification document file is required'}), 400
+
+    if not allowed_file(id_file.filename, ALLOWED_IMAGE_EXTENSIONS | {'pdf'}):
+        return jsonify({'error': 'Invalid file type. Allowed: PNG, JPG, JPEG, WEBP, PDF'}), 400
+
+    filename = f"{uuid.uuid4().hex}_{secure_filename(id_file.filename)}"
+    save_path = os.path.join(ID_FOLDER, filename)
+    id_file.save(save_path)
+    doc_url = f"uploads/ids/{filename}"
+
+    success, msg, result = WorkerProfileManager.submit_verification(
+        supabase, worker_id=worker_id, doc_type=doc_type, doc_path=doc_url
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    return jsonify({
+        'message': msg,
+        'verification_status': 'pending',
+        'is_verified': False,
+        'verification_type': doc_type,
+        'success': True
+    }), 200
+
+@app.route('/api/worker/service-area', methods=['POST'])
+def update_worker_service_area():
+    """Update worker's registered locality, service radius, or coordinates."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Worker access only'}), 401
+    try:
+        data = request.get_json() or {}
+        location = safe_str(data.get('location'))
+        radius_km = data.get('radius_km')
+        lat = data.get('lat')
+        lng = data.get('lng')
+        worker_id = session['user_id']
+
+        updates = {"updated_at": datetime.utcnow().isoformat()}
+        if location:
+            updates['location'] = location
+        if radius_km not in (None, ''):
+            try:
+                updates['service_radius_km'] = int(radius_km)
+            except (ValueError, TypeError):
+                pass
+        if lat not in (None, '') and lng not in (None, ''):
+            try:
+                updates['latitude'] = float(lat)
+                updates['longitude'] = float(lng)
+            except (ValueError, TypeError):
+                pass
+
+        supabase.table("workers").update(updates).eq("id", worker_id).execute()
+        return jsonify({
+            'message': 'Service area updated successfully',
+            'location': updates.get('location'),
+            'radius_km': updates.get('service_radius_km')
+        }), 200
+    except Exception as e:
+        print("Error updating service area:\n", traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
 @app.route('/get_workers', methods=['GET'])
 @app.route('/api/workers', methods=['GET'])
 def get_workers():
     work_filter = safe_str(request.args.get('work') or request.args.get('category'))
-    location_filter = safe_str(request.args.get('location'))
+    skill_filter = safe_str(request.args.get('skill')).lower()
+    location_filter = safe_str(request.args.get('location') or request.args.get('locality'))
+    available_only = request.args.get('available_only', '').lower() in ('true', '1', 'yes')
+
+    try:
+        min_rating = float(request.args.get('min_rating', 0))
+    except (ValueError, TypeError):
+        min_rating = 0.0
+
+    cust_lat = request.args.get('lat')
+    cust_lng = request.args.get('lng')
+    radius_arg = request.args.get('radius_km')
+    radius_km = float(radius_arg) if radius_arg and radius_arg != 'all' else None
+    sort_by = safe_str(request.args.get('sort_by', 'relevance')).lower()
 
     try:
         query = supabase.table("workers").select("*")
@@ -832,7 +1152,22 @@ def get_workers():
         workers_resp = query.execute()
         workers = workers_resp.data or []
 
-        # Fetch all reviews to compute aggregates
+        # If skill filter provided, match against worker_skills table
+        if skill_filter:
+            try:
+                skills_resp = supabase.table("worker_skills").select("worker_id, skill_name").execute()
+                skill_matching_ids = {
+                    s['worker_id'] for s in (skills_resp.data or [])
+                    if skill_filter in safe_str(s.get('skill_name')).lower()
+                }
+                workers = [
+                    w for w in workers
+                    if w['id'] in skill_matching_ids or skill_filter in safe_str(w.get('work')).lower()
+                ]
+            except Exception:
+                pass
+
+        # Fetch reviews to compute aggregate ratings
         try:
             reviews_resp = supabase.table("reviews").select("worker_id, rating").execute()
             review_map = defaultdict(list)
@@ -841,13 +1176,60 @@ def get_workers():
         except Exception:
             review_map = {}
 
+        # Enrich workers with rating, review count, and distance
+        processed = []
         for w in workers:
             ratings = review_map.get(w['id'], [])
-            w['avg_rating'] = round(sum(ratings) / len(ratings), 2) if ratings else 0
+            w['avg_rating'] = round(sum(ratings) / len(ratings), 1) if ratings else (float(w.get('avg_rating', 5.0) or 5.0))
             w['review_count'] = len(ratings)
 
-        # Sort: available first, then by rating desc, then review count desc
-        workers.sort(key=lambda w: (not w.get('is_available', True), -w['avg_rating'], -w['review_count']))
+            # Availability filter
+            if available_only and not w.get('is_available', True):
+                continue
+
+            # Rating filter
+            if min_rating > 0 and w['avg_rating'] < min_rating:
+                continue
+
+            # Distance calculation
+            w_lat = w.get('latitude') or w.get('live_lat')
+            w_lng = w.get('longitude') or w.get('live_lng')
+            dist = None
+            if cust_lat not in (None, '', 'undefined') and cust_lng not in (None, '', 'undefined') and w_lat and w_lng:
+                try:
+                    dist = LocationPrivacyShield.calculate_distance_km(float(cust_lat), float(cust_lng), float(w_lat), float(w_lng))
+                except Exception:
+                    dist = None
+
+            w['distance_km'] = dist
+
+            # Radius filter
+            if radius_km is not None and dist is not None:
+                if dist > radius_km:
+                    continue
+
+            processed.append(w)
+
+        # Sorting
+        if sort_by == 'distance':
+            processed.sort(key=lambda w: (
+                w.get('distance_km') if w.get('distance_km') is not None else 99999,
+                -w['avg_rating']
+            ))
+        elif sort_by == 'rating':
+            processed.sort(key=lambda w: (-w['avg_rating'], -w['review_count']))
+        elif sort_by == 'price_asc':
+            processed.sort(key=lambda w: (float(w.get('price') or 0), -w['avg_rating']))
+        elif sort_by == 'price_desc':
+            processed.sort(key=lambda w: (-float(w.get('price') or 0), -w['avg_rating']))
+        else:
+            # Relevance: available first, then closest distance if available, then rating
+            processed.sort(key=lambda w: (
+                not w.get('is_available', True),
+                w.get('distance_km') if w.get('distance_km') is not None else 99999,
+                -w['avg_rating'],
+                -w['review_count']
+            ))
 
         # Pagination support
         try:
@@ -862,69 +1244,98 @@ def get_workers():
             except (ValueError, TypeError):
                 limit = 20
             start_idx = (page - 1) * limit
-            workers = workers[start_idx:start_idx + limit]
+            processed = processed[start_idx:start_idx + limit]
 
         # Obfuscate privacy-sensitive coordinates and fields for public browsing
-        sanitized = [
-            LocationPrivacyShield.obfuscate_worker_profile(w, viewer_is_counterparty=False)
-            for w in workers
-        ]
+        sanitized = []
+        for w in processed:
+            dist_val = w.get('distance_km')
+            s = LocationPrivacyShield.obfuscate_worker_profile(w, viewer_is_counterparty=False)
+            s['avg_rating'] = w['avg_rating']
+            s['review_count'] = w['review_count']
+            if dist_val is not None:
+                s['distance_km'] = dist_val
+            sanitized.append(s)
 
         return jsonify(sanitized), 200
     except Exception as e:
         print("Error fetching workers:\n", traceback.format_exc())
         return jsonify([]), 200
 
-
-@app.route('/api/workers/nearby', methods=['GET'])
-def get_nearby_jobs():
+@app.route('/api/workers/<worker_id>', methods=['GET'])
+def get_worker_profile_detail(worker_id):
     """
-    GET /api/workers/nearby?limit=5
-    Returns open jobs for the logged-in worker, prioritized by worker specialty/trade.
+    Returns authentic profile for a worker:
+    trade, bio, service radius, pricing, skills, completed job counts, real verified reviews,
+    real verification status, and payment readiness.
     """
-    if 'user_id' not in session or session.get('role') != 'worker':
-        return jsonify({'error': 'Unauthorized'}), 401
-
-    worker_id = session['user_id']
-    limit = request.args.get('limit', 5)
     try:
-        limit = int(limit)
-    except (ValueError, TypeError):
-        limit = 5
+        resp = supabase.table("workers").select("*").eq("id", worker_id).execute()
+        if not resp.data:
+            return jsonify({'error': 'Worker not found'}), 404
+        worker = resp.data[0]
 
-    try:
-        # Fetch current worker's trade and location for relevance matching
-        w_resp = supabase.table("workers").select("work, location").eq("id", worker_id).execute()
-        worker_work = ""
-        worker_loc = ""
-        if w_resp.data:
-            worker_work = (w_resp.data[0].get('work') or '').lower()
-            worker_loc = (w_resp.data[0].get('location') or '').lower()
+        uid = session.get('user_id')
+        # Check if caller has blocked or is blocked by this worker
+        if uid and TrustAndSafetyManager.is_blocked(supabase, uid, worker_id):
+            return jsonify({'error': 'User profile unavailable due to an active account block'}), 403
 
-        # Query open jobs
-        jobs_resp = supabase.table("jobs").select("*").eq("status", "open").execute()
-        jobs = jobs_resp.data or []
+        # Check if viewer is an active confirmed booking counterparty
+        viewer_is_counterparty = False
+        if uid:
+            try:
+                confirmed_bkg = supabase.table("bookings").select("id").eq("worker_id", worker_id).eq("customer_id", uid).in_("status", ["Booked", "On The Way", "Arrived", "Work Started", "Completed", "Payment Pending", "Paid"]).execute()
+                if confirmed_bkg.data:
+                    viewer_is_counterparty = True
+            except Exception:
+                viewer_is_counterparty = False
 
-        # Score relevance
-        for j in jobs:
-            score = 0
-            st = (j.get('service_type') or '').lower()
-            loc = (j.get('location') or '').lower()
-            if worker_work and (worker_work in st or st in worker_work):
-                score += 10
-            if worker_loc and (worker_loc in loc or loc in worker_loc):
-                score += 5
-            if j.get('is_urgent'):
-                score += 8
-            j['relevance_score'] = score
+        # Fetch skills
+        skills = WorkerSkillsManager.get_worker_skills(supabase, worker_id)
 
-        # Sort by relevance desc, then created_at desc
-        jobs.sort(key=lambda j: (j.get('relevance_score', 0), j.get('created_at', '')), reverse=True)
+        # Fetch completed bookings count
+        try:
+            bookings_resp = supabase.table("bookings").select("id").eq("worker_id", worker_id).eq("status", "Completed").execute()
+            completed_count = len(bookings_resp.data or [])
+        except Exception:
+            completed_count = 0
 
-        return jsonify(jobs[:limit]), 200
+        # Fetch real reviews (no fake seeded reviews!)
+        reviews = TrustAndSafetyManager.get_worker_reviews(supabase, worker_id, limit=20)
+        if reviews:
+            ratings = [r['rating'] for r in reviews if 'rating' in r and r['rating'] is not None]
+            avg_rating = round(sum(ratings) / len(ratings), 1) if ratings else 0.0
+            review_count = len(ratings)
+        else:
+            # Genuine real count: 0 reviews means 0.0 rating and 0 count
+            avg_rating = 0.0
+            review_count = 0
+
+        # Obfuscate privacy-sensitive info (never expose password, mask phone unless counterparty, never expose raw ID docs)
+        sanitized = LocationPrivacyShield.obfuscate_worker_profile(worker, viewer_is_counterparty=viewer_is_counterparty)
+        sanitized['skills'] = skills
+        sanitized['completed_jobs_count'] = completed_count
+        sanitized['reviews'] = reviews
+        sanitized['avg_rating'] = avg_rating
+        sanitized['review_count'] = review_count
+
+        # Real verification status (never fake auto-verify)
+        sanitized['is_verified'] = bool(worker.get('is_verified', False))
+        sanitized['verification_status'] = worker.get('verification_status', 'unsubmitted')
+        sanitized['quote_preference'] = worker.get('quote_preference', 'estimate_then_confirm')
+
+        # Payment readiness indicator
+        gw_ok, _ = RazorpayGatewayService.is_gateway_configured()
+        sanitized['payout_ready'] = bool(worker.get('payout_vpa') and worker.get('payout_status') == 'active' and gw_ok)
+        sanitized['cash_available'] = True
+
+        # Stage privacy policy explainer
+        sanitized['privacy_stage_info'] = LocationPrivacyShield.get_stage_privacy_policy()
+
+        return jsonify(sanitized), 200
     except Exception as e:
-        print("Error fetching nearby jobs for worker:\n", traceback.format_exc())
-        return jsonify([]), 200
+        print("Error fetching worker detail:\n", traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
 
 @app.route('/api/jobs', methods=['POST'])
 def post_job():
@@ -936,9 +1347,9 @@ def post_job():
     except Exception:
         return jsonify({'error': 'Invalid JSON data'}), 400
 
-    service_type = safe_str(data.get('service_type'))
+    service_type = safe_str(data.get('service_type') or data.get('title'))
     description = safe_str(data.get('description'))
-    location = safe_str(data.get('location'))
+    location = safe_str(data.get('location') or data.get('address'))
 
     if not service_type or not description or not location:
         return jsonify({'error': 'Service type, description, and location are required'}), 400
@@ -1050,6 +1461,178 @@ def edit_user_profile():
         print(traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
 
+
+# ── Customer Profile & Saved Addresses API ──────────────────────────
+
+@app.route('/api/customer/profile', methods=['GET'])
+def get_customer_profile_api():
+    """Returns customer contact details, locality, saved addresses, voice settings, and request stats."""
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Customer access only'}), 401
+    uid = session['user_id']
+    success, msg, profile = CustomerProfileManager.get_profile(supabase, uid)
+    if not success:
+        return jsonify({'error': msg}), 404
+    return jsonify({
+        **profile,
+        'profile': profile,
+        'voice_settings': profile.get('voice_settings'),
+        'language_preference': profile.get('language_preference'),
+        'locality': profile.get('locality'),
+        'saved_addresses': profile.get('saved_addresses', []),
+        'total_bookings': profile.get('total_bookings', 0),
+        'active_bookings': profile.get('active_bookings', 0),
+        'total_payments': profile.get('total_payments', 0),
+        'success': True
+    }), 200
+
+
+@app.route('/api/customer/profile', methods=['POST'])
+def update_customer_profile_api():
+    """Customer updates basic contact information and preferred service locality."""
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Customer access only'}), 401
+    uid = session['user_id']
+    data = request.get_json(silent=True) or request.form.to_dict() or {}
+    name = safe_str(data.get('name'))
+    phone = safe_str(data.get('phone'))
+    locality = safe_str(data.get('locality'))
+
+    lang_pref = data.get('language_preference') or data.get('lang')
+
+    updates = {"updated_at": utc_now_iso()}
+    if name:
+        updates['name'] = name
+    if phone:
+        if not is_valid_phone(phone):
+            return jsonify({'error': 'Invalid Indian phone number (10 digits starting with 6-9)'}), 400
+        updates['phone'] = phone
+    if locality:
+        updates['locality'] = locality
+    if lang_pref:
+        clean_lang = get_verified_language(lang_pref)
+        updates['language_preference'] = clean_lang
+        session['lang'] = clean_lang
+
+    if len(updates) <= 1:
+        return jsonify({'error': 'No fields provided to update'}), 400
+
+    try:
+        resp = supabase.table("users").update(updates).eq("id", uid).execute()
+        if not resp.data:
+            return jsonify({'error': 'Failed to update customer profile'}), 500
+        if name:
+            session['name'] = name
+        user = dict(resp.data[0])
+        user.pop('password', None)
+        user.pop('password_hash', None)
+
+        AuditLogger.log_event(
+            supabase, actor_id=uid, actor_role="user",
+            event_type="profile_update", resource_type="user",
+            resource_id=uid, action="update_customer_profile",
+            ip_address=request.remote_addr, metadata={"updated_fields": list(updates.keys())}
+        )
+
+        return jsonify({'message': 'Customer profile updated successfully', 'user': user}), 200
+    except Exception as e:
+        return jsonify({'error': f'Server error: {e}'}), 500
+
+
+@app.route('/api/customer/voice-settings', methods=['POST'])
+def update_customer_voice_settings():
+    """Customer updates preferred language and voice assistant settings (voice, speed, auto_speak)."""
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Customer access only'}), 401
+    uid = session['user_id']
+    data = request.get_json(silent=True) or {}
+    lang = data.get('language_preference') or data.get('lang')
+    locality = data.get('locality')
+    voice_settings = data.get('voice_settings')
+
+    success, msg, user = CustomerProfileManager.update_settings(
+        supabase, uid, locality=locality, language_preference=lang, voice_settings=voice_settings
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    AuditLogger.log_event(
+        supabase, actor_id=uid, actor_role="user",
+        event_type="profile_update", resource_type="user",
+        resource_id=uid, action="update_voice_settings",
+        ip_address=request.remote_addr, metadata={"language": lang}
+    )
+
+    return jsonify({'message': msg, 'settings': user, 'success': True}), 200
+
+
+@app.route('/api/customer/addresses', methods=['GET'])
+def get_customer_saved_addresses():
+    """List saved addresses for the authenticated customer."""
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Customer access only'}), 401
+    uid = session['user_id']
+    addresses = CustomerProfileManager.get_saved_addresses(supabase, uid)
+    return jsonify(addresses), 200
+
+
+@app.route('/api/customer/addresses', methods=['POST'])
+def add_customer_saved_address():
+    """Add a new saved address with label (Home, Work, Other), locality, and street address."""
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Customer access only'}), 401
+    uid = session['user_id']
+    data = request.get_json(silent=True) or {}
+    label = safe_str(data.get('label', 'Home'))
+    street = safe_str(data.get('street_address') or data.get('address_line') or data.get('address'))
+    locality = safe_str(data.get('locality') or data.get('area') or 'Central')
+    city = safe_str(data.get('city', 'Delhi NCR'))
+    pincode = safe_str(data.get('pincode', ''))
+    landmark = safe_str(data.get('landmark', ''))
+    lat = data.get('latitude')
+    lng = data.get('longitude')
+    is_default = bool(data.get('is_default', False))
+
+    success, msg, address = CustomerProfileManager.add_saved_address(
+        supabase, uid, label=label, street_address=street, locality=locality,
+        city=city, pincode=pincode, landmark=landmark, latitude=lat, longitude=lng,
+        is_default=is_default
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    AuditLogger.log_event(
+        supabase, actor_id=uid, actor_role="user",
+        event_type="address", resource_type="customer_saved_address",
+        resource_id=str(address.get('id', '')), action="add_saved_address",
+        ip_address=request.remote_addr, metadata={"label": label}
+    )
+
+    return jsonify({'message': msg, 'address': address, 'success': True}), 201
+
+
+@app.route('/api/customer/addresses/<int:address_id>', methods=['DELETE'])
+@app.route('/api/customer/addresses/<address_id>', methods=['DELETE'])
+def delete_customer_saved_address(address_id):
+    """Delete a customer's saved address (enforces strict user ownership access control)."""
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Customer access only'}), 401
+    uid = session['user_id']
+    res = CustomerProfileManager.delete_saved_address(supabase, address_id, uid)
+    success, msg = res[0], res[1]
+    if not success:
+        status_code = 403 if "unauthorized" in msg.lower() else (404 if "not found" in msg.lower() else 400)
+        return jsonify({'error': msg}), status_code
+
+    AuditLogger.log_event(
+        supabase, actor_id=uid, actor_role="user",
+        event_type="address", resource_type="customer_saved_address",
+        resource_id=str(address_id), action="delete_saved_address",
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({'message': msg, 'success': True}), 200
+
 @app.route('/api/jobs', methods=['GET'])
 def get_jobs():
     if 'user_id' not in session or session['role'] != 'worker':
@@ -1071,7 +1654,17 @@ def get_jobs():
         # Get accepted jobs for this worker
         accepted_resp = supabase.table("jobs").select("*").eq("status", "accepted").eq("worker_id", worker_id).execute()
 
-        jobs = open_resp.data + accepted_resp.data
+        # Apply privacy shield: Customer phone & exact coordinates masked for open jobs
+        open_jobs = [
+            LocationPrivacyShield.obfuscate_job_request(j, viewer_is_assigned_worker=False)
+            for j in (open_resp.data or [])
+        ]
+        accepted_jobs = [
+            LocationPrivacyShield.obfuscate_job_request(j, viewer_is_assigned_worker=True)
+            for j in (accepted_resp.data or [])
+        ]
+
+        jobs = open_jobs + accepted_jobs
         # Sort: urgent first, then newest first
         jobs.sort(key=lambda j: (not j.get('is_urgent', False), j.get('created_at', '') ), reverse=False)
         jobs.sort(key=lambda j: j.get('is_urgent', False), reverse=True)
@@ -1079,6 +1672,157 @@ def get_jobs():
         return jsonify(jobs), 200
     except Exception as e:
         print("Error fetching jobs:\n", traceback.format_exc())
+        return jsonify({'error': 'Server error'}), 500
+
+@app.route('/api/workers/nearby', methods=['GET'])
+def get_nearby_jobs():
+    """
+    Returns suitable open jobs near the authenticated worker.
+    Filters: radius_km, category, category_id, urgent_only, status, time_filter, search.
+    Privacy: Customer phone & exact coordinates are shielded before acceptance.
+    """
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Worker access only'}), 401
+
+    worker_id = session['user_id']
+    try:
+        # 1. Fetch current worker profile
+        worker_resp = supabase.table("workers").select("*").eq("id", worker_id).execute()
+        if not worker_resp.data:
+            return jsonify({'error': 'Worker profile not found'}), 404
+        worker = worker_resp.data[0]
+
+        # 2. Extract query parameters
+        req_lat = request.args.get('lat')
+        req_lng = request.args.get('lng')
+        worker_lat = float(req_lat) if req_lat not in (None, '', 'undefined') else (worker.get('live_lat') or worker.get('latitude'))
+        worker_lng = float(req_lng) if req_lng not in (None, '', 'undefined') else (worker.get('live_lng') or worker.get('longitude'))
+
+        radius_arg = request.args.get('radius_km')
+        radius_km = float(radius_arg) if radius_arg and radius_arg != 'all' else None
+
+        category_filter = safe_str(request.args.get('category') or request.args.get('work'))
+        category_id_arg = request.args.get('category_id')
+        category_id = int(category_id_arg) if category_id_arg and category_id_arg.isdigit() else None
+
+        urgent_only = request.args.get('urgent_only', '').lower() in ('true', '1', 'yes')
+        time_filter = safe_str(request.args.get('time_filter', 'all')).lower()
+        search_query = safe_str(request.args.get('search') or request.args.get('locality')).lower()
+        status_filter = safe_str(request.args.get('status', 'open')).lower()
+
+        # 3. Query jobs table
+        if status_filter == 'accepted':
+            query = supabase.table("jobs").select("*").eq("status", "accepted").eq("worker_id", worker_id)
+        elif status_filter == 'all':
+            query = supabase.table("jobs").select("*").in_("status", ["open", "accepted"])
+        else:
+            query = supabase.table("jobs").select("*").eq("status", "open")
+
+        if urgent_only:
+            query = query.eq("is_urgent", True)
+        if category_id:
+            query = query.eq("category_id", category_id)
+
+        jobs_resp = query.execute()
+        raw_jobs = jobs_resp.data or []
+
+        # 4. Filter, distance calculate and enrich jobs
+        processed_jobs = []
+        now = datetime.utcnow()
+
+        for j in raw_jobs:
+            # Skip if status is accepted but belongs to someone else
+            if j.get('status') == 'accepted' and j.get('worker_id') != worker_id:
+                continue
+
+            # Category filter (text-based if category_id not provided)
+            st = safe_str(j.get('service_type', '')).lower()
+            desc = safe_str(j.get('description', '')).lower()
+            loc = safe_str(j.get('location', '')).lower()
+
+            if category_filter and category_filter != 'all':
+                c_low = category_filter.lower()
+                if c_low not in st and c_low not in desc:
+                    continue
+
+            # Search query filter (matches description or location)
+            if search_query:
+                if search_query not in desc and search_query not in loc and search_query not in st:
+                    continue
+
+            # Time filter
+            if time_filter == 'urgent' and not j.get('is_urgent'):
+                continue
+            elif time_filter == 'today':
+                created_str = j.get('created_at', '')
+                if created_str:
+                    try:
+                        c_date = datetime.fromisoformat(created_str.replace('Z', '+00:00')).date()
+                        if c_date != now.date():
+                            continue
+                    except Exception:
+                        pass
+
+            # Calculate distance if coordinates available
+            job_lat = j.get('latitude') if j.get('latitude') is not None else j.get('lat')
+            job_lng = j.get('longitude') if j.get('longitude') is not None else j.get('lng')
+
+            # Deterministic map positioning offset around worker when job coordinates are missing
+            if (job_lat is None or job_lng is None) and worker_lat and worker_lng:
+                jid_hash = abs(hash(str(j.get('id', 0)))) % 1000
+                angle = (jid_hash / 1000.0) * 2 * math.pi
+                dist_offset_km = 1.0 + (jid_hash % 8) * 0.7  # 1 to ~6.6 km
+                deg_lat = dist_offset_km / 111.0
+                deg_lng = dist_offset_km / (111.0 * math.cos(math.radians(worker_lat)))
+                job_lat = worker_lat + deg_lat * math.sin(angle)
+                job_lng = worker_lng + deg_lng * math.cos(angle)
+                j['approx_lat'] = round(job_lat, 2)
+                j['approx_lng'] = round(job_lng, 2)
+
+            distance = None
+            if worker_lat and worker_lng and job_lat and job_lng:
+                distance = LocationPrivacyShield.calculate_distance_km(worker_lat, worker_lng, job_lat, job_lng)
+                j['distance_km'] = distance
+
+            # Radius filtering
+            if radius_km is not None and distance is not None:
+                if distance > radius_km:
+                    continue
+
+            # Privacy Obfuscation
+            is_assigned = (j.get('worker_id') == worker_id and j.get('status') == 'accepted')
+            safe_job = LocationPrivacyShield.obfuscate_job_request(j, viewer_is_assigned_worker=is_assigned)
+            if distance is not None:
+                safe_job['distance_km'] = distance
+
+            # Proposed budget / offer details fallback
+            if not safe_job.get('price'):
+                if safe_job.get('budget_min') and safe_job.get('budget_max'):
+                    safe_job['price'] = f"{int(safe_job['budget_min'])}-{int(safe_job['budget_max'])}"
+                elif safe_job.get('budget_min'):
+                    safe_job['price'] = int(safe_job['budget_min'])
+                elif safe_job.get('budget_max'):
+                    safe_job['price'] = int(safe_job['budget_max'])
+                else:
+                    safe_job['price'] = 450
+
+            processed_jobs.append(safe_job)
+
+        # 5. Sort: Urgent first, then by distance (if available), then newest
+        processed_jobs.sort(key=lambda x: (
+            not x.get('is_urgent', False),
+            x.get('distance_km') if x.get('distance_km') is not None else 99999,
+            x.get('created_at', '')
+        ))
+
+        limit_arg = request.args.get('limit')
+        if limit_arg and limit_arg.isdigit():
+            processed_jobs = processed_jobs[:int(limit_arg)]
+
+        return jsonify(processed_jobs), 200
+
+    except Exception as e:
+        print("Error fetching nearby jobs:\n", traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
 
 @app.route('/api/jobs/customer', methods=['GET'])
@@ -1110,7 +1854,22 @@ def get_customer_jobs():
                 else:
                     j['worker_name'] = None
                     j['worker_phone'] = None
-        
+
+        # Count pending offers for each job
+        job_ids = [j['id'] for j in jobs]
+        if job_ids:
+            try:
+                offers_resp = supabase.table("job_offers").select("job_id, id, status").in_("job_id", job_ids).execute()
+                offers_count_map = defaultdict(int)
+                for o in (offers_resp.data or []):
+                    if o.get('status') == 'pending':
+                        offers_count_map[o['job_id']] += 1
+                for j in jobs:
+                    j['offers_count'] = offers_count_map.get(j['id'], 0)
+            except Exception:
+                for j in jobs:
+                    j['offers_count'] = 0
+
         return jsonify(jobs), 200
     except Exception as e:
         print("Error fetching customer jobs:\n", traceback.format_exc())
@@ -1270,10 +2029,20 @@ def get_job_offers(job_id):
             # Enrich with worker names
             worker_ids = list({o['worker_id'] for o in offers if 'worker_id' in o})
             if worker_ids:
-                w_resp = supabase.table("workers").select("id, name, work, avg_rating, review_count, is_verified").in_("id", worker_ids).execute()
+                try:
+                    w_resp = supabase.table("workers").select("id, name, work, avg_rating, review_count, is_verified, location, approx_lat, approx_lng, price").in_("id", worker_ids).execute()
+                except Exception:
+                    w_resp = supabase.table("workers").select("id, name, work, avg_rating, review_count, is_verified").in_("id", worker_ids).execute()
                 w_map = {w['id']: w for w in (w_resp.data or [])}
+                job_lat = job.get('latitude') or job.get('lat')
+                job_lng = job.get('longitude') or job.get('lng')
                 for o in offers:
-                    o['worker'] = w_map.get(o['worker_id'], {})
+                    w_info = dict(w_map.get(o['worker_id'], {}))
+                    if job_lat and job_lng and w_info.get('approx_lat') and w_info.get('approx_lng'):
+                        w_info['distance_km'] = LocationPrivacyShield.calculate_distance_km(
+                            job_lat, job_lng, w_info['approx_lat'], w_info['approx_lng']
+                        )
+                    o['worker'] = w_info
             return jsonify(offers), 200
         elif role == 'worker':
             resp = supabase.table("job_offers").select("*").eq("job_id", job_id).eq("worker_id", uid).execute()
@@ -1720,14 +2489,55 @@ def booking_detail_page(booking_id):
 
         # Fetch worker info (using try_select for profile_pic safety)
         w_resp = try_select("workers", "name, phone, work, profile_pic", filters={"id": booking['worker_id']})
-        worker = w_resp.data[0] if w_resp.data else {}
+        worker = dict(w_resp.data[0]) if w_resp.data else {}
 
         # Fetch customer info
         c_resp = try_select("users", "name, phone, profile_pic", filters={"id": booking['customer_id']})
-        customer = c_resp.data[0] if c_resp.data else {}
-        token = make_qr_token(booking_id)
-        qr_data = {"bid": booking_id, "tok": token}
-        qr_b64 = generate_qr_base64(qr_data)
+        customer = dict(c_resp.data[0]) if c_resp.data else {}
+
+        # Stage-based privacy protection: Mask private phone numbers until confirmed
+        is_confirmed_stage = booking.get('status') in (
+            'Booked', 'On The Way', 'Arrived', 'Work Started', 'Completed', 'Payment Pending', 'Paid'
+        )
+        if not is_confirmed_stage:
+            if worker.get('phone'):
+                worker['phone'] = LocationPrivacyShield.mask_phone(worker.get('phone'))
+            if customer.get('phone'):
+                customer['phone'] = LocationPrivacyShield.mask_phone(customer.get('phone'))
+
+        # Fetch status history for timeline
+        try:
+            h_resp = supabase.table("booking_status_history").select("*").eq("booking_id", booking_id).order("created_at", desc=False).execute()
+            status_history = h_resp.data or []
+        except Exception:
+            status_history = []
+
+        creds = BookingCheckinSecurity.generate_checkin_credentials(booking_id, ttl_seconds=300)
+        qr_b64 = generate_qr_base64(creds['qr_payload'])
+
+        # Fetch latest payment record for this booking
+        latest_payment = None
+        try:
+            p_resp = supabase.table("payments").select("*").eq("booking_id", booking_id).order("created_at", desc=True).limit(1).execute()
+            if p_resp.data:
+                latest_payment = p_resp.data[0]
+        except Exception:
+            latest_payment = None
+
+        payment_options = PaymentManager.get_payment_options(supabase, booking_id, uid)
+
+        # Check if customer has already submitted a review for this booking
+        existing_review = None
+        try:
+            r_resp = supabase.table("reviews").select("*").eq("booking_id", booking_id).execute()
+            if r_resp.data:
+                existing_review = r_resp.data[0]
+        except Exception:
+            existing_review = None
+
+        counterparty_id = booking['worker_id'] if uid == booking['customer_id'] else booking['customer_id']
+        is_blocked = TrustAndSafetyManager.is_blocked(supabase, uid, counterparty_id)
+        stage_policy = LocationPrivacyShield.get_stage_privacy_policy()
 
         return render_template(
             'booking_detail.html',
@@ -1735,8 +2545,18 @@ def booking_detail_page(booking_id):
             worker=worker,
             customer=customer,
             qr_b64=qr_b64,
+            checkin_code=creds['code'],
+            checkin_token=creds['token'],
+            checkin_exp=creds['expires_at'],
             role=role,
-            is_customer=(uid == booking['customer_id'])
+            is_customer=(uid == booking['customer_id']),
+            is_confirmed_stage=is_confirmed_stage,
+            status_history=status_history,
+            latest_payment=latest_payment,
+            payment_options=payment_options,
+            existing_review=existing_review,
+            is_counterparty_blocked=is_blocked,
+            stage_policy=stage_policy
         )
     except Exception as e:
         print(traceback.format_exc())
@@ -1794,6 +2614,7 @@ def get_available_slots():
 
 
 @app.route('/api/bookings', methods=['POST'])
+@app.route('/create_booking', methods=['POST'])
 def create_booking():
     """
     POST /api/bookings
@@ -1808,11 +2629,18 @@ def create_booking():
         return jsonify({'error': 'Invalid JSON'}), 400
 
     worker_id = safe_str(data.get('worker_id'))
-    date_str  = safe_str(data.get('date'))
+    date_str  = safe_str(data.get('date') or data.get('booking_date'))
     time_slot = safe_str(data.get('time_slot'))
     notes     = safe_str(data.get('notes', ''))
 
-    if not worker_id or not date_str or not time_slot:
+    if not worker_id:
+        return jsonify({'error': 'worker_id is required'}), 400
+
+    customer_id = session['user_id']
+    if TrustAndSafetyManager.is_blocked(supabase, customer_id, worker_id):
+        return jsonify({'error': 'Cannot create booking: Interaction between these accounts has been blocked'}), 403
+
+    if not date_str or not time_slot:
         return jsonify({'error': 'worker_id, date, and time_slot are required'}), 400
     if time_slot not in TIME_SLOTS:
         return jsonify({'error': 'Invalid time slot'}), 400
@@ -1821,13 +2649,12 @@ def create_booking():
     except ValueError:
         return jsonify({'error': 'date must be YYYY-MM-DD'}), 400
 
-    customer_id = session['user_id']
     try:
         # Check worker exists and get price
         w_resp = supabase.table("workers").select("id, name, price").eq("id", worker_id).execute()
         if not w_resp.data:
             return jsonify({'error': 'Worker not found'}), 404
-        
+
         worker_price = w_resp.data[0].get('price', 0)
 
         # Double-booking guard
@@ -1858,6 +2685,30 @@ def create_booking():
 
         booking = insert_resp.data[0]
         new_id  = booking['id']
+
+        # Notify assigned worker
+        try:
+            NotificationService.send_notification(
+                supabase,
+                recipient_id=worker_id,
+                recipient_role="worker",
+                title="New Direct Booking Request",
+                message=f"You have a new booking request for {date_str} ({time_slot}).",
+                notif_type="booking_created",
+                reference_id=str(new_id)
+            )
+            StatusHistoryLogger.log_booking_status(
+                supabase, new_id, "created", "Pending", customer_id, "user", reason="Direct booking requested by customer"
+            )
+            AuditLogger.log_event(
+                supabase, actor_id=customer_id, actor_role="user",
+                event_type="booking_lifecycle", resource_type="booking",
+                resource_id=str(new_id), action="create_booking",
+                ip_address=request.remote_addr, metadata={"worker_id": worker_id, "date": date_str, "time_slot": time_slot}
+            )
+        except Exception as log_err:
+            print("Warning: Failed to log booking notification/audit:", log_err)
+
         return jsonify({
             'message':    'Booking confirmed!',
             'booking_id': new_id,
@@ -1867,10 +2718,11 @@ def create_booking():
         err_msg = str(e)
         tb = traceback.format_exc()
         print(f"DEBUG: create_booking failed. Error: {err_msg}\n{tb}")
-        return jsonify({
-            'error': f'Server Error: {err_msg}',
-            'traceback': tb
-        }), 500
+        payload = {'error': 'Failed to create booking. Please try again.'}
+        if app.debug:
+            payload['debug_error'] = err_msg
+            payload['traceback'] = tb
+        return jsonify(payload), 500
 
 
 @app.route('/api/bookings', methods=['GET'])
@@ -1923,22 +2775,21 @@ def get_my_bookings():
 
 
 @app.route('/api/bookings/<int:booking_id>', methods=['GET'])
+@app.route('/api/bookings/<booking_id>', methods=['GET'])
 def get_booking(booking_id):
-    """Fetch a single booking's current status (used for polling)."""
+    """Fetch an authoritative single booking with enriched details, status history, and stage-specific privacy."""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
     uid = session['user_id']
-    try:
-        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
-        if not resp.data:
+    role = session.get('role', 'user')
+    success, msg, data = BookingWorkflowManager.get_booking_details(supabase, booking_id, uid, role)
+    if not success:
+        if "not found" in msg.lower():
             return jsonify({'error': 'Not found'}), 404
-        b = resp.data[0]
-        if b['customer_id'] != uid and b['worker_id'] != uid:
+        if "unauthorized" in msg.lower():
             return jsonify({'error': 'Unauthorized'}), 403
-        return jsonify(b), 200
-    except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({'error': 'Server error'}), 500
+        return jsonify({'error': msg}), 500
+    return jsonify(data), 200
 
 
 @app.route('/api/bookings/<booking_id>/checkin', methods=['POST'])
@@ -1946,20 +2797,27 @@ def get_booking(booking_id):
 def checkin_booking(booking_id):
     """
     POST /api/bookings/<booking_id>/checkin
-    Body: { "token": "<qr_token>", "lat": ..., "lng": ... }
-    Verifies QR token, enforces state transitions, and marks booking as 'Work Started'.
+    Body: { "token": "<qr_token>", "code": "<6_digit_pin>", "lat": ..., "lng": ... }
+    Verifies short-lived QR token or 6-digit PIN, enforces state transitions, and marks booking as 'Work Started'.
     """
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
 
+    # 1. Rate limiting check (sliding window per booking/IP)
+    rate_key = f"{request.remote_addr}:{booking_id}"
+    allowed, retry_after = BookingCheckinSecurity.rate_limiter.is_allowed(rate_key)
+    if not allowed:
+        return jsonify({'error': f"Too many check-in attempts. Please wait {retry_after} seconds before trying again."}), 429
+
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         token = safe_str(data.get('token', ''))
+        code = safe_str(data.get('code', ''))
         client_lat = data.get('lat')
         client_lng = data.get('lng')
 
-        if not token:
-            return jsonify({'error': 'QR token is required'}), 400
+        if not token and not code:
+            return jsonify({'error': 'QR token or 6-digit verification code is required'}), 400
 
         resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
         if not resp.data:
@@ -1967,183 +2825,212 @@ def checkin_booking(booking_id):
         booking = resp.data[0]
         uid = session['user_id']
         role = session.get('role', 'worker')
+        cust_id = booking.get('customer_id') or booking.get('user_id')
+        worker_id = booking.get('worker_id')
 
-        if str(booking['customer_id']) != str(uid) and str(booking['worker_id']) != str(uid):
-            return jsonify({'error': 'Unauthorized'}), 403
+        # 2. Strict participant verification: only assigned worker can perform check-in
+        if str(worker_id) != str(uid):
+            return jsonify({'error': 'Unauthorized: Only the assigned worker can perform check-in'}), 403
 
-        # State transition validation
-        if booking['status'] not in ('Booked', 'Pending'):
+        # 3. Status checks
+        if booking['status'] == 'Cancelled':
+            return jsonify({'error': 'Cannot check in: Booking has been cancelled'}), 400
+        if booking['status'] == 'Work Started':
+            return jsonify({'error': 'Cannot check in: Work has already started for this booking'}), 400
+        if booking['status'] not in ('Booked', 'Confirmed', 'Pending', 'On The Way', 'Arrived'):
             CheckinEventLogger.log_checkin(
-                supabase, booking_id, booking['worker_id'], booking['customer_id'],
-                event_type='checkin_attempt', status='failed', token=token,
+                supabase, booking_id, worker_id, cust_id,
+                event_type='checkin_attempt', status='failed', token=token or code,
                 ip_address=request.remote_addr, user_agent=request.user_agent.string if request.user_agent else None,
                 failure_reason=f"Invalid current status: {booking['status']}"
             )
             return jsonify({'error': f"Cannot check in. Current status: {booking['status']}"}), 400
 
-        # Verify token (handle both UUID hex and HMAC tokens)
-        token_valid = (token == booking.get('qr_token')) or verify_qr_token(booking_id, token)
+        # 4. Cryptographic token / PIN verification with replay detection
+        if code:
+            token_valid, err_msg = BookingCheckinSecurity.verify_checkin_pin(booking_id, code)
+        else:
+            token_valid, err_msg = BookingCheckinSecurity.verify_checkin_token(booking_id, token)
+            # Legacy fallback check
+            if not token_valid and ((token == booking.get('qr_token')) or verify_qr_token(booking_id, token)):
+                # Check if legacy token was already consumed
+                token_hash = hashlib.sha256(f"{booking_id}:{token}".encode('utf-8')).hexdigest()
+                if token_hash not in BookingCheckinSecurity._consumed_token_hashes:
+                    token_valid = True
+                    err_msg = "Valid"
+                else:
+                    token_valid = False
+                    err_msg = "This check-in QR code has already been consumed (replay detected)"
+
         if not token_valid:
             CheckinEventLogger.log_checkin(
-                supabase, booking_id, booking['worker_id'], booking['customer_id'],
-                event_type='checkin_attempt', status='failed', token=token,
+                supabase, booking_id, worker_id, cust_id,
+                event_type='checkin_attempt', status='failed', token=token or code,
                 ip_address=request.remote_addr, user_agent=request.user_agent.string if request.user_agent else None,
-                failure_reason="Invalid or expired QR token"
+                failure_reason=err_msg
             )
-            return jsonify({'error': 'Invalid or expired QR code'}), 403
+            return jsonify({'error': err_msg or 'Invalid or expired check-in code'}), 403
 
-        # Success - log checkin event
+        # 5. Consume token/PIN (enforce single-use, prevent replay)
+        BookingCheckinSecurity.mark_consumed(booking_id, token if token else code)
+
+        # 6. Log success checkin event
         CheckinEventLogger.log_checkin(
-            supabase, booking_id, booking['worker_id'], booking['customer_id'],
-            event_type='checkin_verified', status='success', token=token,
+            supabase, booking_id, worker_id, cust_id,
+            event_type='checkin_verified', status='success', token=token or code,
             client_lat=client_lat, client_lng=client_lng,
             ip_address=request.remote_addr, user_agent=request.user_agent.string if request.user_agent else None
         )
 
-        supabase.table("bookings").update({
-            "status": "Work Started",
-            "updated_at": utc_now_iso()
-        }).eq("id", booking_id).execute()
-
-        # Log status transition
-        StatusHistoryLogger.log_booking_status(
-            supabase, booking_id, booking['status'], "Work Started", uid, role, reason="QR check-in successful"
+        # 7. Transition status to Work Started
+        success, msg, updated = BookingWorkflowManager.transition_status(
+            supabase, booking_id, "Work Started", uid, role,
+            reason="QR check-in verified successfully" if token else "Manual 6-digit PIN check-in verified",
+            metadata={"token": token or code, "client_lat": client_lat, "client_lng": client_lng}
         )
+        if not success:
+            return jsonify({'error': msg}), 400
 
-        # Notify counterparties
-        notify_target = booking['customer_id'] if str(uid) == str(booking['worker_id']) else booking['worker_id']
-        notify_role = "user" if str(uid) == str(booking['worker_id']) else "worker"
-        NotificationService.send_notification(
-            supabase,
-            recipient_id=notify_target,
-            recipient_role=notify_role,
-            title="Work Started",
-            message=f"Check-in verified for booking #{booking_id}. Work has begun!",
-            notif_type="checkin",
-            reference_id=str(booking_id)
-        )
-
-        AuditLogger.log_event(
-            supabase, actor_id=uid, actor_role=role,
-            event_type="booking_lifecycle", resource_type="booking",
-            resource_id=str(booking_id), action="checkin",
-            ip_address=request.remote_addr
-        )
-
-        return jsonify({'message': 'Check-in successful! Work has started.', 'status': 'Work Started'}), 200
+        return jsonify({
+            'message': 'Check-in verified successfully by server! Work has started.',
+            'status': 'Work Started',
+            'booking': updated,
+            'success': True
+        }), 200
     except Exception as e:
         print(traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500
+
+
+@app.route('/api/bookings/<booking_id>/confirm-checkin', methods=['POST'])
+@app.route('/api/bookings/<int:booking_id>/confirm-checkin', methods=['POST'])
+def confirm_customer_checkin(booking_id):
+    """
+    POST /api/bookings/<booking_id>/confirm-checkin
+    Customer explicit confirmation endpoint for on-site arrival verification without camera.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
+    if not resp.data:
+        return jsonify({'error': 'Booking not found'}), 404
+
+    booking = resp.data[0]
+    cust_id = booking.get('customer_id') or booking.get('user_id')
+    worker_id = booking.get('worker_id')
+    if str(cust_id) != str(uid):
+        return jsonify({'error': 'Unauthorized: Only the assigned customer can confirm check-in'}), 403
+
+    if booking['status'] == 'Cancelled':
+        return jsonify({'error': 'Cannot check in: Booking has been cancelled'}), 400
+    if booking['status'] == 'Work Started':
+        return jsonify({'error': 'Cannot check in: Work has already started for this booking'}), 400
+    if booking['status'] not in ('Booked', 'Confirmed', 'On The Way', 'Arrived', 'Pending'):
+        return jsonify({'error': f"Cannot check in: Booking is currently {booking['status']}"}), 400
+
+    CheckinEventLogger.log_checkin(
+        supabase, booking_id, worker_id, cust_id,
+        event_type='checkin_verified', status='success',
+        ip_address=request.remote_addr, user_agent=request.user_agent.string if request.user_agent else None
+    )
+
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Work Started", uid, "user",
+        reason="Customer explicitly confirmed worker arrival on-site",
+        metadata={"customer_confirmed": True}
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    return jsonify({
+        'message': 'Worker arrival confirmed by customer! Work is now In Progress.',
+        'status': 'Work Started',
+        'booking': updated
+    }), 200
+
+
+@app.route('/api/bookings/<booking_id>/checkin-token', methods=['GET'])
+@app.route('/api/bookings/<int:booking_id>/checkin-token', methods=['GET'])
+def get_booking_checkin_token(booking_id):
+    """Generates or refreshes short-lived check-in QR credentials and 6-digit PIN for assigned booking participants."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+    uid = session['user_id']
+    resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
+    if not resp.data:
+        return jsonify({'error': 'Booking not found'}), 404
+    booking = resp.data[0]
+    booking_customer_id = booking.get('customer_id') or booking.get('user_id')
+    booking_worker_id = booking.get('worker_id')
+    if str(booking_customer_id) != str(uid) and str(booking_worker_id) != str(uid):
+        return jsonify({'error': 'Unauthorized: Access restricted to booking participants'}), 403
+    if booking.get('status') not in ('Booked', 'Confirmed', 'On The Way', 'Arrived', 'Pending', 'Requested'):
+        return jsonify({'error': f"Cannot generate check-in token for booking in '{booking.get('status')}' status"}), 400
+
+    creds = BookingCheckinSecurity.generate_checkin_credentials(booking_id, ttl_seconds=300)
+    qr_b64 = generate_qr_base64(creds['qr_payload'])
+    creds['qr_b64'] = qr_b64
+    return jsonify(creds), 200
 
 
 @app.route('/api/bookings/<booking_id>/complete', methods=['POST'])
 @app.route('/api/bookings/<int:booking_id>/complete', methods=['POST'])
 def complete_booking(booking_id):
-    """
-    POST /api/bookings/<booking_id>/complete
-    Customer marks the job as done → status = 'Completed'.
-    """
-    if 'user_id' not in session or session.get('role') != 'user':
-        return jsonify({'error': 'Unauthorized: Only the customer can mark work as complete'}), 401
-
-    uid = session['user_id']
-    try:
-        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
-        if not resp.data:
-            return jsonify({'error': 'Booking not found'}), 404
-        booking = resp.data[0]
-        if str(booking['customer_id']) != str(uid):
-            return jsonify({'error': 'Only the customer can mark work as complete'}), 403
-        if booking['status'] != 'Work Started':
-            return jsonify({'error': f"Work must be started before completing. Current: {booking['status']}"}), 400
-
-        supabase.table("bookings").update({
-            "status": "Completed",
-            "updated_at": utc_now_iso()
-        }).eq("id", booking_id).execute()
-
-        StatusHistoryLogger.log_booking_status(
-            supabase, booking_id, "Work Started", "Completed", uid, "user", reason="Customer marked booking complete"
-        )
-        NotificationService.send_notification(
-            supabase,
-            recipient_id=booking['worker_id'],
-            recipient_role="worker",
-            title="Work Completed!",
-            message=f"Customer marked booking #{booking_id} as completed. You can collect payment.",
-            notif_type="booking_status",
-            reference_id=str(booking_id)
-        )
-        AuditLogger.log_event(
-            supabase, actor_id=uid, actor_role="user",
-            event_type="booking_lifecycle", resource_type="booking",
-            resource_id=str(booking_id), action="complete_booking",
-            ip_address=request.remote_addr
-        )
-
-        return jsonify({'message': 'Work marked as completed!', 'status': 'Completed'}), 200
-    except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({'error': 'Server error'}), 500
-
-
-@app.route('/api/bookings/<int:booking_id>/cancel', methods=['POST'])
-@app.route('/api/bookings/<booking_id>/cancel', methods=['POST'])
-def cancel_booking(booking_id):
-    """Customer or assigned worker cancels a booking that hasn't finished yet."""
+    """Customer or counterparty marks work as complete."""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
 
     uid = session['user_id']
     role = session.get('role', 'user')
-    try:
-        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
-        if not resp.data:
+
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Completed", uid, role,
+        reason="Customer marked booking complete" if role == 'user' else "Worker requested completion",
+        metadata={"force_worker": (role == 'worker')}
+    )
+    if not success:
+        if "not found" in msg.lower():
             return jsonify({'error': 'Booking not found'}), 404
-        booking = resp.data[0]
-        if str(booking['customer_id']) != str(uid) and str(booking['worker_id']) != str(uid):
-            return jsonify({'error': 'Unauthorized'}), 403
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "impossible" in msg.lower() or "cannot" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
 
-        if booking['status'] in ('Completed', 'Cancelled'):
-            return jsonify({'error': 'Cannot cancel a completed or already cancelled booking'}), 400
+    return jsonify({'message': 'Work marked as completed!', 'status': 'Completed', 'booking': updated}), 200
 
-        data = request.get_json() or {}
-        reason = safe_str(data.get('reason', 'Cancelled by user'))
 
-        supabase.table("bookings").update({
-            "status": "Cancelled",
-            "cancellation_reason": reason,
-            "cancelled_by": uid,
-            "updated_at": utc_now_iso()
-        }).eq("id", booking_id).execute()
+@app.route('/api/bookings/<int:booking_id>/cancel', methods=['POST'])
+@app.route('/api/bookings/<booking_id>/cancel', methods=['POST'])
+def cancel_booking(booking_id):
+    """Customer or worker cancels a booking under authoritative policy."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
 
-        StatusHistoryLogger.log_booking_status(
-            supabase, booking_id, booking['status'], "Cancelled", uid, role, reason=reason
-        )
+    uid = session['user_id']
+    role = session.get('role', 'user')
+    data = request.get_json(silent=True) or {}
+    reason = safe_str(data.get('reason', 'Cancelled by user'))
 
-        notify_target = booking['worker_id'] if str(uid) == str(booking['customer_id']) else booking['customer_id']
-        notify_role = "worker" if str(uid) == str(booking['customer_id']) else "user"
-        NotificationService.send_notification(
-            supabase,
-            recipient_id=notify_target,
-            recipient_role=notify_role,
-            title="Booking Cancelled",
-            message=f"Booking #{booking_id} was cancelled. Reason: {reason}",
-            notif_type="booking_status",
-            reference_id=str(booking_id)
-        )
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Cancelled", uid, role, reason=reason
+    )
+    if not success:
+        if "not found" in msg.lower():
+            return jsonify({'error': 'Booking not found'}), 404
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "cannot" in msg.lower() or "detailed cancellation reason" in msg.lower() or "impossible" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
 
-        AuditLogger.log_event(
-            supabase, actor_id=uid, actor_role=role,
-            event_type="booking_lifecycle", resource_type="booking",
-            resource_id=str(booking_id), action="cancel_booking",
-            ip_address=request.remote_addr, metadata={"reason": reason}
-        )
-
-        return jsonify({'message': 'Booking cancelled.', 'status': 'Cancelled'}), 200
-    except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({'error': 'Server error'}), 500
+    return jsonify({'message': 'Booking cancelled.', 'status': 'Cancelled', 'booking': updated}), 200
 
 
 @app.route('/api/bookings/<int:booking_id>/accept', methods=['POST'])
@@ -2154,44 +3041,21 @@ def accept_booking(booking_id):
         return jsonify({'error': 'Unauthorized: Only assigned worker can accept'}), 401
 
     uid = session['user_id']
-    try:
-        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
-        if not resp.data:
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Booked", uid, "worker", reason="Worker accepted appointment"
+    )
+    if not success:
+        if "not found" in msg.lower():
             return jsonify({'error': 'Booking not found'}), 404
-        booking = resp.data[0]
-        if str(booking['worker_id']) != str(uid):
-            return jsonify({'error': 'Unauthorized: You are not the worker for this booking'}), 403
-        if booking['status'] != 'Pending':
-            return jsonify({'error': f"Cannot accept. Current status: {booking['status']}"}), 400
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "cannot" in msg.lower() or "impossible" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
 
-        supabase.table("bookings").update({
-            "status": "Booked",
-            "updated_at": utc_now_iso()
-        }).eq("id", booking_id).execute()
-
-        StatusHistoryLogger.log_booking_status(
-            supabase, booking_id, "Pending", "Booked", uid, "worker", reason="Worker accepted appointment"
-        )
-        NotificationService.send_notification(
-            supabase,
-            recipient_id=booking['customer_id'],
-            recipient_role="user",
-            title="Booking Confirmed!",
-            message=f"The worker accepted your appointment for {booking.get('date')} ({booking.get('time_slot')}).",
-            notif_type="booking_status",
-            reference_id=str(booking_id)
-        )
-        AuditLogger.log_event(
-            supabase, actor_id=uid, actor_role="worker",
-            event_type="booking_lifecycle", resource_type="booking",
-            resource_id=str(booking_id), action="accept_booking",
-            ip_address=request.remote_addr
-        )
-
-        return jsonify({'message': 'Booking accepted!', 'status': 'Booked'}), 200
-    except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({'error': 'Server error'}), 500
+    return jsonify({'message': 'Booking accepted!', 'status': 'Booked', 'booking': updated}), 200
 
 
 @app.route('/api/bookings/<int:booking_id>/decline', methods=['POST'])
@@ -2202,46 +3066,151 @@ def decline_booking(booking_id):
         return jsonify({'error': 'Unauthorized: Only assigned worker can decline'}), 401
 
     uid = session['user_id']
-    try:
-        resp = supabase.table("bookings").select("*").eq("id", booking_id).execute()
-        if not resp.data:
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Cancelled", uid, "worker", reason="Worker declined appointment"
+    )
+    if not success:
+        if "not found" in msg.lower():
             return jsonify({'error': 'Booking not found'}), 404
-        booking = resp.data[0]
-        if str(booking['worker_id']) != str(uid):
-            return jsonify({'error': 'Unauthorized'}), 403
-        if booking['status'] != 'Pending':
-            return jsonify({'error': 'Cannot decline a booking that is not pending'}), 400
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "cannot" in msg.lower() or "impossible" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
 
-        supabase.table("bookings").update({
-            "status": "Cancelled",
-            "cancellation_reason": "Declined by worker",
-            "cancelled_by": uid,
-            "updated_at": utc_now_iso()
-        }).eq("id", booking_id).execute()
+    return jsonify({'message': 'Booking declined.', 'status': 'Cancelled', 'booking': updated}), 200
 
-        StatusHistoryLogger.log_booking_status(
-            supabase, booking_id, "Pending", "Cancelled", uid, "worker", reason="Worker declined appointment"
-        )
-        NotificationService.send_notification(
-            supabase,
-            recipient_id=booking['customer_id'],
-            recipient_role="user",
-            title="Booking Declined",
-            message="The worker was unable to accept your booking request.",
-            notif_type="booking_status",
-            reference_id=str(booking_id)
-        )
-        AuditLogger.log_event(
-            supabase, actor_id=uid, actor_role="worker",
-            event_type="booking_lifecycle", resource_type="booking",
-            resource_id=str(booking_id), action="decline_booking",
-            ip_address=request.remote_addr
-        )
 
-        return jsonify({'message': 'Booking declined.', 'status': 'Cancelled'}), 200
-    except Exception as e:
-        print(traceback.format_exc())
-        return jsonify({'error': 'Server error'}), 500
+@app.route('/api/bookings/<int:booking_id>/travel', methods=['POST'])
+@app.route('/api/bookings/<booking_id>/travel', methods=['POST'])
+def travel_booking(booking_id):
+    """Worker signals they have started travelling to the customer location."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Only assigned worker can set travel status'}), 401
+
+    uid = session['user_id']
+    data = request.get_json(silent=True) or {}
+    eta = data.get('eta_minutes')
+
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "On The Way", uid, "worker",
+        reason="Worker is travelling to location",
+        metadata={"eta_minutes": eta}
+    )
+    if not success:
+        if "not found" in msg.lower():
+            return jsonify({'error': 'Booking not found'}), 404
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "cannot" in msg.lower() or "impossible" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
+
+    return jsonify({'message': 'Status updated: On The Way', 'status': 'On The Way', 'booking': updated}), 200
+
+
+@app.route('/api/bookings/<int:booking_id>/arrive', methods=['POST'])
+@app.route('/api/bookings/<booking_id>/arrive', methods=['POST'])
+def arrive_booking(booking_id):
+    """Worker signals they have arrived at the customer location."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized: Only assigned worker can set arrival status'}), 401
+
+    uid = session['user_id']
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Arrived", uid, "worker",
+        reason="Worker arrived at location"
+    )
+    if not success:
+        if "not found" in msg.lower():
+            return jsonify({'error': 'Booking not found'}), 404
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "cannot" in msg.lower() or "impossible" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
+
+    return jsonify({'message': 'Status updated: Arrived', 'status': 'Arrived', 'booking': updated}), 200
+
+
+@app.route('/api/bookings/<int:booking_id>/dispute', methods=['POST'])
+@app.route('/api/bookings/<booking_id>/dispute', methods=['POST'])
+def dispute_booking(booking_id):
+    """Customer or worker flags a dispute or problem on the booking."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    role = session.get('role', 'user')
+    data = request.get_json(silent=True) or {}
+    reason = safe_str(data.get('reason') or data.get('description'))
+
+    success, msg, updated = BookingWorkflowManager.transition_status(
+        supabase, booking_id, "Disputed", uid, role, reason=reason
+    )
+    if not success:
+        if "not found" in msg.lower():
+            return jsonify({'error': 'Booking not found'}), 404
+        if "unauthorized" in msg.lower():
+            return jsonify({'error': msg}), 403
+        if "already" in msg.lower() or "cannot" in msg.lower() or "impossible" in msg.lower() or "description" in msg.lower():
+            return jsonify({'error': msg}), 400
+        if "stale" in msg.lower():
+            return jsonify({'error': msg}), 409
+        return jsonify({'error': msg}), 500
+
+    # Also record into reports table
+    try:
+        target_id = updated.get('worker_id') if role == 'user' else updated.get('customer_id')
+        target_role = 'worker' if role == 'user' else 'user'
+        supabase.table("reports").insert({
+            "reporter_id": uid,
+            "reporter_role": role,
+            "reported_id": target_id,
+            "reported_role": target_role,
+            "booking_id": booking_id,
+            "reason": reason[:100] if reason else "Booking dispute",
+            "description": reason,
+            "status": "pending",
+            "created_at": utc_now_iso()
+        }).execute()
+    except Exception:
+        pass
+
+    return jsonify({'message': 'Dispute registered. Support team has been notified.', 'status': 'Disputed', 'booking': updated}), 200
+
+
+@app.route('/api/bookings/<int:booking_id>/messages', methods=['POST', 'GET'])
+@app.route('/api/bookings/<booking_id>/messages', methods=['POST', 'GET'])
+def booking_messages_api(booking_id):
+    """In-app communication between connected customer and worker."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    role = session.get('role', 'user')
+
+    if request.method == 'POST':
+        data = request.get_json(silent=True) or {}
+        text = safe_str(data.get('message'))
+        success, msg, res = BookingWorkflowManager.send_booking_message(supabase, booking_id, uid, role, text)
+        if not success:
+            status_code = 403 if "unauthorized" in msg.lower() else (404 if "not found" in msg.lower() else 400)
+            return jsonify({'error': msg}), status_code
+        return jsonify({'message': 'Message sent', 'data': res}), 201
+
+    # GET
+    success, msg, messages = BookingWorkflowManager.get_booking_messages(supabase, booking_id, uid)
+    if not success:
+        status_code = 403 if "unauthorized" in msg.lower() else (404 if "not found" in msg.lower() else 500)
+        return jsonify({'error': msg}), status_code
+    return jsonify(messages), 200
 
 
 # ── Service Categories API ──────────────────────────────────────────
@@ -2457,6 +3426,289 @@ def get_payment_detail(payment_id):
     return jsonify(pay), 200
 
 
+# ── Payment Options & Provider Readiness API ────────────────────────
+@app.route('/api/bookings/<booking_id>/payment-options', methods=['GET'])
+@app.route('/api/bookings/<int:booking_id>/payment-options', methods=['GET'])
+def get_booking_payment_options(booking_id):
+    """
+    GET /api/bookings/<booking_id>/payment-options
+    Returns server-validated booking amount, permitted methods, provider readiness,
+    and explains when online payment is not yet enabled.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    options = PaymentManager.get_payment_options(supabase, booking_id, uid)
+    if "error" in options:
+        return jsonify(options), 404
+    return jsonify(options), 200
+
+
+# ── Payment Intent & Checkout Order Creation API ────────────────────
+@app.route('/api/payments/create-intent', methods=['POST'])
+def create_payment_intent():
+    """
+    POST /api/payments/create-intent
+    Body: { "booking_id": 1, "payment_method": "cash"|"upi"|"card"|"netbanking", "idempotency_key": "..." }
+    Creates payment order/transaction on backend linked to booking and amount.
+    Returns hosted checkout options, amount-bound QR if UPI, or cash instructions.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    payer_id = session['user_id']
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    booking_id = data.get('booking_id')
+    payment_method = safe_str(data.get('payment_method', 'cash')).lower()
+    idempotency_key = safe_str(data.get('idempotency_key', '')) or None
+    notes = safe_str(data.get('notes', ''))
+
+    if not booking_id:
+        return jsonify({'error': 'booking_id is required'}), 400
+
+    success, msg, result = PaymentManager.create_payment_intent(
+        supabase,
+        payer_id=payer_id,
+        booking_id=booking_id,
+        payment_method=payment_method,
+        idempotency_key=idempotency_key,
+        notes=notes
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    AuditLogger.log_event(
+        supabase, actor_id=payer_id, actor_role=session.get('role', 'user'),
+        event_type="financial", resource_type="payment_intent",
+        resource_id=str(booking_id), action="create_payment_intent",
+        ip_address=request.remote_addr, metadata={"method": payment_method}
+    )
+
+    return jsonify({'message': msg, 'success': True, **(result or {})}), 200
+
+
+# ── Payment Cryptographic Verification API ──────────────────────────
+@app.route('/api/payments/verify', methods=['POST'])
+def verify_payment():
+    """
+    POST /api/payments/verify
+    Body: { "booking_id": 1, "razorpay_order_id": "...", "razorpay_payment_id": "...", "razorpay_signature": "..." }
+    Verifies completion using authenticated server-side signature procedure.
+    Never marks paid based on client return or screenshot.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    booking_id = data.get('booking_id')
+    order_id = safe_str(data.get('razorpay_order_id') or data.get('gateway_order_id') or data.get('order_id', ''))
+    payment_id = safe_str(data.get('razorpay_payment_id') or data.get('gateway_payment_id') or data.get('payment_id', ''))
+    signature = safe_str(data.get('razorpay_signature') or data.get('gateway_signature') or data.get('signature', ''))
+
+    if not order_id or not payment_id or not signature:
+        return jsonify({'error': 'razorpay_order_id, razorpay_payment_id, and razorpay_signature are required'}), 400
+
+    success, msg, payment = PaymentManager.verify_and_complete_payment(
+        supabase,
+        booking_id=booking_id,
+        order_id=order_id,
+        payment_id=payment_id,
+        signature=signature,
+        user_id=uid
+    )
+    if not success:
+        AuditLogger.log_event(
+            supabase, actor_id=uid, actor_role=session.get('role', 'user'),
+            event_type="financial", resource_type="payment",
+            resource_id=order_id, action="payment_verification_failed",
+            ip_address=request.remote_addr, metadata={"error": msg, "payment_id": payment_id}
+        )
+        return jsonify({'error': msg, 'success': False}), 400
+
+    AuditLogger.log_event(
+        supabase, actor_id=uid, actor_role=session.get('role', 'user'),
+        event_type="financial", resource_type="payment",
+        resource_id=str(payment['id']), action="payment_verified_and_settled",
+        ip_address=request.remote_addr, metadata={"order_id": order_id, "payment_id": payment_id}
+    )
+
+    is_already_settled = "already" in msg.lower()
+    return jsonify({
+        'message': msg,
+        'status': 'completed',
+        'booking_status': 'Paid',
+        'payment': payment,
+        'success': True,
+        'already_settled': is_already_settled
+    }), 200
+
+
+# ── Payment Failure Notification API ────────────────────────────────
+@app.route('/api/payments/fail', methods=['POST'])
+def record_payment_failure():
+    """
+    POST /api/payments/fail
+    Body: { "booking_id": 1, "order_id": "...", "error_code": "...", "error_description": "..." }
+    Records failure, prevents false completion, leaves booking in Payment Pending for retry or cash.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    data = request.get_json(silent=True) or {}
+    booking_id = data.get('booking_id')
+    order_id = safe_str(data.get('order_id') or data.get('gateway_order_id', ''))
+    err_code = safe_str(data.get('error_code', 'FAILED'))
+    err_desc = safe_str(data.get('error_description', 'Payment checkout was cancelled or failed'))
+
+    success, msg, payment = PaymentManager.handle_payment_failure(
+        supabase, booking_id, order_id, err_code, err_desc, user_id=uid
+    )
+    return jsonify({'message': msg, 'payment': payment, 'success': True}), 200
+
+
+# ── Cash Payment In-Person Confirmation API ─────────────────────────
+@app.route('/api/bookings/<booking_id>/confirm-cash-payment', methods=['POST'])
+@app.route('/api/bookings/<int:booking_id>/confirm-cash-payment', methods=['POST'])
+def confirm_cash_payment(booking_id):
+    """
+    POST /api/bookings/<booking_id>/confirm-cash-payment
+    Separately defined confirmation process for cash payments.
+    Only the assigned worker can confirm physical cash receipt on-site.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    worker_id = session['user_id']
+    data = request.get_json(silent=True) or {}
+    notes = safe_str(data.get('notes', ''))
+
+    success, msg, payment = PaymentManager.confirm_cash_payment(
+        supabase, booking_id=booking_id, worker_id=worker_id, notes=notes
+    )
+    if not success:
+        status_code = 403 if ("unauthorized" in msg.lower() or "only the assigned worker" in msg.lower()) else 400
+        return jsonify({'error': msg}), status_code
+
+    AuditLogger.log_event(
+        supabase, actor_id=worker_id, actor_role="worker",
+        event_type="financial", resource_type="payment",
+        resource_id=str(payment['id']), action="confirm_cash_payment",
+        ip_address=request.remote_addr, metadata={"booking_id": booking_id, "amount": payment.get('amount')}
+    )
+
+    return jsonify({
+        'message': msg,
+        'status': 'completed',
+        'booking_status': 'Paid',
+        'payment': payment,
+        'success': True
+    }), 200
+
+
+# ── Webhook API (Server-to-Server Callbacks) ─────────────────────────
+@app.route('/api/payments/webhook', methods=['POST'])
+def payment_webhook():
+    """
+    POST /api/payments/webhook
+    Receives and verifies authenticated provider webhook notifications.
+    Enforces webhook signature check and event deduplication.
+    """
+    signature = request.headers.get('X-Razorpay-Signature', '')
+    raw_body = request.get_data()
+
+    success, msg, result = PaymentManager.handle_webhook(
+        supabase, raw_body=raw_body, signature=signature
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    is_duplicate = "duplicate" in msg.lower() or "already processed" in msg.lower()
+    return jsonify({'message': msg, 'result': result, 'duplicate': is_duplicate, 'success': True}), 200
+
+
+# ── Worker Payout Profile API ────────────────────────────────────────
+@app.route('/api/worker/payout-profile', methods=['GET'])
+def get_worker_payout_profile():
+    """Worker views their payout onboarding status and masked UPI VPA."""
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    resp = supabase.table("workers").select("id, name, payout_vpa, payout_account_id, payout_status").eq("id", uid).execute()
+    if not resp.data:
+        return jsonify({'error': 'Worker profile not found'}), 404
+
+    w = resp.data[0]
+    vpa = w.get('payout_vpa') or ""
+    masked_vpa = vpa
+    if "@" in vpa:
+        user_part, domain = vpa.split("@", 1)
+        if len(user_part) > 3:
+            masked_vpa = f"{user_part[:2]}***{user_part[-1]}@{domain}"
+
+    gateway_configured, gateway_msg = RazorpayGatewayService.is_gateway_configured()
+
+    return jsonify({
+        'worker_id': uid,
+        'payout_vpa_masked': masked_vpa,
+        'payout_status': w.get('payout_status', 'unconfigured'),
+        'payout_account_id': w.get('payout_account_id'),
+        'is_eligible_for_online': bool(vpa and w.get('payout_status') == 'active' and gateway_configured),
+        'gateway_configured': gateway_configured,
+        'gateway_message': gateway_msg
+    }), 200
+
+
+@app.route('/api/worker/payout-profile', methods=['POST'])
+def update_worker_payout_profile():
+    """
+    Worker supplies their UPI VPA or Razorpay Route account ID for settlements.
+    Does NOT store raw card details or sensitive banking credentials.
+    """
+    if 'user_id' not in session or session.get('role') != 'worker':
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    try:
+        data = request.get_json() or {}
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    payout_vpa = safe_str(data.get('payout_vpa', ''))
+    payout_account_id = safe_str(data.get('payout_account_id', ''))
+
+    success, msg, result = PaymentManager.validate_and_update_worker_payout(
+        supabase, worker_id=uid, payout_vpa=payout_vpa, payout_account_id=payout_account_id
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    AuditLogger.log_event(
+        supabase, actor_id=uid, actor_role="worker",
+        event_type="payout", resource_type="worker",
+        resource_id=str(uid), action="update_payout_profile",
+        ip_address=request.remote_addr, metadata={"status": "active"}
+    )
+
+    return jsonify({
+        'message': msg,
+        'profile': result,
+        'success': True,
+        'payout_status': result.get('payout_status', 'active') if result else 'active'
+    }), 200
+
+
 # ── Notifications API ───────────────────────────────────────────────
 
 @app.route('/api/notifications', methods=['GET'])
@@ -2524,56 +3776,190 @@ def create_report():
     reporter_id = session['user_id']
     reporter_role = session.get('role', 'user')
     reported_id = safe_str(data.get('reported_id'))
-    reported_role = safe_str(data.get('reported_role'))
+    reported_role = safe_str(data.get('reported_role') or ('worker' if reporter_role == 'user' else 'user'))
+    category = safe_str(data.get('category', 'other')).lower()
     reason = safe_str(data.get('reason'))
     description = safe_str(data.get('description'))
     job_id = data.get('job_id')
     booking_id = data.get('booking_id')
 
-    if not reported_id or not reported_role or not reason or not description:
-        return jsonify({'error': 'reported_id, reported_role, reason, and description are required'}), 400
+    if not reported_id or not reason or not description:
+        return jsonify({'error': 'reported_id, reason, and description are required'}), 400
 
     if reported_role not in ('user', 'worker'):
         return jsonify({'error': 'Invalid reported_role'}), 400
 
-    record = {
-        "reporter_id": str(reporter_id),
-        "reporter_role": reporter_role,
-        "reported_id": str(reported_id),
-        "reported_role": reported_role,
-        "reason": reason,
-        "description": description,
-        "status": "open",
-        "job_id": int(job_id) if (job_id and str(job_id).isdigit()) else job_id,
-        "booking_id": int(booking_id) if (booking_id and str(booking_id).isdigit()) else booking_id
-    }
-    resp = supabase.table("job_reports").insert(record).execute()
-    if not resp.data:
-        return jsonify({'error': 'Failed to submit report'}), 500
-
-    new_report = resp.data[0]
-    AuditLogger.log_event(
-        supabase, actor_id=reporter_id, actor_role=reporter_role,
-        event_type="dispute", resource_type="job_report",
-        resource_id=str(new_report['id']), action="file_report",
-        ip_address=request.remote_addr, metadata={"reason": reason, "reported_id": reported_id}
+    success, msg, new_report = TrustAndSafetyManager.file_report(
+        supabase,
+        reporter_id=reporter_id,
+        reporter_role=reporter_role,
+        reported_id=reported_id,
+        reported_role=reported_role,
+        category=category,
+        reason=reason,
+        description=description,
+        booking_id=booking_id,
+        job_id=job_id
     )
+    if not success:
+        return jsonify({'error': msg}), 400
 
     return jsonify({
-        'message': 'Report submitted successfully. Our safety team is investigating.',
-        'report_id': new_report['id']
+        'message': 'Report submitted successfully. Server status: Open. Our safety team is investigating.',
+        'report_id': new_report['id'],
+        'status': new_report.get('status', 'open'),
+        'report': new_report,
+        'success': True
     }), 201
 
 
 @app.route('/api/reports', methods=['GET'])
 def get_my_reports():
-    """Retrieve dispute reports filed by the logged-in user."""
+    """Retrieve dispute and incident reports filed by the logged-in user with their real server-recorded status."""
     if 'user_id' not in session:
         return jsonify({'error': 'Unauthorized'}), 401
 
     uid = session['user_id']
-    resp = supabase.table("job_reports").select("*").eq("reporter_id", uid).order("created_at", desc=True).execute()
-    return jsonify(resp.data or []), 200
+    reports = TrustAndSafetyManager.get_user_reports(supabase, uid)
+    return jsonify(reports), 200
+
+
+# ── Booking Reviews & Real Ratings API ──────────────────────────────
+
+@app.route('/api/bookings/<booking_id>/review', methods=['POST'])
+@app.route('/api/bookings/<int:booking_id>/review', methods=['POST'])
+@app.route('/api/bookings/<booking_id>/reviews', methods=['POST'])
+@app.route('/api/bookings/<int:booking_id>/reviews', methods=['POST'])
+def submit_booking_review_api(booking_id):
+    """
+    POST /api/bookings/<booking_id>/review
+    Body: { "rating": 5, "review": "Excellent work!" }
+    Reviews can ONLY be submitted for eligible completed bookings.
+    Prevents duplicate reviews for the same booking.
+    Calculates authentic average rating and real review counts.
+    """
+    if 'user_id' not in session or session.get('role') != 'user':
+        return jsonify({'error': 'Unauthorized: Only customers can submit reviews'}), 401
+
+    uid = session['user_id']
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    rating = data.get('rating')
+    review_text = safe_str(data.get('review', ''))
+
+    success, msg, result = TrustAndSafetyManager.submit_booking_review(
+        supabase,
+        booking_id=booking_id,
+        customer_id=uid,
+        rating=rating,
+        review_text=review_text
+    )
+    if not success:
+        if "unauthorized" in msg.lower():
+            status_code = 403
+        elif "not found" in msg.lower():
+            status_code = 404
+        elif "already" in msg.lower():
+            status_code = 409
+        else:
+            status_code = 400
+        return jsonify({'error': msg, 'success': False}), status_code
+
+    return jsonify({
+        'message': msg,
+        'review': result,
+        'success': True
+    }), 201
+
+
+@app.route('/api/workers/<worker_id>/reviews', methods=['GET'])
+def get_worker_reviews_api(worker_id):
+    """Returns authentic verified client reviews and stats for a worker (no fake seeded reviews)."""
+    try:
+        limit = max(1, min(100, int(request.args.get('limit', 20))))
+    except (ValueError, TypeError):
+        limit = 20
+    reviews = TrustAndSafetyManager.get_worker_reviews(supabase, worker_id, limit=limit)
+    return jsonify(reviews), 200
+
+
+# ── User Safety, Blocking & Moderation API ──────────────────────────
+
+@app.route('/api/blocks', methods=['POST'])
+def block_user_api():
+    """
+    POST /api/blocks
+    Body: { "blocked_id": "<uuid>", "blocked_role": "worker"|"user", "reason": "..." }
+    Blocks an abusive counterparty to prevent bookings, messages, and offers.
+    """
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    role = session.get('role', 'user')
+    try:
+        data = request.get_json(silent=True) or {}
+    except Exception:
+        return jsonify({'error': 'Invalid JSON'}), 400
+
+    blocked_id = safe_str(data.get('blocked_id'))
+    blocked_role = safe_str(data.get('blocked_role') or ('worker' if role == 'user' else 'user'))
+    reason = safe_str(data.get('reason', 'User blocked for inappropriate behavior'))
+
+    if not blocked_id:
+        return jsonify({'error': 'blocked_id is required'}), 400
+
+    success, msg, block = TrustAndSafetyManager.block_user(
+        supabase, blocker_id=uid, blocker_role=role,
+        blocked_id=blocked_id, blocked_role=blocked_role, reason=reason
+    )
+    if not success:
+        return jsonify({'error': msg}), 400
+
+    return jsonify({'message': msg, 'block': block, 'success': True}), 201
+
+
+@app.route('/api/blocks/<blocked_id>', methods=['DELETE'])
+def unblock_user_api(blocked_id):
+    """Unblock a previously blocked counterparty."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    success, msg = TrustAndSafetyManager.unblock_user(supabase, blocker_id=uid, blocked_id=blocked_id)
+    if not success:
+        return jsonify({'error': msg}), 404
+
+    AuditLogger.log_event(
+        supabase, actor_id=uid, actor_role=session.get('role', 'user'),
+        event_type="trust_and_safety", resource_type="blocked_user",
+        resource_id=str(blocked_id), action="unblock_user",
+        ip_address=request.remote_addr
+    )
+
+    return jsonify({'message': msg, 'success': True}), 200
+
+
+@app.route('/api/blocks', methods=['GET'])
+def get_blocked_users_api():
+    """List users blocked by the authenticated user."""
+    if 'user_id' not in session:
+        return jsonify({'error': 'Unauthorized'}), 401
+
+    uid = session['user_id']
+    blocked = TrustAndSafetyManager.get_blocked_users(supabase, blocker_id=uid)
+    return jsonify(blocked), 200
+
+
+# ── Privacy Transparency & Stage Visibility API ─────────────────────
+
+@app.route('/api/privacy/stage-policy', methods=['GET'])
+def get_stage_privacy_policy_api():
+    """Returns authoritative explanation of what profile, contact, and location info is visible at each stage."""
+    return jsonify(LocationPrivacyShield.get_stage_privacy_policy()), 200
 
 
 @app.route('/api/export-workers', methods=['GET'])

@@ -19,6 +19,7 @@ from typing import Dict, Any, Optional, List, Tuple
 # Default: Hindi (hi-IN)
 # ─────────────────────────────────────────────────────────────────────────────
 DEFAULT_LANGUAGE = 'hi'
+VERIFIED_LANGUAGES = ['hi', 'pa', 'en']
 
 LANGUAGE_REGISTRY: Dict[str, Dict[str, Any]] = {
     'hi': {
@@ -252,33 +253,78 @@ INTENT_LEXICON = {
     ]
 }
 
-# Known trade keywords mapped to standard canonical categories
+# Known trade keywords mapped to standard canonical categories (including regional, Devanagari, and Punjabi/Gurmukhi terms)
 TRADE_MAP = {
     'plumber': 'Plumber',
     'nal': 'Plumber',
+    'नल': 'Plumber',
     'pipe': 'Plumber',
+    'tonti': 'Plumber',
+    'ਟੂਟੀ': 'Plumber',
+    'टोंटी': 'Plumber',
+    'nalasaaz': 'Plumber',
+    'ਨਲਸਾਜ਼': 'Plumber',
     'electrician': 'Electrician',
     'bijli': 'Electrician',
+    'बिजली': 'Electrician',
+    'ਬਿਜਲੀ': 'Electrician',
     'wire': 'Electrician',
+    'wiring': 'Electrician',
     'carpenter': 'Carpenter',
     'badhai': 'Carpenter',
+    'बढ़ई': 'Carpenter',
+    'tarkhan': 'Carpenter',
+    'ਤਰਖਾਣ': 'Carpenter',
     'lakdi': 'Carpenter',
+    'ਲੱਕੜ': 'Carpenter',
     'painter': 'Painter',
     'paint': 'Painter',
     'rang': 'Painter',
+    'रंग': 'Painter',
+    'ਰੰਗ': 'Painter',
+    'safedi': 'Painter',
+    'सफेदी': 'Painter',
+    'ਸਫੇਦੀ': 'Painter',
     'driver': 'Driver',
     'gadi': 'Driver',
     'gaadi': 'Driver',
+    'गाड़ी': 'Driver',
+    'ਗੱਡੀ': 'Driver',
+    'chalak': 'Driver',
+    'चालक': 'Driver',
+    'ਚਾਲਕ': 'Driver',
     'cleaner': 'Cleaner',
     'safai': 'Cleaner',
+    'सफ़ाई': 'Cleaner',
+    'ਸਫ਼ਾਈ': 'Cleaner',
     'pocha': 'Cleaner',
+    'पोछा': 'Cleaner',
+    'ਪੋਚਾ': 'Cleaner',
+    'jhadu': 'Cleaner',
+    'झाड़ू': 'Cleaner',
+    'ਝਾੜੂ': 'Cleaner',
     'cook': 'Cook',
     'khana': 'Cook',
+    'खाना': 'Cook',
+    'ਖਾਣਾ': 'Cook',
     'chef': 'Cook',
+    'rasoi': 'Cook',
+    'रसोई': 'Cook',
+    'ਰਸੋਈ': 'Cook',
     'helper': 'Helper',
     'madadgar': 'Helper',
+    'मददगार': 'Helper',
+    'ਮਦਦਗਾਰ': 'Helper',
+    'labor': 'Helper',
+    'मजदूर': 'Helper',
+    'ਮਜ਼ਦੂਰ': 'Helper',
     'mason': 'Mason',
     'mistri': 'Mason',
+    'मिस्त्री': 'Mason',
+    'ਮਿਸਤਰੀ': 'Mason',
+    'rajmistri': 'Mason',
+    'राजमिस्त्री': 'Mason',
+    'ਰਾਜਮਿਸਤਰੀ': 'Mason',
     'mechanic': 'Mechanic'
 }
 
@@ -305,8 +351,9 @@ def get_clarification_message(prompt_key: str, lang_code: str) -> str:
 
 def detect_trade(normalized_text: str) -> Optional[str]:
     """Extract trade/profession from text for trade-specific matching."""
+    text_lower = (normalized_text or "").lower()
     for keyword, canonical in TRADE_MAP.items():
-        if re.search(r'\b' + re.escape(keyword) + r'\b', normalized_text):
+        if keyword in text_lower or re.search(r'(?:\b|\s|^)' + re.escape(keyword) + r'(?:\b|\s|$)', text_lower):
             return canonical
     return None
 
@@ -560,8 +607,10 @@ def get_voice_capabilities() -> Dict[str, Any]:
     Returns server-side capability metadata and configuration status.
     Keeps API keys strictly hidden on the server.
     """
+    verified_set = set(VERIFIED_LANGUAGES)
     return {
         'default_language': DEFAULT_LANGUAGE,
+        'verified_languages': VERIFIED_LANGUAGES,
         'supported_languages': [
             {
                 'code': k,
@@ -570,7 +619,9 @@ def get_voice_capabilities() -> Dict[str, Any]:
                 'stt_locale': v['stt_locale'],
                 'tts_locale': v['tts_locale'],
                 'flag': v['flag'],
-                'code_switching': v['code_switching']
+                'code_switching': v['code_switching'],
+                'is_verified': k in verified_set,
+                'tier': 'core_verified' if k in verified_set else 'extended'
             }
             for k, v in LANGUAGE_REGISTRY.items()
         ],

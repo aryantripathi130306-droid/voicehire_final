@@ -2,26 +2,10 @@
 
 {% block head %}
 <script src="https://unpkg.com/html5-qrcode@2.3.8/html5-qrcode.min.js"></script>
+<script src="https://checkout.razorpay.com/v1/checkout.js"></script>
 <style>
     .detail-container {
         padding-bottom: 5rem;
-    }
-
-    .qr-card {
-        background: white;
-        padding: 2rem;
-        border-radius: var(--radius-lg);
-        text-align: center;
-        border: 2px solid var(--border);
-        box-shadow: var(--shadow-lg);
-        margin: 2rem 0;
-    }
-
-    .qr-card img {
-        width: 200px;
-        height: 200px;
-        margin: 0 auto;
-        border-radius: var(--radius-md);
     }
 
     .status-timeline {
@@ -35,10 +19,10 @@
         content: '';
         position: absolute;
         top: 18px;
-        left: 0;
-        right: 0;
-        height: 2px;
-        background: var(--border);
+        left: 10px;
+        right: 10px;
+        height: 3px;
+        background: var(--border, #e2e8f0);
         z-index: 1;
     }
 
@@ -48,7 +32,8 @@
         display: flex;
         flex-direction: column;
         align-items: center;
-        gap: 0.5rem;
+        gap: 0.4rem;
+        flex: 1;
     }
 
     .step-dot {
@@ -56,47 +41,164 @@
         height: 36px;
         border-radius: 50%;
         background: white;
-        border: 2px solid var(--border);
+        border: 2px solid var(--border, #cbd5e1);
         display: flex;
         align-items: center;
         justify-content: center;
         font-weight: 800;
-        font-size: 0.8rem;
-        color: var(--text-muted);
-        transition: var(--transition-fast);
+        font-size: 0.75rem;
+        color: var(--text-muted, #64748b);
+        transition: all 0.2s ease;
     }
 
     .step.active .step-dot {
-        background: var(--secondary);
-        border-color: var(--secondary);
+        background: var(--primary, #0284c7);
+        border-color: var(--primary, #0284c7);
         color: white;
-        box-shadow: 0 0 0 4px rgba(0, 102, 138, 0.1);
+        box-shadow: 0 0 0 4px rgba(2, 132, 199, 0.18);
+        animation: pulseDot 2s infinite;
     }
 
     .step.done .step-dot {
-        background: #22c55e;
-        border-color: #22c55e;
+        background: #10b981;
+        border-color: #10b981;
         color: white;
     }
 
-    .step-label {
-        font-size: 0.6rem;
-        font-weight: 700;
-        text-transform: uppercase;
-        color: var(--text-muted);
-        text-align: center;
-        max-width: 60px;
+    @keyframes pulseDot {
+        0%, 100% { transform: scale(1); }
+        50% { transform: scale(1.08); }
     }
 
-    .step.active .step-label { color: var(--secondary); }
-    .step.done .step-label { color: #22c55e; }
+    .step-label {
+        font-size: 0.65rem;
+        font-weight: 700;
+        text-transform: uppercase;
+        color: var(--text-muted, #64748b);
+        text-align: center;
+        letter-spacing: 0.02em;
+    }
+
+    .step.active .step-label { color: var(--primary, #0284c7); font-weight: 800; }
+    .step.done .step-label { color: #10b981; }
+
+    .qr-card {
+        background: white;
+        padding: 2rem 1.5rem;
+        border-radius: var(--radius-lg, 1rem);
+        text-align: center;
+        border: 2px solid var(--border, #e2e8f0);
+        box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.05);
+        margin: 1.5rem 0;
+    }
+
+    .qr-card img {
+        width: 200px;
+        height: 200px;
+        margin: 0 auto;
+        border-radius: var(--radius-md, 0.5rem);
+        border: 1px solid #e2e8f0;
+    }
+
+    /* In-App Coordination Chat */
+    .chat-card {
+        background: white;
+        border-radius: var(--radius-lg, 1rem);
+        border: 1px solid var(--border, #e2e8f0);
+        box-shadow: 0 4px 12px rgba(0, 0, 0, 0.03);
+        overflow: hidden;
+        margin-top: 1.5rem;
+    }
+
+    .chat-header {
+        padding: 0.9rem 1.25rem;
+        background: #f8fafc;
+        border-bottom: 1px solid var(--border, #e2e8f0);
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+    }
+
+    .chat-messages {
+        padding: 1rem;
+        max-height: 220px;
+        overflow-y: auto;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        background: #fafbfc;
+    }
+
+    .chat-bubble {
+        max-width: 80%;
+        padding: 0.55rem 0.85rem;
+        border-radius: 0.75rem;
+        font-size: 0.8rem;
+        line-height: 1.35;
+        position: relative;
+        word-break: break-word;
+    }
+
+    .chat-bubble.mine {
+        align-self: flex-end;
+        background: #0284c7;
+        color: white;
+        border-bottom-right-radius: 0.2rem;
+    }
+
+    .chat-bubble.theirs {
+        align-self: flex-start;
+        background: #f1f5f9;
+        color: #1e293b;
+        border-bottom-left-radius: 0.2rem;
+        border: 1px solid #e2e8f0;
+    }
+
+    .chat-bubble .meta {
+        font-size: 0.6rem;
+        opacity: 0.75;
+        margin-top: 0.25rem;
+        text-align: right;
+    }
+
+    .chat-input-row {
+        padding: 0.75rem;
+        display: flex;
+        gap: 0.5rem;
+        border-top: 1px solid var(--border, #e2e8f0);
+        background: white;
+    }
+
+    /* Modal dialogs */
+    .modal-overlay {
+        position: fixed;
+        inset: 0;
+        background: rgba(15, 23, 42, 0.7);
+        backdrop-filter: blur(6px);
+        z-index: 2500;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 1.25rem;
+    }
+
+    .modal-overlay.open { display: flex; }
+
+    .modal-dialog {
+        background: white;
+        border-radius: 1rem;
+        max-width: 440px;
+        width: 100%;
+        padding: 1.5rem;
+        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.2);
+    }
 
     #scanner-overlay {
         position: fixed;
         inset: 0;
         background: rgba(15, 23, 42, 0.95);
         backdrop-filter: blur(12px);
-        z-index: 2000;
+        z-index: 3000;
         display: none;
         flex-direction: column;
         align-items: center;
@@ -108,59 +210,279 @@
 
     #qr-reader {
         width: 100%;
-        max-width: 350px;
-        border-radius: var(--radius-lg);
+        max-width: 340px;
+        border-radius: var(--radius-lg, 1rem);
         overflow: hidden;
-        border: 2px solid var(--border);
+        border: 2px solid var(--border, #64748b);
+        background: black;
     }
 </style>
 {% endblock %}
 
 {% block content %}
 <div class="detail-container animate-slide-up" data-booking-id="{{ booking.id }}" data-is-customer="{{ 'true' if is_customer else 'false' }}">
+    <!-- Top Bar -->
     <header class="flex justify-between items-center mb-6">
         <a href="{{ '/bookings' if is_customer else '/dashboard/worker' }}" class="btn-icon sm">
             <i class="fa-solid fa-arrow-left"></i>
         </a>
-        <span class="badge sm {% if booking.status == 'Completed' %}success{% elif booking.status == 'Cancelled' %}muted{% else %}warning{% endif %}" id="status-badge">
-            {{ booking.status }}
-        </span>
+        {% set st = localized_status(booking.status) %}
+        <div class="flex flex-col items-end gap-1">
+            <div class="flex items-center gap-2">
+                <span class="badge sm {{ st.badge_class }}" id="status-badge" role="status" aria-label="{{ st.aria_label }}">
+                    <span class="status-step-tag font-bold mr-1" aria-hidden="true">[{{ st.step_number }}/5]</span>
+                    <span class="status-text">{{ st.label }}</span>
+                </span>
+            </div>
+            <span class="text-[11px] text-muted font-medium text-right" id="status-description" aria-live="polite">{{ st.description }}</span>
+        </div>
     </header>
 
-    <div class="hero-header mb-8">
-        <h1>#{{ booking.id }}</h1>
-        <p>{{ t('Booking Details') }}</p>
+    <div class="hero-header mb-6">
+        <h1 class="text-2xl font-black">#{{ booking.id }}</h1>
+        <p class="text-xs text-muted font-bold tracking-wider uppercase">{{ t('Authoritative Booking Details') }}</p>
     </div>
 
-    <!-- Status Timeline -->
+    <!-- Blocked Counterparty Alert Banner -->
+    {% if is_counterparty_blocked %}
+    <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-800 text-xs flex items-center justify-between mb-4">
+        <div class="flex items-center gap-3">
+            <i class="fa-solid fa-ban text-red-600 text-xl"></i>
+            <div>
+                <strong class="text-sm font-bold block">{{ t('You have blocked this %s' % ('worker' if is_customer else 'customer')) }}</strong>
+                <p class="text-[11px] text-red-600 mt-0.5">{{ t('New bookings and direct communication are restricted between your accounts.') }}</p>
+            </div>
+        </div>
+        <button onclick="unblockCounterparty()" class="btn btn-outline sm text-xs font-bold text-red-700 border-red-300 bg-white hover:bg-red-100">
+            {{ t('Unblock') }}
+        </button>
+    </div>
+    {% endif %}
+
+    <!-- Stage-Based Privacy Policy Card -->
+    {% if stage_policy %}
+    <div class="card p-4 mb-4 bg-slate-50 border border-slate-200 text-xs">
+        <div class="flex items-center justify-between mb-2">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-shield-halved text-primary"></i>
+                <span class="font-bold text-slate-800">{{ stage_policy.stage_name }}</span>
+            </div>
+            <span class="badge sm secondary text-[10px]">{{ t('Privacy Transparency') }}</span>
+        </div>
+        <div class="grid grid-cols-1 sm:grid-cols-2 gap-2 text-[11px] text-slate-600 mt-1">
+            <div class="p-2.5 bg-white rounded-lg border border-slate-100">
+                <strong class="text-slate-800 block text-[10px] uppercase font-bold text-primary mb-0.5">{{ t('Customer Disclosures') }}</strong>
+                <span>{{ stage_policy.customer_sees }}</span>
+            </div>
+            <div class="p-2.5 bg-white rounded-lg border border-slate-100">
+                <strong class="text-slate-800 block text-[10px] uppercase font-bold text-primary mb-0.5">{{ t('Worker Disclosures') }}</strong>
+                <span>{{ stage_policy.worker_sees }}</span>
+            </div>
+        </div>
+        <div class="mt-2 text-[10px] text-slate-500 flex items-center gap-1.5 border-t border-slate-200 pt-2">
+            <i class="fa-solid fa-lock text-emerald-600"></i>
+            <span>{{ stage_policy.phone_access }} VoiceHire never exposes private IDs, banking credentials, or unverified documents.</span>
+        </div>
+    </div>
+    {% endif %}
+
+    <!-- 5-Step Lifecycle Progression Timeline -->
+    {% set s = booking.status %}
     <div class="status-timeline">
-        <div class="step {% if booking.status in ['Booked', 'Work Started', 'Completed'] %}done{% endif %}">
+        <!-- 1. Booked -->
+        <div class="step {% if s in ['Booked', 'On The Way', 'Arrived', 'Work Started', 'Completed', 'Payment Pending', 'Paid'] %}done{% elif s == 'Pending' %}active{% endif %}">
             <div class="step-dot">
-                {% if booking.status in ['Booked', 'Work Started', 'Completed'] %}<i class="fa-solid fa-check"></i>{% else %}1{% endif %}
+                {% if s in ['Booked', 'On The Way', 'Arrived', 'Work Started', 'Completed', 'Payment Pending', 'Paid'] %}
+                    <i class="fa-solid fa-check"></i>
+                {% elif s == 'Pending' %}
+                    <i class="fa-solid fa-clock"></i>
+                {% else %}1{% endif %}
             </div>
             <span class="step-label">{{ t('Booked') }}</span>
         </div>
-        <div class="step {% if booking.status == 'Work Started' %}active{% elif booking.status == 'Completed' %}done{% endif %}">
+
+        <!-- 2. On The Way -->
+        <div class="step {% if s in ['Arrived', 'Work Started', 'Completed', 'Payment Pending', 'Paid'] %}done{% elif s == 'On The Way' %}active{% endif %}">
             <div class="step-dot">
-                {% if booking.status == 'Completed' %}<i class="fa-solid fa-check"></i>{% elif booking.status == 'Work Started' %}<i class="fa-solid fa-person-digging"></i>{% else %}2{% endif %}
+                {% if s in ['Arrived', 'Work Started', 'Completed', 'Payment Pending', 'Paid'] %}
+                    <i class="fa-solid fa-check"></i>
+                {% elif s == 'On The Way' %}
+                    <i class="fa-solid fa-motorcycle"></i>
+                {% else %}2{% endif %}
             </div>
-            <span class="step-label">{{ t('Active') }}</span>
+            <span class="step-label">{{ t('Travelling') }}</span>
         </div>
-        <div class="step {% if booking.status == 'Completed' %}done{% endif %}">
+
+        <!-- 3. Arrived -->
+        <div class="step {% if s in ['Work Started', 'Completed', 'Payment Pending', 'Paid'] %}done{% elif s == 'Arrived' %}active{% endif %}">
             <div class="step-dot">
-                {% if booking.status == 'Completed' %}<i class="fa-solid fa-check"></i>{% else %}3{% endif %}
+                {% if s in ['Work Started', 'Completed', 'Payment Pending', 'Paid'] %}
+                    <i class="fa-solid fa-check"></i>
+                {% elif s == 'Arrived' %}
+                    <i class="fa-solid fa-location-dot"></i>
+                {% else %}3{% endif %}
+            </div>
+            <span class="step-label">{{ t('Arrived') }}</span>
+        </div>
+
+        <!-- 4. Work Started -->
+        <div class="step {% if s in ['Completed', 'Payment Pending', 'Paid'] %}done{% elif s == 'Work Started' %}active{% endif %}">
+            <div class="step-dot">
+                {% if s in ['Completed', 'Payment Pending', 'Paid'] %}
+                    <i class="fa-solid fa-check"></i>
+                {% elif s == 'Work Started' %}
+                    <i class="fa-solid fa-person-digging"></i>
+                {% else %}4{% endif %}
+            </div>
+            <span class="step-label">{{ t('In Progress') }}</span>
+        </div>
+
+        <!-- 5. Completed -->
+        <div class="step {% if s in ['Completed', 'Payment Pending', 'Paid'] %}done{% endif %}">
+            <div class="step-dot">
+                {% if s in ['Completed', 'Payment Pending', 'Paid'] %}
+                    <i class="fa-solid fa-flag-checkered"></i>
+                {% else %}5{% endif %}
             </div>
             <span class="step-label">{{ t('Done') }}</span>
         </div>
     </div>
 
+    <!-- Status Alert Banners -->
+    {% if s == 'Pending' %}
+        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-hourglass-half text-amber-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Awaiting Confirmation') }}</p>
+                <p class="text-xs text-amber-700 mt-0.5">
+                    {% if is_customer %}
+                        {{ t('Your booking request is created. Waiting for worker to accept.') }}
+                    {% else %}
+                        {{ t('New booking request received! Review details and accept or decline below.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Booked' %}
+        <div class="p-4 rounded-xl bg-blue-50 border border-blue-200 text-blue-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-circle-check text-blue-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Booking Confirmed') }}</p>
+                <p class="text-xs text-blue-700 mt-0.5">
+                    {% if is_customer %}
+                        {{ t('Worker accepted the appointment. Show your QR code upon their arrival.') }}
+                    {% else %}
+                        {{ t('You accepted this appointment. Tap "Start Travelling" when heading to customer.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'On The Way' %}
+        <div class="p-4 rounded-xl bg-sky-50 border border-sky-200 text-sky-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-motorcycle text-sky-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Worker On The Way') }}</p>
+                <p class="text-xs text-sky-700 mt-0.5">
+                    {% if is_customer %}
+                        {{ t('Worker is travelling to your location. Keep your QR code ready.') }}
+                    {% else %}
+                        {{ t('You are travelling to customer location. Tap "Arrived at Location" when you reach.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Arrived' %}
+        <div class="p-4 rounded-xl bg-indigo-50 border border-indigo-200 text-indigo-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-location-dot text-indigo-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Worker Has Arrived') }}</p>
+                <p class="text-xs text-indigo-700 mt-0.5">
+                    {% if is_customer %}
+                        {{ t('Worker has arrived. Please show your QR code to check in and begin work.') }}
+                    {% else %}
+                        {{ t('You have arrived at customer location. Scan customer QR code to start work.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Work Started' %}
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-person-digging text-emerald-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Job In Progress') }}</p>
+                <p class="text-xs text-emerald-700 mt-0.5">
+                    {{ t('Check-in verified via secure QR token. Work is underway.') }}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Payment Pending' %}
+        <div class="p-4 rounded-xl bg-amber-50 border border-amber-200 text-amber-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-clock-rotate-left text-amber-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Payment Verification Pending') }}</p>
+                <p class="text-xs text-amber-700 mt-0.5">
+                    {% if is_customer %}
+                        {{ t('Please complete the settlement below via UPI/online or confirm cash payment.') }}
+                    {% else %}
+                        {{ t('Customer settlement in progress. Cash payments require your on-site confirmation.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Paid' %}
+        <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-emerald-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-circle-check text-emerald-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Payment Settled & Booking Finalized') }}</p>
+                <p class="text-xs text-emerald-700 mt-0.5">
+                    {{ t('Payment has been verified and settled. Thank you for using Voice Hire!') }}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Completed' %}
+        <div class="p-4 rounded-xl bg-green-50 border border-green-200 text-green-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-flag-checkered text-green-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Job Completed - Settlement Pending') }}</p>
+                <p class="text-xs text-green-700 mt-0.5">
+                    {% if is_customer %}
+                        {{ t('Job has been successfully finished. Please choose an approved payment method below.') }}
+                    {% else %}
+                        {{ t('Job has been successfully finished. Awaiting customer settlement.') }}
+                    {% endif %}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Cancelled' %}
+        <div class="p-4 rounded-xl bg-rose-50 border border-rose-200 text-rose-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-ban text-rose-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Booking Cancelled') }}</p>
+                <p class="text-xs text-rose-700 mt-0.5">
+                    {{ t('This booking has been cancelled under the platform cancellation policy.') }}
+                </p>
+            </div>
+        </div>
+    {% elif s == 'Disputed' %}
+        <div class="p-4 rounded-xl bg-red-50 border border-red-200 text-red-900 mb-6 flex items-start gap-3">
+            <i class="fa-solid fa-triangle-exclamation text-red-600 mt-0.5"></i>
+            <div>
+                <p class="font-bold text-sm">{{ t('Dispute Under Review') }}</p>
+                <p class="text-xs text-red-700 mt-0.5">
+                    {{ t('A dispute was flagged for this booking. Our safety operations team is investigating.') }}
+                </p>
+            </div>
+        </div>
+    {% endif %}
+
+    <!-- Counterparty Info Card -->
     <div class="card p-6 flex flex-col gap-6">
         <div class="flex items-center gap-4">
             <div class="w-12 h-12 rounded-2xl bg-slate-100 flex items-center justify-center border overflow-hidden">
                 {% if is_customer %}
-                    {% if worker.profile_pic %}<img src="/static/{{ worker.profile_pic }}" class="w-full h-full object-cover">{% else %}<i class="fa-solid fa-user-gear"></i>{% endif %}
+                    {% if worker.profile_pic %}<img src="/static/{{ worker.profile_pic }}" class="w-full h-full object-cover">{% else %}<i class="fa-solid fa-user-gear text-slate-500"></i>{% endif %}
                 {% else %}
-                    {% if customer.profile_pic %}<img src="/static/{{ customer.profile_pic }}" class="w-full h-full object-cover">{% else %}<i class="fa-solid fa-user"></i>{% endif %}
+                    {% if customer.profile_pic %}<img src="/static/{{ customer.profile_pic }}" class="w-full h-full object-cover">{% else %}<i class="fa-solid fa-user text-slate-500"></i>{% endif %}
                 {% endif %}
             </div>
             <div>
@@ -185,155 +507,1368 @@
                 <p class="text-[10px] text-muted font-black uppercase tracking-widest">{{ t('Amount') }}</p>
                 <p class="text-xl font-black text-primary">₹{{ booking.total_price or 0 }}</p>
             </div>
-            <div class="flex gap-2">
-                <a href="tel:{{ worker.phone if is_customer else customer.phone }}" class="btn btn-outline sm btn-icon"><i class="fa-solid fa-phone"></i></a>
-                <a href="https://wa.me/91{{ worker.phone if is_customer else customer.phone }}" class="btn btn-outline sm btn-icon" style="color: #25D366; border-color: #25D366;"><i class="fa-brands fa-whatsapp"></i></a>
+
+            <!-- Privacy-Protected Contact Buttons -->
+            <div class="flex items-center gap-2">
+                {% if is_confirmed_stage %}
+                    <a href="tel:{{ worker.phone if is_customer else customer.phone }}" class="btn btn-outline sm btn-icon" title="Call">
+                        <i class="fa-solid fa-phone"></i>
+                    </a>
+                    <a href="https://wa.me/91{{ worker.phone if is_customer else customer.phone }}" target="_blank" rel="noopener" class="btn btn-outline sm btn-icon" style="color: #25D366; border-color: #25D366;" title="WhatsApp">
+                        <i class="fa-brands fa-whatsapp"></i>
+                    </a>
+                {% else %}
+                    <div class="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-100 rounded-lg text-slate-500 text-[11px] font-medium" title="Contact information is masked until booking is accepted">
+                        <i class="fa-solid fa-lock text-[10px]"></i>
+                        <span>{{ worker.phone if is_customer else customer.phone }}</span>
+                    </div>
+                {% endif %}
             </div>
         </div>
     </div>
 
-    <!-- QR Section -->
-    {% if booking.status != 'Cancelled' and booking.status != 'Pending' %}
-        {% if is_customer and session.role == 'user' %}
-            <div class="qr-card">
-                <h4 class="mb-4">{{ t('Scan to Check-in') }}</h4>
-                <div id="qr-img-wrapper" class="{% if booking.status == 'Booked' %}animate-pulse{% endif %}">
-                    <img src="data:image/png;base64,{{ qr_b64 }}" alt="Booking QR">
+    <!-- Payment & Settlement Section -->
+    {% if s in ['Completed', 'Payment Pending', 'Paid'] %}
+    <div class="card p-6 flex flex-col gap-5 mt-6 border-2 {% if s == 'Paid' %}border-emerald-200 bg-emerald-50/20{% else %}border-primary/20 bg-white{% endif %} shadow-sm">
+        <div class="flex items-center justify-between pb-3 border-b border-slate-100">
+            <div class="flex items-center gap-2">
+                <div class="w-8 h-8 rounded-lg {% if s == 'Paid' %}bg-emerald-100 text-emerald-600{% else %}bg-primary/10 text-primary{% endif %} flex items-center justify-center">
+                    <i class="fa-solid fa-indian-rupee-sign text-sm"></i>
                 </div>
-                <p class="text-muted text-[10px] font-bold uppercase tracking-widest mt-6">{{ t('Show this to the worker') }}</p>
+                <div>
+                    <h3 class="text-sm font-black text-slate-800">{{ t('Payment & Settlement') }}</h3>
+                    <p class="text-[10px] text-muted uppercase font-bold tracking-wider">{{ t('Authorized Transaction') }}</p>
+                </div>
             </div>
-        {% elif not is_customer and booking.status == 'Booked' %}
-            <div class="text-center py-8">
-                <button onclick="openScanner()" class="btn btn-primary w-full h-16 text-lg">
-                    <i class="fa-solid fa-qrcode mr-2"></i> {{ t('Open Scanner') }}
-                </button>
-                <p class="text-muted text-[10px] font-bold uppercase tracking-widest mt-4">{{ t('Scan customer QR to start work') }}</p>
-            </div>
-        {% endif %}
-    {% elif booking.status == 'Pending' %}
-        <div class="card p-8 text-center mt-6 bg-coral/5 border-coral/20">
-            <i class="fa-solid fa-hourglass-half text-3xl text-coral animate-spin-slow mb-4"></i>
-            <h3>{{ t('Waiting for Approval') }}</h3>
-            <p class="text-muted text-sm mt-2">{{ t('Wait for the worker to accept your request') }}</p>
+            <span class="badge sm {% if s == 'Paid' %}success{% else %}warning{% endif %}">
+                {% if s == 'Paid' %}<i class="fa-solid fa-shield-check mr-1"></i> {{ t('PAID & SETTLED') }}{% else %}<i class="fa-solid fa-clock mr-1"></i> {{ s|upper }}{% endif %}
+            </span>
         </div>
+
+        <!-- Final Booking Amount Display -->
+        <div class="flex items-center justify-between p-3.5 bg-slate-50 rounded-xl border border-slate-200">
+            <div>
+                <span class="text-[10px] text-muted font-bold uppercase tracking-widest">{{ t('Final Booking Total') }}</span>
+                <p class="text-xs text-slate-500">{{ t('Inclusive of all platform and service charges') }}</p>
+            </div>
+            <div class="text-right">
+                <span class="text-2xl font-black text-primary">₹{{ booking.total_price or 0 }}</span>
+            </div>
+        </div>
+
+        {% if s == 'Paid' %}
+            <!-- Verified Payment Record -->
+            <div class="p-4 rounded-xl bg-emerald-50 border border-emerald-200 text-xs">
+                <div class="flex items-center gap-2 text-emerald-800 font-bold mb-1">
+                    {% if latest_payment and latest_payment.verification_type == 'electronic_signature' %}
+                        <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+                        <span>{{ t('Verified Electronically via Razorpay HMAC Signature') }}</span>
+                    {% elif latest_payment and latest_payment.verification_type == 'cash_manual_confirmation' %}
+                        <i class="fa-solid fa-hand-holding-dollar text-emerald-600"></i>
+                        <span>{{ t('Verified via Worker On-Site Cash Confirmation') }}</span>
+                    {% else %}
+                        <i class="fa-solid fa-check-circle text-emerald-600"></i>
+                        <span>{{ t('Payment Verified & Recorded') }}</span>
+                    {% endif %}
+                </div>
+                {% if latest_payment %}
+                <div class="grid grid-cols-2 gap-2 mt-3 pt-3 border-t border-emerald-200 text-[11px] text-emerald-900">
+                    <div>
+                        <span class="text-muted block text-[10px] uppercase font-bold">{{ t('Method') }}</span>
+                        <span class="font-bold">{{ latest_payment.payment_method|upper }}</span>
+                    </div>
+                    <div>
+                        <span class="text-muted block text-[10px] uppercase font-bold">{{ t('Payment Status') }}</span>
+                        <span class="font-bold capitalize">{{ latest_payment.status }}</span>
+                    </div>
+                    {% if latest_payment.gateway_payment_id %}
+                    <div class="col-span-2">
+                        <span class="text-muted block text-[10px] uppercase font-bold">{{ t('Gateway Ref / Payment ID') }}</span>
+                        <span class="font-mono text-[10px] break-all">{{ latest_payment.gateway_payment_id }}</span>
+                    </div>
+                    {% endif %}
+                </div>
+                {% endif %}
+            </div>
+        {% else %}
+            <!-- Settlement Action Zone -->
+            {% if is_customer %}
+                <div class="flex flex-col gap-4">
+                    <div>
+                        <h4 class="text-xs font-black text-slate-700 uppercase tracking-wider mb-2">{{ t('Select Payment Method') }}</h4>
+                        <p class="text-xs text-muted mb-3">{{ t('Choose an approved settlement option. Payment must be cryptographically or on-site verified.') }}</p>
+                    </div>
+
+                    <!-- Payment Choices Grid -->
+                    <div class="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                        <!-- Option 1: Cash on Completion -->
+                        {% if payment_options and payment_options.cash_allowed %}
+                        <div class="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-primary/50 transition cursor-pointer flex flex-col justify-between" onclick="confirmAndPayCash()">
+                            <div class="flex items-start gap-3 mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-amber-50 text-amber-600 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-money-bill-wave"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-xs text-slate-800 block">{{ t('Cash on Completion') }}</span>
+                                    <span class="text-[10px] text-slate-500">{{ t('Pay exact cash directly to worker on-site.') }}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline sm w-full text-xs font-bold text-slate-700">
+                                <i class="fa-solid fa-hand-holding-dollar mr-1"></i> {{ t('Pay with Cash') }}
+                            </button>
+                        </div>
+                        {% endif %}
+
+                        <!-- Option 2: UPI / Online via Razorpay -->
+                        {% if payment_options and payment_options.online_allowed %}
+                        <div class="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-primary/50 transition cursor-pointer flex flex-col justify-between" onclick="initiateOnlinePayment()">
+                            <div class="flex items-start gap-3 mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-sky-50 text-sky-600 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-bolt"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-xs text-slate-800 block">{{ t('Instant Online Checkout') }}</span>
+                                    <span class="text-[10px] text-slate-500">{{ t('UPI, Netbanking, Cards & Wallets via Razorpay') }}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-primary sm w-full text-xs font-bold shadow-sm">
+                                <i class="fa-solid fa-credit-card mr-1"></i> {{ t('Pay Online (₹%s)' % (booking.total_price or 0)) }}
+                            </button>
+                        </div>
+
+                        <!-- Option 3: Dynamic Amount-Bound UPI QR -->
+                        <div class="p-3.5 rounded-xl border border-slate-200 bg-white hover:border-primary/50 transition cursor-pointer flex flex-col justify-between sm:col-span-2" onclick="openUpiQrModal()">
+                            <div class="flex items-start gap-3 mb-3">
+                                <div class="w-9 h-9 rounded-lg bg-emerald-50 text-emerald-600 flex items-center justify-center shrink-0">
+                                    <i class="fa-solid fa-qrcode"></i>
+                                </div>
+                                <div>
+                                    <span class="font-bold text-xs text-slate-800 block">{{ t('Dynamic Amount-Bound UPI QR') }}</span>
+                                    <span class="text-[10px] text-slate-500">{{ t('Scan with GPay, PhonePe, Paytm or any UPI app. Secure & amount-locked.') }}</span>
+                                </div>
+                            </div>
+                            <button type="button" class="btn btn-outline sm w-full text-xs font-bold text-emerald-700 border-emerald-300">
+                                <i class="fa-solid fa-qrcode mr-1"></i> {{ t('Show Amount-Bound UPI QR') }}
+                            </button>
+                        </div>
+                        {% else %}
+                        <!-- Online Disabled Explanation -->
+                        <div class="sm:col-span-2 p-3.5 rounded-xl bg-amber-50/70 border border-amber-200 text-xs">
+                            <div class="flex items-start gap-2 text-amber-900">
+                                <i class="fa-solid fa-circle-info text-amber-600 mt-0.5"></i>
+                                <div>
+                                    <span class="font-bold block">{{ t('Online Payment Not Enabled for this Booking') }}</span>
+                                    <span class="text-[11px] text-amber-800 mt-0.5 block">
+                                        {{ payment_options.online_disabled_reason if payment_options else t('Worker payout profile or gateway configuration is currently being finalized.') }}
+                                    </span>
+                                    <span class="text-[11px] font-semibold text-amber-900 mt-1 block">
+                                        {{ t('Please settle this booking using Cash on Completion.') }}
+                                    </span>
+                                </div>
+                            </div>
+                        </div>
+                        {% endif %}
+                    </div>
+                </div>
+            {% else %}
+                <!-- Worker View for Settlement -->
+                <div class="flex flex-col gap-3">
+                    <p class="text-xs text-slate-600">
+                        {{ t('Awaiting customer settlement. For cash payments, only you can confirm receipt on this screen.') }}
+                    </p>
+
+                    {% if s in ['Completed', 'Payment Pending'] %}
+                    <div class="p-4 rounded-xl bg-amber-50 border border-amber-200">
+                        <span class="text-[10px] text-amber-700 uppercase font-black tracking-wider block mb-1">
+                            {{ t('Cash Confirmation Process') }}
+                        </span>
+                        <p class="text-xs text-amber-900 mb-3">
+                            {{ t('If the customer has paid you ₹%s in cash, verify the bills and confirm below. Cash payments are explicitly audited as manual confirmations.' % (booking.total_price or 0)) }}
+                        </p>
+                        <button type="button" onclick="workerConfirmCashPayment()" class="btn btn-primary w-full text-xs font-bold bg-emerald-600 hover:bg-emerald-700 border-none shadow-sm py-3">
+                            <i class="fa-solid fa-hand-holding-dollar mr-1.5"></i> {{ t('Confirm ₹%s Cash Received' % (booking.total_price or 0)) }}
+                        </button>
+                    </div>
+                    {% endif %}
+                </div>
+            {% endif %}
+        {% endif %}
+    </div>
     {% endif %}
 
-    <!-- Actions -->
-    <div class="flex flex-col gap-3 mt-8">
-        {% if is_customer and booking.status == 'Work Started' %}
-            <button onclick="markComplete()" class="btn btn-primary h-14 w-full">
-                <i class="fa-solid fa-circle-check mr-2"></i> {{ t('Job Completed') }}
-            </button>
-        {% endif %}
+    <!-- Verified Rating & Review Section (Eligible only on Completed or Paid bookings) -->
+    {% if s in ['Completed', 'Paid'] %}
+        {% if existing_review %}
+        <div class="card p-5 my-6 bg-amber-50/40 border border-amber-200 text-xs shadow-sm">
+            <div class="flex items-center justify-between pb-2 border-b border-amber-100 mb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-star text-amber-500"></i>
+                    <strong class="text-slate-800 font-bold text-sm">{{ t('Verified Booking Review') }}</strong>
+                </div>
+                <span class="badge sm success"><i class="fa-solid fa-circle-check mr-1"></i> {{ t('Recorded') }}</span>
+            </div>
+            <div class="flex items-center gap-2 mb-2">
+                <div class="text-amber-500 text-sm">
+                    {% for _ in range(existing_review.rating or 5) %}⭐{% endfor %}
+                </div>
+                <span class="font-bold text-slate-700 text-xs">{{ existing_review.rating }}/5</span>
+                <span class="text-[10px] text-muted">• {{ existing_review.created_at[:10] if existing_review.created_at else 'Verified' }}</span>
+            </div>
+            <p class="text-xs text-slate-700 italic bg-white p-3 rounded-lg border border-amber-100 mb-2">
+                "{{ existing_review.review }}"
+            </p>
+            <span class="text-[10px] text-muted block">
+                <i class="fa-solid fa-lock mr-1"></i> {{ t('Reviews can only be submitted once per completed booking and are permanently locked against duplicates.') }}
+            </span>
+        </div>
+        {% elif is_customer %}
+        <div class="card p-5 my-6 bg-white border-2 border-primary/20 text-xs shadow-sm" id="review-submission-card">
+            <div class="flex items-center justify-between pb-2 border-b border-slate-100 mb-3">
+                <div class="flex items-center gap-2">
+                    <i class="fa-solid fa-star text-amber-500"></i>
+                    <strong class="text-slate-800 font-bold text-sm">{{ t('Rate & Review Worker') }}</strong>
+                </div>
+                <span class="badge sm primary">{{ t('Eligible for Review') }}</span>
+            </div>
+            <p class="text-xs text-muted mb-3">{{ t('Share your authentic feedback. Ratings and reviews can only be submitted once for completed bookings.') }}</p>
 
-        {% if not is_customer and booking.status == 'Pending' %}
-            <button onclick="acceptBooking()" class="btn btn-primary h-14 w-full">
+            <div class="flex items-center gap-3 mb-3">
+                <span class="text-xs font-bold text-slate-700">{{ t('Rating:') }}</span>
+                <div class="flex gap-1 text-2xl cursor-pointer" id="review-stars-picker">
+                    <span class="star-item text-amber-400" onclick="setReviewRating(1)">★</span>
+                    <span class="star-item text-amber-400" onclick="setReviewRating(2)">★</span>
+                    <span class="star-item text-amber-400" onclick="setReviewRating(3)">★</span>
+                    <span class="star-item text-amber-400" onclick="setReviewRating(4)">★</span>
+                    <span class="star-item text-amber-400" onclick="setReviewRating(5)">★</span>
+                </div>
+                <input type="hidden" id="input-review-rating" value="5">
+                <span id="review-rating-label" class="font-bold text-xs text-amber-600">5.0 / 5.0</span>
+            </div>
+
+            <div class="mb-3">
+                <label class="text-[11px] font-bold text-slate-700 block mb-1">{{ t('Your Review Comments') }}</label>
+                <textarea id="input-review-text" class="input w-full text-xs p-2.5" rows="3" placeholder="{{ t('Describe your experience, quality of work, punctuality...') }}"></textarea>
+            </div>
+
+            <button onclick="submitBookingReview()" id="btn-submit-review" class="btn btn-primary sm w-full text-xs font-bold shadow-sm">
+                <i class="fa-solid fa-check mr-1.5"></i> {{ t('Submit Verified Review') }}
+            </button>
+        </div>
+        {% else %}
+        <div class="p-3.5 my-4 bg-slate-50 border border-slate-200 rounded-xl text-xs text-slate-600 flex items-center gap-2">
+            <i class="fa-solid fa-comment-dots text-primary"></i>
+            <span>{{ t('Customer review will appear here once submitted.') }}</span>
+        </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- QR Check-in Section -->
+    {% if s not in ['Cancelled', 'Pending', 'Completed', 'Payment Pending', 'Paid'] %}
+        {% if is_customer and session.role == 'user' %}
+            <div class="qr-card">
+                <div class="flex items-center justify-between mb-2">
+                    <h4 class="text-base font-black">{{ t('Arrival Check-in QR') }}</h4>
+                    <span class="badge sm success" id="qr-expiry-badge"><i class="fa-solid fa-clock mr-1"></i> {{ t('Valid 5 min') }}</span>
+                </div>
+                <p class="text-xs text-muted mb-4">{{ t('Show this QR code to the worker upon arrival to verify check-in') }}</p>
+                <div id="qr-img-wrapper" class="{% if s in ['Booked', 'On The Way', 'Arrived'] %}animate-pulse{% endif %}">
+                    <img src="data:image/png;base64,{{ qr_b64 }}" alt="Booking QR" id="qr-img">
+                </div>
+                <div class="flex items-center justify-center gap-1.5 mt-3 text-[11px] text-emerald-600 font-semibold">
+                    <i class="fa-solid fa-shield-halved"></i>
+                    <span>{{ t('Cryptographically signed short-lived token') }}</span>
+                </div>
+
+                <!-- Secure Camera-less Alternative: 6-Digit PIN -->
+                <div class="mt-4 p-3 bg-slate-50 border border-slate-200 rounded-xl text-center">
+                    <span class="text-[10px] text-muted font-bold uppercase tracking-widest">{{ t('No Camera? 6-Digit Check-in PIN') }}</span>
+                    <div class="text-3xl font-black font-mono tracking-widest text-primary my-1" id="checkin-pin-display">
+                        {{ checkin_code }}
+                    </div>
+                    <p class="text-[10px] text-slate-500">{{ t('Tell this 6-digit PIN to the worker if camera scanning fails') }}</p>
+                </div>
+
+                <!-- Explicit Customer Confirmation Step -->
+                <div class="mt-3">
+                    <button onclick="confirmWorkerArrivalDirectly()" class="btn btn-outline sm w-full text-emerald-600 border-emerald-200 text-xs font-bold">
+                        <i class="fa-solid fa-user-check mr-1.5"></i> {{ t('Worker Has Arrived? Confirm Arrival Directly') }}
+                    </button>
+                </div>
+            </div>
+        {% elif not is_customer and s in ['Booked', 'On The Way', 'Arrived'] %}
+            <div class="card p-6 text-center my-6 bg-slate-50 border border-slate-200">
+                <i class="fa-solid fa-qrcode text-3xl text-primary mb-3"></i>
+                <h4 class="text-base font-bold">{{ t('Arrival Verification') }}</h4>
+                <p class="text-xs text-muted mt-1 mb-4">{{ t('Scan the customer QR code on arrival to verify check-in and start the job.') }}</p>
+                
+                <div class="flex flex-col gap-2.5">
+                    <button onclick="openScanner()" class="btn btn-primary w-full h-14 text-base font-bold shadow-md">
+                        <i class="fa-solid fa-qrcode mr-2"></i> {{ t('Open QR Scanner to Start Work') }}
+                    </button>
+                    <!-- Camera-less Secure Fallback -->
+                    <button onclick="openManualPinModal()" class="btn btn-outline w-full h-11 text-xs font-bold text-slate-700 border-slate-300">
+                        <i class="fa-solid fa-keyboard mr-2"></i> {{ t('Camera Not Working? Enter 6-Digit PIN') }}
+                    </button>
+                </div>
+            </div>
+        {% endif %}
+    {% endif %}
+
+    <!-- In-App Coordination Chat Widget (Safe In-App Communication) -->
+    <div class="chat-card">
+        <div class="chat-header">
+            <div class="flex items-center gap-2">
+                <i class="fa-solid fa-comments text-primary text-sm"></i>
+                <span class="text-xs font-bold text-slate-800">{{ t('In-App Coordination Chat') }}</span>
+            </div>
+            <span class="text-[10px] text-muted font-medium flex items-center gap-1">
+                <i class="fa-solid fa-shield text-emerald-500"></i> {{ t('Privacy Protected') }}
+            </span>
+        </div>
+        <div id="chat-messages" class="chat-messages">
+            <p class="text-[11px] text-muted text-center py-2">{{ t('Loading messages...') }}</p>
+        </div>
+        <form onsubmit="handleSendChat(event)" class="chat-input-row">
+            <input type="text" id="chat-input" placeholder="{{ t('Type a message...') }}" class="input sm flex-1 text-xs" autocomplete="off" required>
+            <button type="submit" class="btn btn-primary sm btn-icon" title="Send message">
+                <i class="fa-solid fa-paper-plane text-xs"></i>
+            </button>
+        </form>
+    </div>
+
+    <!-- Action Controls (Strict State-Machine Actions) -->
+    <div class="flex flex-col gap-3 mt-8">
+        <!-- Worker Pending Actions -->
+        {% if not is_customer and s == 'Pending' %}
+            <button onclick="acceptBooking()" class="btn btn-primary h-14 w-full text-base font-bold shadow-md">
                 <i class="fa-solid fa-check mr-2"></i> {{ t('Accept Request') }}
             </button>
-            <button onclick="declineBooking()" class="btn btn-outline h-14 w-full text-red-500">
-                <i class="fa-solid fa-xmark mr-2"></i> {{ t('Decline') }}
+            <button onclick="declineBooking()" class="btn btn-outline h-14 w-full text-red-500 border-red-200">
+                <i class="fa-solid fa-xmark mr-2"></i> {{ t('Decline Request') }}
             </button>
         {% endif %}
 
-        {% if (is_customer and booking.status in ['Pending', 'Booked']) or (not is_customer and booking.status == 'Booked') %}
-            <button onclick="cancelBooking()" class="btn btn-outline h-14 w-full text-red-500 border-red-500/20">
+        <!-- Worker Confirmed/Travelling Actions -->
+        {% if not is_customer and s == 'Booked' %}
+            <button onclick="travelBooking()" class="btn btn-primary h-14 w-full text-base font-bold shadow-md">
+                <i class="fa-solid fa-motorcycle mr-2"></i> {{ t('Start Travelling (On The Way)') }}
+            </button>
+            <button onclick="arriveBooking()" class="btn btn-outline h-14 w-full text-indigo-600 border-indigo-200">
+                <i class="fa-solid fa-location-dot mr-2"></i> {{ t('Arrived at Location') }}
+            </button>
+        {% endif %}
+
+        {% if not is_customer and s == 'On The Way' %}
+            <button onclick="arriveBooking()" class="btn btn-primary h-14 w-full text-base font-bold shadow-md">
+                <i class="fa-solid fa-location-dot mr-2"></i> {{ t('Arrived at Location') }}
+            </button>
+        {% endif %}
+
+        <!-- Job Completion Actions -->
+        {% if s == 'Work Started' %}
+            {% if is_customer %}
+                <button onclick="markComplete()" class="btn btn-primary h-14 w-full text-base font-bold shadow-md">
+                    <i class="fa-solid fa-circle-check mr-2"></i> {{ t('Mark Job Completed') }}
+                </button>
+                <button onclick="openDisputeModal()" class="btn btn-outline h-14 w-full text-amber-600 border-amber-200">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ t('Report Dispute or Issue') }}
+                </button>
+            {% else %}
+                <button onclick="markComplete()" class="btn btn-primary h-14 w-full text-base font-bold shadow-md">
+                    <i class="fa-solid fa-circle-check mr-2"></i> {{ t('Request Job Completion') }}
+                </button>
+                <button onclick="openDisputeModal()" class="btn btn-outline h-14 w-full text-amber-600 border-amber-200">
+                    <i class="fa-solid fa-triangle-exclamation mr-2"></i> {{ t('Report Dispute or Issue') }}
+                </button>
+            {% endif %}
+        {% endif %}
+
+        <!-- Cancellation Action (Subject to explicit policy) -->
+        {% if s not in ['Completed', 'Paid', 'Cancelled', 'Disputed'] %}
+            <button onclick="openCancelModal()" class="btn btn-outline h-12 w-full text-red-500 border-red-200 text-sm">
                 <i class="fa-solid fa-ban mr-2"></i> {{ t('Cancel Booking') }}
             </button>
         {% endif %}
+
+        <!-- Trust & Safety Actions: Report Issue & Block Counterparty -->
+        <div class="flex gap-2.5 mt-2">
+            <button onclick="openDisputeModal()" class="btn btn-outline h-12 flex-1 text-amber-600 border-amber-300 text-xs font-bold">
+                <i class="fa-solid fa-triangle-exclamation mr-1.5"></i> {{ t('Report Issue or Dispute') }}
+            </button>
+            {% if not is_counterparty_blocked %}
+            <button onclick="confirmBlockCounterparty()" class="btn btn-outline h-12 flex-1 text-slate-600 border-slate-300 text-xs font-bold">
+                <i class="fa-solid fa-ban mr-1.5"></i> {{ t('Block %s' % ('Worker' if is_customer else 'Customer')) }}
+            </button>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Status History Audit Trail (Collapsible) -->
+    {% if status_history %}
+    <details class="card p-4 mt-8 bg-slate-50 border border-slate-200 text-xs">
+        <summary class="font-bold text-slate-700 cursor-pointer flex items-center justify-between">
+            <span><i class="fa-solid fa-clock-rotate-left mr-1.5 text-primary"></i> {{ t('Status History & Audit Trail') }}</span>
+            <span class="text-[10px] text-muted">{{ status_history|length }} {{ t('events') }}</span>
+        </summary>
+        <div class="mt-4 flex flex-col gap-2.5">
+            {% for item in status_history %}
+            <div class="flex items-start gap-2 border-l-2 border-primary pl-2.5 py-1">
+                <div>
+                    <p class="font-bold text-slate-800">
+                        {{ item.old_status or 'Start' }} ➔ <span class="text-primary">{{ item.new_status }}</span>
+                    </p>
+                    <p class="text-[11px] text-muted">{{ item.reason or 'Status updated' }}</p>
+                    <p class="text-[9px] text-slate-400 mt-0.5">{{ item.created_at }}</p>
+                </div>
+            </div>
+            {% endfor %}
+        </div>
+    </details>
+    {% endif %}
+</div>
+
+<!-- Cancellation Modal with Mandatory In-Progress Reason Policy -->
+<div id="cancel-modal" class="modal-overlay">
+    <div class="modal-dialog">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-black text-slate-800">{{ t('Cancel Booking') }}</h3>
+            <button onclick="closeCancelModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+
+        {% if booking.status == 'Work Started' %}
+        <div class="p-3 rounded-lg bg-red-50 border border-red-200 text-red-800 text-xs mb-4">
+            <p class="font-bold flex items-center gap-1.5">
+                <i class="fa-solid fa-triangle-exclamation text-red-600"></i>
+                {{ t('Work Already Started!') }}
+            </p>
+            <p class="mt-1 text-[11px]">
+                {{ t('Because physical work has already started, our policy requires a detailed explanation (minimum 10 characters). This will be recorded for audit and dispute verification.') }}
+            </p>
+        </div>
+        {% else %}
+        <p class="text-xs text-muted mb-4">{{ t('Please specify why you are cancelling this booking:') }}</p>
+        {% endif %}
+
+        <textarea id="cancel-reason-input" class="input w-full text-xs p-3 mb-4" rows="3" placeholder="{{ t('Reason for cancellation (e.g. Schedule conflict, client unavailable)...') }}"></textarea>
+
+        <div class="flex gap-2">
+            <button onclick="closeCancelModal()" class="btn btn-outline flex-1 text-xs">{{ t('Back') }}</button>
+            <button onclick="submitCancellation()" id="confirm-cancel-btn" class="btn btn-primary flex-1 bg-red-600 hover:bg-red-700 border-none text-xs">
+                {{ t('Confirm Cancel') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Dispute / Report Modal with Category Selection & Server-Recorded Status -->
+<div id="dispute-modal" class="modal-overlay">
+    <div class="modal-dialog">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-black text-slate-800">{{ t('Report Dispute or Issue') }}</h3>
+            <button onclick="closeDisputeModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+        <p class="text-xs text-muted mb-3">{{ t('Describe the issue in detail. All reports are recorded on the server with active status tracking.') }}</p>
+
+        <div class="mb-3">
+            <label class="text-[11px] font-bold text-slate-700 block mb-1">{{ t('Report Category') }}</label>
+            <select id="dispute-category-select" class="input w-full text-xs p-2.5">
+                <option value="inappropriate_behavior">{{ t('Inappropriate or abusive behavior') }}</option>
+                <option value="payment_dispute">{{ t('Pricing discrepancy or unauthorized cash demand') }}</option>
+                <option value="no_show">{{ t('No show or missed appointment') }}</option>
+                <option value="poor_quality">{{ t('Substandard or incomplete work') }}</option>
+                <option value="safety_issue">{{ t('Safety or property damage issue') }}</option>
+                <option value="other">{{ t('Other concern') }}</option>
+            </select>
+        </div>
+
+        <div class="mb-4">
+            <label class="text-[11px] font-bold text-slate-700 block mb-1">{{ t('Description') }}</label>
+            <textarea id="dispute-reason-input" class="input w-full text-xs p-3" rows="3" placeholder="{{ t('Describe what went wrong, pricing discrepancy, or service quality issue (minimum 5 characters)...') }}"></textarea>
+        </div>
+
+        <div id="dispute-status-banner" style="display:none;" class="p-3 mb-3 bg-emerald-50 border border-emerald-200 text-emerald-800 rounded-xl text-xs"></div>
+
+        <div class="flex gap-2">
+            <button onclick="closeDisputeModal()" class="btn btn-outline flex-1 text-xs">{{ t('Back') }}</button>
+            <button onclick="submitDispute()" id="btn-submit-dispute" class="btn btn-primary flex-1 bg-amber-600 hover:bg-amber-700 border-none text-xs">
+                {{ t('Submit Report') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Manual 6-Digit PIN Modal (Fallback for camera-less devices, permission denied, or low light) -->
+<div id="manual-pin-modal" class="modal-overlay">
+    <div class="modal-dialog">
+        <div class="flex justify-between items-center mb-4">
+            <h3 class="text-base font-black text-slate-800">{{ t('Enter 6-Digit Check-in PIN') }}</h3>
+            <button onclick="closeManualPinModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+        <p class="text-xs text-muted mb-4">{{ t('Ask the customer for the dynamic 6-digit PIN shown on their booking screen.') }}</p>
+        
+        <div class="mb-4">
+            <input type="text" id="manual-pin-input" maxlength="6" inputmode="numeric" pattern="[0-9]*" class="input w-full text-center text-3xl font-mono tracking-widest font-black py-3 border-2 border-primary" placeholder="------" autocomplete="off" />
+            <p id="pin-status" class="text-xs text-muted mt-2 text-center"></p>
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="closeManualPinModal()" class="btn btn-outline flex-1 text-xs">{{ t('Cancel') }}</button>
+            <button onclick="submitManualPin()" id="submit-pin-btn" class="btn btn-primary flex-1 text-xs font-bold">
+                {{ t('Verify PIN & Start Work') }}
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- Amount-Bound Dynamic UPI QR Modal -->
+<div id="upi-qr-modal" class="modal-overlay">
+    <div class="modal-dialog text-center">
+        <div class="flex justify-between items-center mb-3">
+            <h3 class="text-base font-black text-slate-800">{{ t('Scan & Pay via UPI') }}</h3>
+            <button onclick="closeUpiQrModal()" class="text-slate-400 hover:text-slate-600 text-lg">&times;</button>
+        </div>
+        <p class="text-xs text-muted mb-3">{{ t('Amount-locked dynamic QR. Scan with Google Pay, PhonePe, Paytm, or BHIM.') }}</p>
+        
+        <div class="p-3 bg-slate-50 border border-slate-200 rounded-2xl flex flex-col items-center justify-center my-2">
+            <div id="upi-qr-loading" class="py-10 text-xs text-muted">
+                <i class="fa-solid fa-spinner fa-spin text-2xl text-primary mb-2"></i>
+                <p>{{ t('Generating secure amount-bound QR...') }}</p>
+            </div>
+            <div id="upi-qr-content" style="display:none;" class="flex flex-col items-center">
+                <img id="upi-qr-image" src="" alt="UPI QR" class="w-48 h-48 border border-slate-200 rounded-xl shadow-sm mb-2">
+                <div class="text-center">
+                    <span class="text-2xl font-black text-primary" id="upi-qr-amount">₹0</span>
+                    <p class="text-[10px] text-muted font-bold font-mono uppercase mt-0.5" id="upi-qr-order-id"></p>
+                </div>
+            </div>
+        </div>
+
+        <div class="flex items-center justify-center gap-1.5 text-[11px] text-slate-500 mb-4">
+            <i class="fa-solid fa-shield-halved text-emerald-600"></i>
+            <span>{{ t('Status is verified only after server-side bank confirmation') }}</span>
+        </div>
+
+        <div class="p-2.5 rounded-lg bg-amber-50 text-[11px] text-amber-800 border border-amber-200 mb-4 text-left">
+            <i class="fa-solid fa-circle-exclamation text-amber-600 mr-1"></i>
+            {{ t('Do NOT close this screen while payment completes. This page will automatically update once verified.') }}
+        </div>
+
+        <div class="flex gap-2">
+            <button onclick="closeUpiQrModal()" class="btn btn-outline flex-1 text-xs">{{ t('Close') }}</button>
+            <button onclick="checkPaymentStatusManual()" id="check-status-btn" class="btn btn-primary flex-1 text-xs">
+                <i class="fa-solid fa-arrows-rotate mr-1"></i> {{ t('Check Status') }}
+            </button>
+        </div>
     </div>
 </div>
 
 <!-- QR Scanner Overlay -->
 <div id="scanner-overlay">
-    <div class="text-center text-white mb-8">
-        <h3 class="text-xl font-black">{{ t('Scan QR Code') }}</h3>
-        <p class="text-slate-400 text-sm mt-2">{{ t('Point at the customer\'s screen') }}</p>
+    <div class="text-center text-white mb-6">
+        <h3 class="text-xl font-black">{{ t('Scan Customer QR Code') }}</h3>
+        <p class="text-slate-400 text-xs mt-1">{{ t('Point your camera at the customer\'s screen to verify arrival check-in') }}</p>
     </div>
     <div id="qr-reader"></div>
-    <p id="scan-status" class="text-coral text-xs font-bold mt-4"></p>
-    <button onclick="closeScanner()" class="btn btn-outline mt-8 border-white/20 text-white">
-        {{ t('Cancel') }}
-    </button>
+    <p id="scan-status" class="text-amber-400 text-xs font-bold mt-4"></p>
+    <div class="flex flex-col gap-2.5 mt-4 items-center w-full max-w-xs">
+        <button id="torch-btn" onclick="toggleTorch()" class="btn btn-outline sm border-white/20 text-white w-full" style="display:none;">
+            <i class="fa-solid fa-lightbulb mr-1.5"></i> {{ t('Toggle Flashlight (Low Light)') }}
+        </button>
+        <button onclick="closeScanner(); openManualPinModal();" class="btn btn-outline sm border-white/20 text-white w-full">
+            <i class="fa-solid fa-keyboard mr-1.5"></i> {{ t('Enter 6-Digit PIN instead') }}
+        </button>
+        <button onclick="closeScanner()" class="btn btn-outline sm border-white/20 text-white w-full">
+            {{ t('Cancel Scanner') }}
+        </button>
+    </div>
 </div>
 
 <script>
     const BOOKING_ID = "{{ booking.id }}";
-    let currentStatus = "{{ booking.status }}";
+    const CURRENT_STATUS = "{{ booking.status }}";
+    const IS_CUSTOMER = document.querySelector('.detail-container') ? document.querySelector('.detail-container').dataset.isCustomer === 'true' : false;
+    const COUNTERPARTY_ID = IS_CUSTOMER ? "{{ worker.id if worker else '' }}" : "{{ booking.user_id }}";
+    const COUNTERPARTY_ROLE = IS_CUSTOMER ? "worker" : "user";
     let html5QrCode = null;
+    let torchOn = false;
 
+    // ── QR Scanner Logic ──
     function openScanner() {
+        if (!navigator.onLine) {
+            alert('You appear to be offline. A live connection is required to verify check-in on the server.');
+            return;
+        }
         document.getElementById('scanner-overlay').classList.add('open');
+        const statusEl = document.getElementById('scan-status');
+        statusEl.textContent = 'Requesting camera access...';
+        const torchBtn = document.getElementById('torch-btn');
+        torchBtn.style.display = 'none';
+
         html5QrCode = new Html5Qrcode("qr-reader");
         html5QrCode.start(
             { facingMode: "environment" },
             { fps: 10, qrbox: { width: 250, height: 250 } },
             onQRScan,
             () => {}
-        ).catch(err => {
-            document.getElementById('scan-status').textContent = 'Camera error';
+        ).then(() => {
+            statusEl.textContent = 'Align customer QR code within the frame';
+            try {
+                const stream = html5QrCode.getRunningTrackCameraCapabilities();
+                if (stream && stream.torchFeature && stream.torchFeature().isSupported()) {
+                    torchBtn.style.display = 'block';
+                }
+            } catch(e) {}
+        }).catch(err => {
+            let msg = 'Camera error or permission denied.';
+            if (err && (err.name === 'NotAllowedError' || String(err).includes('NotAllowedError'))) {
+                msg = 'Camera permission was denied. Please allow camera access in your browser settings, or enter the 6-digit PIN below.';
+            } else if (err && (err.name === 'NotFoundError' || String(err).includes('NotFoundError'))) {
+                msg = 'No camera found on this device. Please enter the 6-digit PIN below.';
+            }
+            statusEl.textContent = msg;
         });
     }
 
+    async function toggleTorch() {
+        if (!html5QrCode) return;
+        try {
+            torchOn = !torchOn;
+            await html5QrCode.applyVideoConstraints({
+                advanced: [{ torch: torchOn }]
+            });
+        } catch(e) {
+            alert('Flashlight toggle is not supported by your camera/browser.');
+        }
+    }
+
     async function onQRScan(decodedText) {
-        await html5QrCode.stop().catch(() => {});
-        document.getElementById('scan-status').textContent = 'Verifying...';
+        if (html5QrCode) {
+            await html5QrCode.stop().catch(() => {});
+        }
+        const statusEl = document.getElementById('scan-status');
+        statusEl.textContent = 'QR detected. Verifying on server (local decode is not check-in)...';
+
+        if (!navigator.onLine) {
+            alert('Network offline. Cannot verify check-in without an active internet connection.');
+            openScanner();
+            return;
+        }
 
         try {
-            const payload = JSON.parse(decodedText);
+            let tok = decodedText;
+            try {
+                const parsed = JSON.parse(decodedText);
+                if (parsed.tok) tok = parsed.tok;
+            } catch(e) {}
+
             const res = await fetch(`/api/bookings/${BOOKING_ID}/checkin`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ token: payload.tok })
+                body: JSON.stringify({ token: tok })
             });
+            const data = await res.json();
             if (res.ok) {
+                statusEl.textContent = 'Server confirmed: Check-in verified!';
+                alert(data.message || 'Check-in verified successfully by server! Work has started.');
                 location.reload();
             } else {
-                const data = await res.json();
-                alert(data.error || 'Failed');
+                alert(data.error || 'Check-in verification failed on server');
                 openScanner();
             }
         } catch(e) {
-            alert('Invalid QR');
+            alert('Invalid QR code format or network error');
             openScanner();
         }
     }
 
     function closeScanner() {
-        if (html5QrCode) html5QrCode.stop().catch(() => {});
+        if (html5QrCode) {
+            html5QrCode.stop().catch(() => {});
+        }
         document.getElementById('scanner-overlay').classList.remove('open');
     }
 
-    async function markComplete() {
-        if (!confirm('Confirm job completion?')) return;
-        const res = await fetch(`/api/bookings/${BOOKING_ID}/complete`, { method: 'POST' });
-        if (res.ok) location.reload();
+    // ── Manual 6-Digit PIN Modal Logic ──
+    function openManualPinModal() {
+        const modal = document.getElementById('manual-pin-modal');
+        if (modal) {
+            modal.classList.add('open');
+            const input = document.getElementById('manual-pin-input');
+            input.value = '';
+            document.getElementById('pin-status').textContent = '';
+            setTimeout(() => input.focus(), 200);
+        }
     }
 
+    function closeManualPinModal() {
+        const modal = document.getElementById('manual-pin-modal');
+        if (modal) {
+            modal.classList.remove('open');
+        }
+    }
+
+    async function submitManualPin() {
+        if (!navigator.onLine) {
+            alert('Network offline. A live connection is required to verify check-in on the server.');
+            return;
+        }
+
+        const input = document.getElementById('manual-pin-input');
+        const pin = input.value.trim();
+        if (!pin || pin.length !== 6 || !/^\d{6}$/.test(pin)) {
+            alert('Please enter a valid 6-digit numeric PIN.');
+            input.focus();
+            return;
+        }
+
+        const btn = document.getElementById('submit-pin-btn');
+        const statusEl = document.getElementById('pin-status');
+        btn.disabled = true;
+        btn.textContent = 'Verifying with server...';
+        statusEl.textContent = 'Submitting PIN to server for cryptographic check...';
+
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ code: pin })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                statusEl.textContent = 'Check-in verified!';
+                alert(data.message || 'Check-in verified successfully by server! Work has started.');
+                location.reload();
+            } else {
+                statusEl.textContent = data.error || 'Verification failed';
+                alert(data.error || 'Invalid or expired 6-digit PIN.');
+                btn.disabled = false;
+                btn.textContent = 'Verify PIN & Start Work';
+                input.focus();
+            }
+        } catch(e) {
+            statusEl.textContent = 'Network communication error';
+            alert('Network error while verifying PIN. Please check your connection.');
+            btn.disabled = false;
+            btn.textContent = 'Verify PIN & Start Work';
+        }
+    }
+
+    // ── Direct Customer Arrival Confirmation (No Camera / In-Person Step) ──
+    async function confirmWorkerArrivalDirectly() {
+        if (!navigator.onLine) {
+            alert('You appear to be offline. A live connection is required to confirm arrival.');
+            return;
+        }
+
+        if (!confirm('Has the worker arrived at your service location? This will verify check-in and start the job.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/confirm-checkin`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (res.ok) {
+                alert(data.message || 'Worker arrival confirmed! Work is now In Progress.');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to confirm arrival');
+            }
+        } catch(e) {
+            alert('Network communication error while confirming arrival');
+        }
+    }
+
+    // ── Dynamic QR & PIN Refresh for Customer ──
+    if (IS_CUSTOMER && ['Booked', 'On The Way', 'Arrived'].includes(CURRENT_STATUS)) {
+        setInterval(async () => {
+            try {
+                const res = await fetch(`/api/bookings/${BOOKING_ID}/checkin-token`);
+                if (res.ok) {
+                    const data = await res.json();
+                    if (data.qr_b64) {
+                        const qrImg = document.getElementById('qr-img');
+                        if (qrImg) qrImg.src = 'data:image/png;base64,' + data.qr_b64;
+                    }
+                    if (data.code) {
+                        const pinDisplay = document.getElementById('checkin-pin-display');
+                        if (pinDisplay) pinDisplay.textContent = data.code;
+                    }
+                }
+            } catch(e) {
+                console.warn("Background check-in token refresh error:", e);
+            }
+        }, 240000); // Refreshes at 4 minutes (before 5-minute TTL expiration)
+    }
+
+    // ── Workflow Actions ──
     async function acceptBooking() {
         const res = await fetch(`/api/bookings/${BOOKING_ID}/accept`, { method: 'POST' });
-        if (res.ok) location.reload();
+        const data = await res.json();
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to accept booking');
+        }
     }
 
     async function declineBooking() {
-        if (!confirm('Decline?')) return;
+        if (!confirm('Decline this booking request?')) return;
         const res = await fetch(`/api/bookings/${BOOKING_ID}/decline`, { method: 'POST' });
-        if (res.ok) location.href = '/dashboard/worker';
-    }
-
-    async function cancelBooking() {
-        if (!confirm('Cancel?')) return;
-        const res = await fetch(`/api/bookings/${BOOKING_ID}/cancel`, { method: 'POST' });
-        if (res.ok) location.reload();
-    }
-
-    // Auto refresh status
-    setInterval(async () => {
-        if (['Completed', 'Cancelled'].includes(currentStatus)) return;
-        const res = await fetch(`/api/bookings/${BOOKING_ID}`);
+        const data = await res.json();
         if (res.ok) {
-            const data = await res.json();
-            if (data.status !== currentStatus) location.reload();
+            location.href = '/dashboard/worker';
+        } else {
+            alert(data.error || 'Failed to decline booking');
         }
+    }
+
+    async function travelBooking() {
+        const res = await fetch(`/api/bookings/${BOOKING_ID}/travel`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ eta_minutes: 30 })
+        });
+        const data = await res.json();
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update travel status');
+        }
+    }
+
+    async function arriveBooking() {
+        const res = await fetch(`/api/bookings/${BOOKING_ID}/arrive`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to update arrival status');
+        }
+    }
+
+    async function markComplete() {
+        if (!confirm('Confirm that this job is complete?')) return;
+        const res = await fetch(`/api/bookings/${BOOKING_ID}/complete`, { method: 'POST' });
+        const data = await res.json();
+        if (res.ok) {
+            location.reload();
+        } else {
+            alert(data.error || 'Failed to complete booking');
+        }
+    }
+
+    // ── Payment & Settlement Handlers ──
+    let upiPollTimer = null;
+
+    async function confirmAndPayCash() {
+        if (!confirm('Confirm choosing Cash on Completion? You will pay the worker directly in physical cash upon service completion.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/payments/create-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking_id: BOOKING_ID,
+                    payment_method: 'cash'
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert(data.instructions || 'Cash payment intent recorded. Please pay cash to worker upon completion.');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to initialize cash settlement');
+            }
+        } catch(e) {
+            alert('Network error while recording cash payment choice.');
+        }
+    }
+
+    async function initiateOnlinePayment() {
+        if (typeof Razorpay === 'undefined') {
+            alert('Payment gateway library could not be loaded. Please check your internet connection or use Cash on Completion.');
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/payments/create-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking_id: BOOKING_ID,
+                    payment_method: 'razorpay'
+                })
+            });
+            const data = await res.json();
+            if (!res.ok || !data.success) {
+                alert(data.error || 'Could not initiate online payment intent.');
+                return;
+            }
+
+            const options = {
+                key: data.key_id,
+                amount: data.amount_paisa,
+                currency: data.currency || 'INR',
+                name: 'Voice Hire',
+                description: 'Settlement for Booking #' + BOOKING_ID,
+                order_id: data.order_id,
+                prefill: {
+                    contact: '',
+                    name: ''
+                },
+                theme: { color: '#2563eb' },
+                handler: async function (response) {
+                    try {
+                        const verifyRes = await fetch('/api/payments/verify', {
+                            method: 'POST',
+                            headers: { 'Content-Type': 'application/json' },
+                            body: JSON.stringify({
+                                booking_id: BOOKING_ID,
+                                gateway_order_id: response.razorpay_order_id,
+                                gateway_payment_id: response.razorpay_payment_id,
+                                gateway_signature: response.razorpay_signature
+                            })
+                        });
+                        const verifyData = await verifyRes.json();
+                        if (verifyRes.ok && verifyData.success) {
+                            alert('Payment verified and settled successfully!');
+                            location.reload();
+                        } else {
+                            alert('Verification failed: ' + (verifyData.error || 'Signature verification rejected'));
+                        }
+                    } catch(err) {
+                        alert('Network error during payment verification. Please reload to check status.');
+                    }
+                },
+                modal: {
+                    ondismiss: function() {
+                        console.log('Customer dismissed Razorpay checkout.');
+                    }
+                }
+            };
+
+            const rzp = new Razorpay(options);
+            rzp.on('payment.failed', async function (response) {
+                try {
+                    await fetch('/api/payments/fail', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({
+                            booking_id: BOOKING_ID,
+                            gateway_order_id: data.order_id,
+                            error_code: response.error ? response.error.code : 'PAYMENT_FAILED',
+                            error_description: response.error ? response.error.description : 'Payment failed'
+                        })
+                    });
+                } catch(e) {}
+                alert('Payment failed: ' + (response.error ? response.error.description : 'Transaction was not completed'));
+            });
+
+            rzp.open();
+        } catch(e) {
+            alert('Network communication error initiating online payment.');
+        }
+    }
+
+    async function openUpiQrModal() {
+        const modal = document.getElementById('upi-qr-modal');
+        if (!modal) return;
+        modal.classList.add('open');
+
+        const loading = document.getElementById('upi-qr-loading');
+        const content = document.getElementById('upi-qr-content');
+        if (loading) loading.style.display = 'block';
+        if (content) content.style.display = 'none';
+
+        try {
+            const res = await fetch('/api/payments/create-intent', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking_id: BOOKING_ID,
+                    payment_method: 'upi'
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success && data.qr_image_b64) {
+                document.getElementById('upi-qr-image').src = 'data:image/png;base64,' + data.qr_image_b64;
+                document.getElementById('upi-qr-amount').textContent = '₹' + data.amount;
+                document.getElementById('upi-qr-order-id').textContent = 'Order Ref: ' + (data.order_id || BOOKING_ID);
+
+                if (loading) loading.style.display = 'none';
+                if (content) content.style.display = 'flex';
+
+                if (upiPollTimer) clearInterval(upiPollTimer);
+                upiPollTimer = setInterval(async () => {
+                    try {
+                        const checkRes = await fetch(`/api/bookings/${BOOKING_ID}`);
+                        if (checkRes.ok) {
+                            const bData = await checkRes.json();
+                            if (bData.status === 'Paid') {
+                                clearInterval(upiPollTimer);
+                                alert('Payment verified successfully!');
+                                location.reload();
+                            }
+                        }
+                    } catch(e) {}
+                }, 4000);
+            } else {
+                alert(data.error || 'Failed to generate amount-bound UPI QR');
+                closeUpiQrModal();
+            }
+        } catch(e) {
+            alert('Network error while requesting UPI QR');
+            closeUpiQrModal();
+        }
+    }
+
+    function closeUpiQrModal() {
+        const modal = document.getElementById('upi-qr-modal');
+        if (modal) modal.classList.remove('open');
+        if (upiPollTimer) {
+            clearInterval(upiPollTimer);
+            upiPollTimer = null;
+        }
+    }
+
+    async function checkPaymentStatusManual() {
+        const btn = document.getElementById('check-status-btn');
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Checking...';
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}`);
+            if (res.ok) {
+                const bData = await res.json();
+                if (bData.status === 'Paid') {
+                    alert('Payment has been verified and settled!');
+                    location.reload();
+                    return;
+                }
+            }
+            alert('Payment has not yet been verified by the bank. If you just completed the payment, please allow a few moments for server verification.');
+        } catch(e) {
+            alert('Error checking payment status.');
+        } finally {
+            btn.disabled = false;
+            btn.innerHTML = '<i class="fa-solid fa-arrows-rotate mr-1"></i> Check Status';
+        }
+    }
+
+    async function workerConfirmCashPayment() {
+        if (!confirm('Did you physically receive the full cash payment for this booking? This will officially mark the booking as Paid and complete.')) {
+            return;
+        }
+
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/confirm-cash-payment`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' }
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert(data.message || 'Cash payment verified and recorded. Booking is Paid!');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to confirm cash payment');
+            }
+        } catch(e) {
+            alert('Network communication error confirming cash payment.');
+        }
+    }
+
+    // ── Cancellation Modal ──
+    function openCancelModal() {
+        document.getElementById('cancel-modal').classList.add('open');
+    }
+
+    function closeCancelModal() {
+        document.getElementById('cancel-modal').classList.remove('open');
+    }
+
+    async function submitCancellation() {
+        const reason = document.getElementById('cancel-reason-input').value.trim();
+        if (CURRENT_STATUS === 'Work Started' && reason.length < 10) {
+            alert('Work has already started. An explicit cancellation reason of at least 10 characters is mandatory.');
+            return;
+        }
+
+        const btn = document.getElementById('confirm-cancel-btn');
+        btn.disabled = true;
+        btn.textContent = 'Processing...';
+
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/cancel`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason || 'Cancelled by user' })
+            });
+            const data = await res.json();
+            if (res.ok) {
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to cancel booking');
+                btn.disabled = false;
+                btn.textContent = 'Confirm Cancel';
+            }
+        } catch(e) {
+            alert('Network error while cancelling');
+            btn.disabled = false;
+            btn.textContent = 'Confirm Cancel';
+        }
+    }
+
+    // ── Dispute Modal ──
+    function openDisputeModal() {
+        document.getElementById('dispute-modal').classList.add('open');
+    }
+
+    function closeDisputeModal() {
+        document.getElementById('dispute-modal').classList.remove('open');
+    }
+
+    async function submitDispute() {
+        const btn = document.getElementById('btn-submit-dispute');
+        const category = document.getElementById('dispute-category-select')?.value || 'other';
+        const reason = document.getElementById('dispute-reason-input').value.trim();
+        const banner = document.getElementById('dispute-status-banner');
+
+        if (!reason || reason.length < 5) {
+            alert('Please describe the dispute or issue (at least 5 characters).');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.textContent = 'Submitting report...';
+        }
+
+        try {
+            // 1. Submit authoritative safety report
+            const repRes = await fetch('/api/reports', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    booking_id: BOOKING_ID,
+                    category: category,
+                    reason: category,
+                    description: reason,
+                    reported_id: COUNTERPARTY_ID,
+                    reported_role: COUNTERPARTY_ROLE
+                })
+            });
+            const repData = await repRes.json();
+
+            // 2. Also register booking dispute state
+            await fetch(`/api/bookings/${BOOKING_ID}/dispute`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ reason: reason })
+            });
+
+            if (banner) {
+                banner.style.display = 'block';
+                banner.innerHTML = `<strong>Report Recorded (#${repData.report_id || 'AUDIT'}):</strong> Current server status: <em>${repData.status || 'Under Review'}</em>. Our operations team is intervening.`;
+            }
+
+            setTimeout(() => {
+                location.reload();
+            }, 1800);
+
+        } catch (e) {
+            alert('Network error while reporting dispute.');
+            if (btn) {
+                btn.disabled = false;
+                btn.textContent = 'Submit Report';
+            }
+        }
+    }
+
+    // ── Verified Rating & Review ──
+    function setReviewRating(rating) {
+        document.getElementById('input-review-rating').value = rating;
+        const label = document.getElementById('review-rating-label');
+        if (label) label.textContent = `${rating}.0 / 5.0`;
+
+        const stars = document.querySelectorAll('#review-stars-picker .star-item');
+        stars.forEach((star, idx) => {
+            if (idx < rating) {
+                star.className = 'star-item text-amber-400';
+            } else {
+                star.className = 'star-item text-slate-300';
+            }
+        });
+    }
+
+    async function submitBookingReview() {
+        const btn = document.getElementById('btn-submit-review');
+        const rating = parseInt(document.getElementById('input-review-rating')?.value, 10) || 5;
+        const reviewText = document.getElementById('input-review-text')?.value.trim();
+
+        if (!reviewText) {
+            alert('Please share a few words about the work done.');
+            return;
+        }
+
+        if (btn) {
+            btn.disabled = true;
+            btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Submitting...';
+        }
+
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/review`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    rating: rating,
+                    review: reviewText
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert('🌟 Review submitted and permanently recorded!');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to submit review');
+                if (btn) {
+                    btn.disabled = false;
+                    btn.innerHTML = '<i class="fa-solid fa-check mr-1.5"></i> Submit Verified Review';
+                }
+            }
+        } catch (e) {
+            alert('Network error while submitting review.');
+            if (btn) {
+                btn.disabled = false;
+                btn.innerHTML = '<i class="fa-solid fa-check mr-1.5"></i> Submit Verified Review';
+            }
+        }
+    }
+
+    // ── Counterparty Blocking ──
+    async function confirmBlockCounterparty() {
+        const roleLabel = IS_CUSTOMER ? 'worker' : 'customer';
+        if (!confirm(`Are you sure you want to block this ${roleLabel}? Communication and future bookings between your accounts will be rejected.`)) {
+            return;
+        }
+
+        try {
+            const res = await fetch('/api/blocks', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    blocked_id: COUNTERPARTY_ID,
+                    blocked_role: COUNTERPARTY_ROLE,
+                    reason: `Blocked from booking #${BOOKING_ID}`
+                })
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert(`User blocked. Communication is now restricted.`);
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to block user');
+            }
+        } catch (e) {
+            alert('Network error while blocking user.');
+        }
+    }
+
+    async function unblockCounterparty() {
+        if (!confirm('Unblock this user? This will restore booking and communication capabilities.')) return;
+
+        try {
+            const res = await fetch(`/api/blocks/${COUNTERPARTY_ID}`, {
+                method: 'DELETE'
+            });
+            const data = await res.json();
+            if (res.ok && data.success) {
+                alert('User unblocked successfully.');
+                location.reload();
+            } else {
+                alert(data.error || 'Failed to unblock user');
+            }
+        } catch (e) {
+            alert('Network error while unblocking user.');
+        }
+    }
+
+    // ── In-App Messaging ──
+    async function loadChatMessages() {
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/messages`);
+            if (!res.ok) return;
+            const messages = await res.json();
+            const box = document.getElementById('chat-messages');
+            if (!messages || messages.length === 0) {
+                box.innerHTML = '<p class="text-[11px] text-muted text-center py-2">No messages yet. Send a note to coordinate arrival.</p>';
+                return;
+            }
+
+            box.innerHTML = messages.map(m => {
+                const isMine = (IS_CUSTOMER && m.sender_role === 'user') || (!IS_CUSTOMER && m.sender_role === 'worker');
+                const timeStr = m.created_at ? new Date(m.created_at).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
+                const roleBadge = m.sender_role === 'user' ? 'Customer' : 'Worker';
+                return `
+                    <div class="chat-bubble ${isMine ? 'mine' : 'theirs'}">
+                        <div>${escapeHtml(m.message)}</div>
+                        <div class="meta">${isMine ? 'You' : roleBadge} • ${timeStr}</div>
+                    </div>
+                `;
+            }).join('');
+            box.scrollTop = box.scrollHeight;
+        } catch(e) {
+            console.error("Chat load error:", e);
+        }
+    }
+
+    async function handleSendChat(e) {
+        e.preventDefault();
+        const input = document.getElementById('chat-input');
+        const text = input.value.trim();
+        if (!text) return;
+
+        input.value = '';
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}/messages`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ message: text })
+            });
+            if (res.ok) {
+                loadChatMessages();
+            } else {
+                const err = await res.json();
+                alert(err.error || 'Failed to send message');
+            }
+        } catch(e) {
+            alert('Network error sending message');
+        }
+    }
+
+    function escapeHtml(str) {
+        if (!str) return '';
+        return str.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;").replace(/"/g, "&quot;");
+    }
+
+    // Auto-refresh chat and booking status
+    loadChatMessages();
+    setInterval(loadChatMessages, 5000);
+
+    setInterval(async () => {
+        if (['Completed', 'Paid', 'Cancelled'].includes(CURRENT_STATUS)) return;
+        try {
+            const res = await fetch(`/api/bookings/${BOOKING_ID}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status && data.status !== CURRENT_STATUS) {
+                    location.reload();
+                }
+            }
+        } catch(e) {}
     }, 5000);
 </script>
 {% endblock %}

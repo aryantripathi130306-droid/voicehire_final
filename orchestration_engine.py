@@ -178,6 +178,7 @@ VALID_TRANSITIONS: Dict[ConversationState, Set[ConversationState]] = {
         ConversationState.RECOVERABLE_ERROR
     },
     ConversationState.BOOKING_GUIDANCE: {
+        ConversationState.BOOKING_GUIDANCE,
         ConversationState.AWAITING_USER_CONFIRMATION,
         ConversationState.AUTHENTICATED,
         ConversationState.JOB_DISCOVERY,
@@ -310,6 +311,22 @@ GENERAL_FAQ_TOPICS = {
             'hi': "यहाँ सभी कामगारों और ग्राहकों का सत्यापन किया जाता है। आपकी सुरक्षा और गोपनीयता हमारी पहली प्राथमिकता है।",
             'en': "Workers and jobs are verified. Your safety, verified check-in, and privacy are strictly safeguarded.",
             'pa': "ਸਾਰੇ ਕਾਰੀਗਰਾਂ ਦੀ ਪੁਸ਼ਟੀ ਕੀਤੀ ਜਾਂਦੀ ਹੈ ਅਤੇ ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਸਾਡੀ ਪਹਿਲ ਹੈ।"
+        }
+    },
+    'booking_workflow': {
+        'keywords': ['booking status', 'status kya hai', 'stages', 'booking kaise kaam', 'how booking works', 'booking ke niyam', 'checkin process'],
+        'answers': {
+            'hi': "VoiceHire बुकिंग प्रक्रिया: 1. अनुरोध (Pending) ➔ 2. स्वीकृत (Booked) ➔ 3. रास्ते में (Travelling) ➔ 4. आगमन (Arrived) ➔ 5. QR सत्यापन से कार्य शुरू ➔ 6. संपन्न (Completed)। लाइव बुकिंग देखने के लिए 'मेरी बुकिंग' पर जाएँ।",
+            'en': "VoiceHire booking lifecycle: 1. Pending ➔ 2. Booked ➔ 3. Travelling (On The Way) ➔ 4. Arrived ➔ 5. QR-verified Work Started ➔ 6. Completed. Visit My Bookings to track your active bookings.",
+            'pa': "VoiceHire ਬੁਕਿੰਗ ਪ੍ਰਕਿਰਿਆ: 1. ਬੇਨਤੀ (Pending) ➔ 2. ਸਵੀਕਾਰ (Booked) ➔ 3. ਰਸਤੇ ਵਿੱਚ ➔ 4. ਪਹੁੰਚਿਆ ➔ 5. QR ਪੁਸ਼ਟ ਕੰਮ ਸ਼ੁਰੂ ➔ 6. ਪੂਰਾ।"
+        }
+    },
+    'booking_anti_spoofing': {
+        'keywords': ['fake booking', 'manufacture booking', 'bina payment booking', 'bypass checkin', 'nakli booking'],
+        'answers': {
+            'hi': "सहायक सीधे बुकिंग नहीं बना सकता या पुष्टि नहीं कर सकता। सभी बुकिंग बैकएंड और कार्यस्थल पर QR सत्यापन द्वारा अधिकृत होती हैं।",
+            'en': "The assistant cannot manufacture or confirm bookings directly. All bookings and status changes must be executed authoritatively via the backend and verified on-site via secure QR tokens.",
+            'pa': "ਸਹਾਇਕ ਸਿੱਧਾ ਬੁਕਿੰਗ ਨਹੀਂ ਬਣਾ ਸਕਦਾ। ਸਾਰੀਆਂ ਬੁਕਿੰਗਾਂ ਸਿਸਟਮ ਦੁਆਰਾ ਅਧਿਕਾਰਤ ਹੁੰਦੀਆਂ ਹਨ।"
         }
     }
 }
@@ -675,8 +692,46 @@ class OrchestrationEngine:
                     'language': lang
                 }
 
-        # ── 11. STATE HANDLER: AUTHENTICATED & JOB_DISCOVERY ──
-        if current_state in {ConversationState.AUTHENTICATED, ConversationState.JOB_DISCOVERY}:
+        # ── 11. STATE HANDLER: AUTHENTICATED, JOB_DISCOVERY & BOOKING_GUIDANCE ──
+        if current_state in {ConversationState.AUTHENTICATED, ConversationState.JOB_DISCOVERY, ConversationState.BOOKING_GUIDANCE}:
+            # Anti-spoofing / anti-manufacture guard (Requirement 10: assistant cannot manufacture or confirm bookings)
+            if re.search(r'\b(fake booking|manufacture booking|confirm booking|mark complete|complete booking|bypass qr|bypass checkin)\b', lower_text):
+                target_route = "/bookings" if user_role != 'worker' else "/dashboard/worker"
+                return {
+                    'success': True,
+                    'current_state': ConversationState.BOOKING_GUIDANCE.value,
+                    'action': AssistantAction.NAVIGATE.value,
+                    'action_arguments': {'route': target_route},
+                    'speech_response': "सहायक सीधे बुकिंग नहीं बना सकता या पुष्टि नहीं कर सकता। सभी बुकिंग और सत्यापन केवल डैशबोर्ड या कार्यस्थल पर QR स्कैन द्वारा अधिकृत होते हैं।" if lang == 'hi' else "The assistant cannot manufacture or confirm bookings directly. All confirmations must be verified authoritatively via the backend or on-site QR code.",
+                    'display_text': "सुरक्षा नीति: सहायक द्वारा बुकिंग निर्माण/पुष्टि वर्जित है। डैशबोर्ड पर जाएँ।",
+                    'requires_confirmation': False,
+                    'pending_action': None,
+                    'quick_replies': ["बुकिंग पेज पर जाएँ", "सहायता"],
+                    'is_question': False,
+                    'language': lang
+                }
+
+            # Check for booking status query / navigation request
+            if re.search(r'\b(my bookings?|meri bookings?|booking dikhao|booking status|track booking|check booking|show booking)\b', lower_text):
+                num_match = re.search(r'\bbooking\s*#?(\d+)\b', lower_text)
+                if num_match:
+                    route = f"/bookings/{num_match.group(1)}"
+                else:
+                    route = "/bookings" if user_role != 'worker' else "/dashboard/worker"
+                return {
+                    'success': True,
+                    'current_state': ConversationState.BOOKING_GUIDANCE.value,
+                    'action': AssistantAction.NAVIGATE.value,
+                    'action_arguments': {'route': route},
+                    'speech_response': "बुकिंग की स्थिति देखने के लिए आपको बुकिंग पेज पर ले जा रहा हूँ।" if lang == 'hi' else f"Navigating to authoritative booking page ({route}).",
+                    'display_text': f"बुकिंग पृष्ठ पर ले जा रहे हैं: {route}",
+                    'requires_confirmation': False,
+                    'pending_action': None,
+                    'quick_replies': ["बुकिंग देखें", "मुख्य मेन्यू"],
+                    'is_question': False,
+                    'language': lang
+                }
+
             detected_trade = detect_trade(clean_text)
             if detected_trade:
                 action_type = AssistantAction.SEARCH_JOBS if user_role == 'worker' else AssistantAction.SEARCH_WORKERS

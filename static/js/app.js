@@ -377,8 +377,8 @@ const app = {
         };
 
         recognition.onerror = (event) => {
-            tBox.innerText = `Error: Please try speaking again.`;
-            setTimeout(() => { if (aiActive) this.listenForAnswer(); }, 2000);
+            tBox.innerText = `Could not recognize audio. Please click the mic to speak again, or type your answer.`;
+            aiActive = false;
         };
 
         recognition.start();
@@ -1306,7 +1306,15 @@ const app = {
                         headers: { 'Content-Type': 'application/json' },
                         body: JSON.stringify({ lat: latitude, lng: longitude })
                     });
-                }, (err) => console.error(err), { enableHighAccuracy: true });
+                }, (err) => {
+                    console.error("Geolocation error:", err);
+                    const lang = (window.VH && window.VH.lang) || 'hi';
+                    const msg = lang === 'pa' 
+                        ? 'ਜੀਪੀਐੱਸ ਅਨੁਮਤੀ ਅਸਵੀਕਾਰ ਹੋਈ। ਕਿਰਪਾ ਕਰਕੇ ਪ੍ਰੋਫਾਈਲ ਵਿੱਚ ਸ਼ਹਿਰ/ਖੇਤਰ ਦਸਤੀ ਦਰਜ ਕਰੋ।' 
+                        : (lang === 'en' ? 'GPS permission denied. Please enter your city/area manually in profile.' : 'जीपीएस अनुमति अस्वीकृत। कृपया प्रोफ़ाइल में शहर/क्षेत्र मैन्युअल रूप से दर्ज करें।');
+                    if (typeof showToast === 'function') showToast(msg, 'warning');
+                    else alert(msg);
+                }, { enableHighAccuracy: true });
             };
 
             await startSharing();

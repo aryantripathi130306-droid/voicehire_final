@@ -1,55 +1,78 @@
 {% extends 'base.html' %}
-{% block title %}Select Language — VoiceHire{% endblock %}
+{% block title %}{{ t('Select Language') }} — VoiceHire{% endblock %}
 {% block body_class %}lang-page{% endblock %}
 
 {% block body %}
 <div class="lang-page">
-    <div class="lang-box">
+    <div class="lang-box" style="max-width: 560px; width: 100%;">
         <a href="/" class="logo">
             <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
             <span class="logo-text">VoiceHire</span>
         </a>
-        <h1>Choose Your Language</h1>
-        <p>अपनी भाषा चुनें · Select your preferred language to continue</p>
+        <h1>{{ t('Choose Your Language') }}</h1>
+        <p>{{ t('Select your preferred language to continue') }}</p>
 
-        <div class="lang-grid">
-            <a href="{{ url_for('set_lang', lang_code='en') }}" class="lang-btn">
-                <span class="lang-native">🇮🇳 EN</span>
-                <span class="lang-name">English</span>
+        <!-- Tier 1: Verified Full Voice & Interface Support -->
+        <div style="text-align: left; margin: 24px 0 8px;">
+            <span class="badge sm success" style="font-size: 0.75rem; text-transform: uppercase; font-weight: 700; letter-spacing: 0.05em;">
+                <i class="fa-solid fa-circle-check mr-1"></i> {{ t('Verified Voice & Interface') }}
+            </span>
+        </div>
+        <div class="lang-grid" style="grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 12px; margin-bottom: 20px;">
+            <!-- Hindi (Default) -->
+            <a href="{{ url_for('set_lang', lang_code='hi') }}" class="lang-btn {% if current_lang == 'hi' %}active{% endif %}" style="border: 2px solid var(--primary); background: rgba(37,99,235,0.04); position: relative; padding: 14px 12px; border-radius: 12px; min-height: 52px;">
+                <span class="badge sm primary" style="position: absolute; top: -8px; right: 8px; font-size: 0.65rem;">{{ t('Default') }}</span>
+                <span class="lang-native" style="font-size: 1.25rem; font-weight: 700;">हिंदी</span>
+                <span class="lang-name" style="font-size: 0.8125rem;">Hindi</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='hi') }}" class="lang-btn">
-                <span class="lang-native">हिंदी</span>
-                <span class="lang-name">Hindi</span>
+            <!-- Punjabi (Verified) -->
+            <a href="{{ url_for('set_lang', lang_code='pa') }}" class="lang-btn {% if current_lang == 'pa' %}active{% endif %}" style="border: 2px solid var(--primary); background: rgba(37,99,235,0.04); padding: 14px 12px; border-radius: 12px; min-height: 52px;">
+                <span class="lang-native" style="font-size: 1.25rem; font-weight: 700;">ਪੰਜਾਬੀ</span>
+                <span class="lang-name" style="font-size: 0.8125rem;">Punjabi</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='mr') }}" class="lang-btn">
+            <!-- English (Verified) -->
+            <a href="{{ url_for('set_lang', lang_code='en') }}" class="lang-btn {% if current_lang == 'en' %}active{% endif %}" style="border: 2px solid var(--primary); background: rgba(37,99,235,0.04); padding: 14px 12px; border-radius: 12px; min-height: 52px;">
+                <span class="lang-native" style="font-size: 1.25rem; font-weight: 700;">English</span>
+                <span class="lang-name" style="font-size: 0.8125rem;">Indian English</span>
+            </a>
+        </div>
+
+        <!-- Tier 2: Regional Dialects (Preview) -->
+        <div style="text-align: left; margin: 16px 0 8px;">
+            <span class="badge sm muted" style="font-size: 0.7rem; text-transform: uppercase; font-weight: 600;">
+                {{ t('Regional (Beta Preview)') }}
+            </span>
+        </div>
+        <div class="lang-grid" style="grid-template-columns: repeat(auto-fit, minmax(130px, 1fr)); gap: 10px;">
+            <a href="{{ url_for('set_lang', lang_code='mr') }}" class="lang-btn {% if current_lang == 'mr' %}active{% endif %}">
                 <span class="lang-native">मराठी</span>
                 <span class="lang-name">Marathi</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='bn') }}" class="lang-btn">
+            <a href="{{ url_for('set_lang', lang_code='bn') }}" class="lang-btn {% if current_lang == 'bn' %}active{% endif %}">
                 <span class="lang-native">বাংলা</span>
                 <span class="lang-name">Bengali</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='ta') }}" class="lang-btn">
+            <a href="{{ url_for('set_lang', lang_code='ta') }}" class="lang-btn {% if current_lang == 'ta' %}active{% endif %}">
                 <span class="lang-native">தமிழ்</span>
                 <span class="lang-name">Tamil</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='te') }}" class="lang-btn">
+            <a href="{{ url_for('set_lang', lang_code='te') }}" class="lang-btn {% if current_lang == 'te' %}active{% endif %}">
                 <span class="lang-native">తెలుగు</span>
                 <span class="lang-name">Telugu</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='kn') }}" class="lang-btn">
+            <a href="{{ url_for('set_lang', lang_code='kn') }}" class="lang-btn {% if current_lang == 'kn' %}active{% endif %}">
                 <span class="lang-native">ಕನ್ನಡ</span>
                 <span class="lang-name">Kannada</span>
             </a>
-            <a href="{{ url_for('set_lang', lang_code='gu') }}" class="lang-btn">
+            <a href="{{ url_for('set_lang', lang_code='gu') }}" class="lang-btn {% if current_lang == 'gu' %}active{% endif %}">
                 <span class="lang-native">ગુજરાતી</span>
                 <span class="lang-name">Gujarati</span>
             </a>
         </div>
 
-        <p style="font-size:.8125rem;">
+        <p style="font-size:.8125rem; margin-top: 24px;">
             <i class="fa-solid fa-circle-info mr-1 text-primary"></i>
-            You can always change your language later from Settings
+            {{ t('You can always change your language later from Settings') }}
         </p>
     </div>
 </div>

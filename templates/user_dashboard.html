@@ -1,5 +1,259 @@
 {% extends 'base.html' %}
-{% block title %}User Dashboard — VoiceHire{% endblock %}
+{% block title %}Customer Dashboard — VoiceHire{% endblock %}
+
+{% block head %}
+<!-- Leaflet Map Provider -->
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" integrity="sha256-p4NxAoJBhIIN+hmNHrzRCf9tD/miZyoHS5obTRR9BMY=" crossorigin=""/>
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js" integrity="sha256-20nQCchB9co0qIjJZRGuk2/Z9VM+kNiyxNV1lvTlZBo=" crossorigin=""></script>
+
+<style>
+/* ── Customer Dashboard Styles ── */
+.customer-action-banner {
+    background: linear-gradient(135deg, #EFF6FF 0%, #DBEAFE 100%);
+    border: 1px solid #BFDBFE;
+    border-radius: var(--radius-xl);
+    padding: 24px 28px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 20px;
+    margin-bottom: 24px;
+    box-shadow: var(--shadow-xs);
+}
+.cab-text h2 {
+    font-size: 1.25rem;
+    font-weight: 700;
+    color: var(--dark);
+    margin-bottom: 6px;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+.cab-text p {
+    font-size: 0.875rem;
+    color: var(--muted);
+    margin: 0;
+    max-width: 580px;
+}
+.cab-actions {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    flex-shrink: 0;
+}
+
+/* Location Status Banner */
+.cust-location-bar {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 12px 18px;
+    margin-bottom: 20px;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    font-size: 0.8125rem;
+    box-shadow: var(--shadow-xs);
+}
+.cust-location-info {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    color: var(--dark);
+}
+.cust-location-info i {
+    color: var(--primary);
+}
+
+/* Worker Filters Bar */
+.filter-container {
+    background: var(--card);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    padding: 16px;
+    margin-bottom: 16px;
+    box-shadow: var(--shadow-xs);
+    display: flex;
+    flex-direction: column;
+    gap: 12px;
+}
+.filter-header-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    flex-wrap: wrap;
+    gap: 10px;
+}
+.filter-controls-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 10px;
+}
+.filter-input {
+    width: 100%;
+    padding: 8px 12px;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    background: var(--bg);
+    color: var(--dark);
+    font-size: 0.8125rem;
+    outline: none;
+    transition: border-color var(--transition);
+}
+.filter-input:focus {
+    border-color: var(--primary);
+    background: #fff;
+}
+.view-toggle-group {
+    display: flex;
+    background: var(--bg-alt);
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 2px;
+}
+.view-toggle-btn {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    border-radius: var(--radius-sm);
+    color: var(--muted);
+    transition: all var(--transition);
+    display: flex;
+    align-items: center;
+    gap: 5px;
+}
+.view-toggle-btn.active {
+    background: var(--card);
+    color: var(--primary);
+    box-shadow: var(--shadow-xs);
+}
+
+/* Map Wrapper */
+.customer-map-wrapper {
+    position: relative;
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    overflow: hidden;
+    margin-bottom: 16px;
+    background: #E2E8F0;
+    box-shadow: var(--shadow-xs);
+}
+#customer-workers-map {
+    height: 340px;
+    width: 100%;
+    z-index: 1;
+}
+.map-recenter-btn {
+    position: absolute;
+    bottom: 14px;
+    right: 14px;
+    z-index: 400;
+    background: white;
+    border: 1px solid var(--border);
+    border-radius: var(--radius);
+    padding: 8px 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    color: var(--dark);
+    box-shadow: var(--shadow-md);
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    cursor: pointer;
+}
+.map-recenter-btn:hover { background: var(--bg); }
+
+/* Custom Marker Pins */
+.custom-map-pin {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 32px;
+    height: 32px;
+    border-radius: 50%;
+    color: white;
+    box-shadow: 0 2px 6px rgba(0,0,0,0.3);
+    font-size: 0.8125rem;
+    border: 2px solid white;
+    cursor: pointer;
+    transition: transform 0.2s ease;
+}
+.custom-map-pin:hover { transform: scale(1.15); }
+.pin-available { background: var(--success); }
+.pin-busy { background: var(--muted); }
+.pin-customer { background: var(--primary); border: 3px solid #BFDBFE; }
+
+/* Highlight worker card */
+.worker-card.active-marker {
+    border-color: var(--primary) !important;
+    box-shadow: 0 0 0 2px rgba(37,99,235,0.2), var(--shadow-md) !important;
+    transform: translateY(-2px);
+}
+
+/* Modals */
+.modal-backdrop {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(15, 23, 42, 0.6);
+    backdrop-filter: blur(2px);
+    z-index: 9999;
+    align-items: center;
+    justify-content: center;
+    padding: 16px;
+}
+.modal-box {
+    background: var(--card);
+    border-radius: var(--radius-xl);
+    width: 100%;
+    max-width: 540px;
+    box-shadow: var(--shadow-lg);
+    overflow: hidden;
+    border: 1px solid var(--border);
+    animation: modal-pop 0.2s ease-out;
+}
+@keyframes modal-pop {
+    from { opacity: 0; transform: scale(0.96); }
+    to { opacity: 1; transform: scale(1); }
+}
+.modal-header {
+    padding: 18px 24px;
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+}
+.modal-body {
+    padding: 24px;
+    max-height: 75vh;
+    overflow-y: auto;
+}
+.modal-footer {
+    padding: 16px 24px;
+    border-top: 1px solid var(--border);
+    background: var(--bg-alt);
+    display: flex;
+    gap: 12px;
+    justify-content: flex-end;
+}
+.pulse-dot {
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background-color: var(--success);
+    display: inline-block;
+    animation: pulse-ring 1.8s infinite;
+}
+@keyframes pulse-ring {
+    0% { opacity: 1; transform: scale(0.9); }
+    50% { opacity: 0.4; transform: scale(1.2); }
+    100% { opacity: 1; transform: scale(0.9); }
+}
+</style>
+{% endblock %}
 
 {% block body %}
 <div class="dashboard-layout">
@@ -15,8 +269,12 @@
             <a href="{{ url_for('user_dashboard') }}" class="nav-item active">
                 <i class="fa-solid fa-house nav-icon"></i> Home
             </a>
-            <a href="{{ url_for('booking_slots_page', worker_id='search') if False else url_for('my_bookings_page') }}" class="nav-item">
+            <a href="#discover-workers" class="nav-item" onclick="document.getElementById('discover-workers')?.scrollIntoView({behavior:'smooth'}); return false;">
                 <i class="fa-solid fa-magnifying-glass nav-icon"></i> Find Workers
+            </a>
+            <a href="#posted-jobs" class="nav-item" onclick="document.getElementById('posted-jobs')?.scrollIntoView({behavior:'smooth'}); return false;">
+                <i class="fa-solid fa-bullhorn nav-icon"></i> My Job Requests
+                <span class="nav-badge" id="active-offers-badge" style="display:none;">0</span>
             </a>
             <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
                 <i class="fa-solid fa-calendar-check nav-icon"></i> My Bookings
@@ -29,16 +287,13 @@
             <a href="#profile" class="nav-item" onclick="openUserProfileModal(); return false;">
                 <i class="fa-solid fa-user nav-icon"></i> Profile
             </a>
-            <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
-                <i class="fa-solid fa-calendar-check nav-icon"></i> History
-            </a>
         </nav>
         <div class="sidebar-bottom">
             <div class="sidebar-user">
                 <div class="sidebar-avatar" style="background:var(--success);">{{ user.name[0].upper() if user and user.name else 'U' }}</div>
                 <div class="sidebar-user-info">
-                    <h4>{{ user.name if user else 'User' }}</h4>
-                    <p>Employer</p>
+                    <h4>{{ user.name if user else 'Customer' }}</h4>
+                    <p>Verified Employer</p>
                 </div>
             </div>
             <a href="{{ url_for('logout') }}" class="nav-item mt-2" style="color:#FDA4AF;">
@@ -50,27 +305,47 @@
     <div class="sidebar-overlay" id="sidebar-overlay" onclick="closeSidebar()"></div>
 
     <main class="dashboard-main">
+        <!-- Dash Header -->
         <div class="dash-header">
             <div style="display:flex; align-items:center; gap:12px;">
-                <button class="btn-icon mobile-menu-btn" onclick="openSidebar()">
+                <button class="btn-icon mobile-menu-btn" onclick="openSidebar()" aria-label="Open menu">
                     <i class="fa-solid fa-bars"></i>
                 </button>
                 <div class="dash-header-title">
                     <h1>Hello, {{ user.name.split()[0] if user and user.name else 'there' }}! 👋</h1>
-                    <p>Find and book workers in your area today.</p>
+                    <p>Find, compare and book verified service professionals in your area.</p>
                 </div>
             </div>
             <div class="dash-header-actions">
-                <div class="notif-btn">
+                <button type="button" class="btn btn-primary btn-sm" onclick="openPostJobModal()">
+                    <i class="fa-solid fa-plus mr-1"></i> Post a Job
+                </button>
+                <div class="notif-btn" onclick="showToast('No new notifications.', 'info')" title="Notifications">
                     <i class="fa-solid fa-bell" style="font-size:.9375rem;"></i>
-                    <div class="notif-dot"></div>
+                    <div class="notif-dot" id="notif-dot" style="display:none;"></div>
                 </div>
-                <div class="dash-avatar" style="background:var(--success);">{{ user.name[0].upper() if user and user.name else 'U' }}</div>
+                <div class="dash-avatar" style="background:var(--success); cursor:pointer;" onclick="openUserProfileModal()" title="View Profile">{{ user.name[0].upper() if user and user.name else 'U' }}</div>
             </div>
         </div>
 
         <div class="dash-content">
-            <!-- Stats -->
+            <!-- Location & Search Center Bar -->
+            <div class="cust-location-bar" id="cust-location-bar">
+                <div class="cust-location-info">
+                    <i class="fa-solid fa-location-dot"></i>
+                    <div>
+                        <span>Searching near: <strong id="display-location-name">Delhi NCR</strong></span>
+                        <span style="color:var(--muted); font-size:0.75rem;" id="location-source-label">(Detecting location...)</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="openLocalityModal()" style="padding:4px 10px; font-size:0.75rem;">
+                        <i class="fa-solid fa-pencil mr-1"></i> Change Locality
+                    </button>
+                </div>
+            </div>
+
+            <!-- Stats Grid -->
             <div class="stats-grid mb-6">
                 <div class="stat-card">
                     <div class="stat-icon blue"><i class="fa-solid fa-users"></i></div>
@@ -87,54 +362,158 @@
                     </div>
                 </div>
                 <div class="stat-card">
-                    <div class="stat-icon orange"><i class="fa-solid fa-rupee-sign"></i></div>
+                    <div class="stat-icon orange"><i class="fa-solid fa-bullhorn"></i></div>
+                    <div class="stat-info">
+                        <div class="stat-label">Jobs Posted</div>
+                        <div class="stat-value" id="stat-posted">—</div>
+                    </div>
+                </div>
+                <div class="stat-card">
+                    <div class="stat-icon blue"><i class="fa-solid fa-rupee-sign"></i></div>
                     <div class="stat-info">
                         <div class="stat-label">Total Spent</div>
                         <div class="stat-value" id="stat-spent">₹—</div>
                     </div>
                 </div>
-                <div class="stat-card">
-                    <div class="stat-icon blue"><i class="fa-solid fa-star"></i></div>
-                    <div class="stat-info">
-                        <div class="stat-label">Avg. Rating Given</div>
-                        <div class="stat-value">4.8 <span style="font-size:.875rem;color:var(--warning);">⭐</span></div>
-                    </div>
+            </div>
+
+            <!-- Customer Action Banner: Post a Job or Voice AI Assistant -->
+            <div class="customer-action-banner">
+                <div class="cab-text">
+                    <h2><i class="fa-solid fa-bullhorn text-primary"></i> Need a service done right away?</h2>
+                    <p>Post your job request in simple words. Nearby verified workers will send you their availability and competitive price offers.</p>
+                </div>
+                <div class="cab-actions">
+                    <button type="button" class="btn btn-primary" onclick="openPostJobModal()">
+                        <i class="fa-solid fa-plus-circle mr-1"></i> Post a Job Request
+                    </button>
+                    <button type="button" class="btn btn-secondary" onclick="openAssistantPrompt('Find electrician near me')">
+                        <i class="fa-solid fa-robot mr-1 text-primary"></i> Ask AI Assistant
+                    </button>
                 </div>
             </div>
 
-            <!-- Search Workers Banner -->
-            <div style="background: linear-gradient(135deg, #F0FDF4 0%, #DCFCE7 100%); border: 1px solid #BBF7D0; border-radius: var(--radius-xl); padding: 28px; display:flex; align-items:center; justify-content:space-between; gap:20px; margin-bottom:24px;">
-                <div>
-                    <h2 style="font-size:1.125rem; margin-bottom:6px;">Find workers near you</h2>
-                    <p style="font-size:.875rem; margin:0;">Browse verified plumbers, electricians, helpers and more in your area.</p>
-                </div>
-                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-success">
-                    <i class="fa-solid fa-search mr-2"></i> Search Workers
-                </a>
-            </div>
-
-            <div class="dash-grid">
-                <!-- Available Workers -->
-                <div>
-                    <div class="section-head">
-                        <h2>Available Workers Nearby</h2>
-                        <a href="{{ url_for('my_bookings_page') }}">View All</a>
-                    </div>
-                    <div class="workers-grid" id="workers-list">
-                        <div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--muted);">
-                            <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading available workers...
+            <!-- ── SECTION: WORKER DISCOVERY & LEAFLET MAP ── -->
+            <div id="discover-workers" style="margin-bottom:32px;">
+                <!-- Filter Bar -->
+                <div class="filter-container">
+                    <div class="filter-header-row">
+                        <div style="display:flex; align-items:center; gap:10px;">
+                            <h2 style="font-size:1.15rem; margin:0;">Available Service Professionals</h2>
+                            <span class="badge badge-secondary" id="workers-count-badge">0 workers found</span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <div class="view-toggle-group">
+                                <button type="button" class="view-toggle-btn active" id="btn-view-split" onclick="switchCustomerView('split')">
+                                    <i class="fa-solid fa-table-columns"></i> Split
+                                </button>
+                                <button type="button" class="view-toggle-btn" id="btn-view-list" onclick="switchCustomerView('list')">
+                                    <i class="fa-solid fa-list"></i> List
+                                </button>
+                                <button type="button" class="view-toggle-btn" id="btn-view-map" onclick="switchCustomerView('map')">
+                                    <i class="fa-solid fa-map"></i> Map
+                                </button>
+                            </div>
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="loadAvailableWorkers()" title="Refresh worker list">
+                                <i class="fa-solid fa-arrows-rotate mr-1" id="refresh-workers-spinner"></i> Refresh
+                            </button>
                         </div>
                     </div>
+
+                    <!-- Filter Controls Grid -->
+                    <div class="filter-controls-grid">
+                        <!-- Category -->
+                        <select id="filter-category" class="filter-input" onchange="applyWorkerFilters()">
+                            <option value="all">All Service Categories</option>
+                            <option value="Plumbing">Plumbing</option>
+                            <option value="Electrical">Electrical</option>
+                            <option value="Carpentry">Carpentry</option>
+                            <option value="Cleaning">Cleaning</option>
+                            <option value="Painting">Painting</option>
+                            <option value="Appliance Repair">Appliance Repair</option>
+                            <option value="Construction Helper">Construction Helper</option>
+                            <option value="Driver & Transport">Driver & Transport</option>
+                        </select>
+
+                        <!-- Skill / Keyword Search -->
+                        <input type="text" id="filter-skill-search" class="filter-input" placeholder="Search skill (e.g. pipe, fan)..." oninput="debounceApplyFilters()">
+
+                        <!-- Distance Radius -->
+                        <select id="filter-radius" class="filter-input" onchange="applyWorkerFilters()">
+                            <option value="5">Within 5 km</option>
+                            <option value="10">Within 10 km</option>
+                            <option value="15" selected>Within 15 km</option>
+                            <option value="25">Within 25 km</option>
+                            <option value="50">Within 50 km</option>
+                            <option value="all">Any Distance</option>
+                        </select>
+
+                        <!-- Availability -->
+                        <select id="filter-availability" class="filter-input" onchange="applyWorkerFilters()">
+                            <option value="all">All Duty Statuses</option>
+                            <option value="available_only" selected>⚡ Available Now Only</option>
+                        </select>
+
+                        <!-- Minimum Rating -->
+                        <select id="filter-rating" class="filter-input" onchange="applyWorkerFilters()">
+                            <option value="0">Any Rating</option>
+                            <option value="4.0">4.0+ ⭐ Rated</option>
+                            <option value="4.5">4.5+ ⭐ Top Rated</option>
+                        </select>
+
+                        <!-- Sort Order -->
+                        <select id="filter-sort" class="filter-input" onchange="applyWorkerFilters()">
+                            <option value="relevance" selected>Best Match</option>
+                            <option value="distance">Nearest Distance</option>
+                            <option value="rating">Highest Rating</option>
+                            <option value="price_asc">Lowest Rate (₹)</option>
+                        </select>
+                    </div>
                 </div>
 
-                <!-- My Recent Bookings -->
-                <div>
-                    <div class="section-head">
-                        <h2>Recent Bookings</h2>
-                        <a href="{{ url_for('my_bookings_page') }}">View All</a>
+                <!-- Interactive Leaflet Map -->
+                <div class="customer-map-wrapper" id="customer-map-wrapper">
+                    <div id="customer-workers-map"></div>
+                    <button type="button" class="map-recenter-btn" onclick="recenterMapOnCustomer()">
+                        <i class="fa-solid fa-crosshairs text-primary"></i> Recenter Map
+                    </button>
+                </div>
+
+                <!-- Workers Grid -->
+                <div class="workers-grid" id="workers-list">
+                    <div style="grid-column: 1 / -1; padding: 36px 16px; text-align: center; color: var(--muted);">
+                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading nearby verified workers...
                     </div>
-                    <div id="recent-bookings">
-                        <div id="bookings-list" style="display:flex; flex-direction:column; gap:10px;"></div>
+                </div>
+            </div>
+
+            <!-- ── SECTION: MY POSTED JOBS & OFFERS COMPARISON ── -->
+            <div id="posted-jobs" style="margin-bottom:32px;">
+                <div class="section-head">
+                    <div style="display:flex; align-items:center; gap:10px;">
+                        <h2>My Job Requests & Offers</h2>
+                        <span class="badge badge-primary" id="posted-jobs-count-badge">0 requests</span>
+                    </div>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="loadCustomerJobs()">
+                        <i class="fa-solid fa-arrows-rotate mr-1"></i> Refresh Offers
+                    </button>
+                </div>
+                <div id="customer-jobs-container" style="display:grid; grid-template-columns: repeat(auto-fill, minmax(320px, 1fr)); gap:16px;">
+                    <div style="grid-column: 1 / -1; padding: 24px; text-align: center; color: var(--muted);">
+                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading your posted jobs...
+                    </div>
+                </div>
+            </div>
+
+            <!-- ── SECTION: RECENT BOOKINGS ── -->
+            <div>
+                <div class="section-head">
+                    <h2>Recent Bookings & Appointments</h2>
+                    <a href="{{ url_for('my_bookings_page') }}">View Complete History</a>
+                </div>
+                <div id="bookings-list" style="display:flex; flex-direction:column; gap:10px;">
+                    <div style="text-align:center; padding:20px; color:var(--muted); font-size:.8125rem;">
+                        <i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading bookings...
                     </div>
                 </div>
             </div>
@@ -142,32 +521,516 @@
     </main>
 </div>
 
-<!-- Customer Profile Modal -->
-<div id="user-profile-modal" class="modal-backdrop" style="display:none; position:fixed; inset:0; background:rgba(0,0,0,0.5); z-index:9999; align-items:center; justify-content:center; padding:16px;">
-    <div style="background:var(--card-bg, #fff); border-radius:var(--radius-xl, 16px); width:100%; max-width:440px; box-shadow:var(--shadow-xl); overflow:hidden; border:1px solid var(--border);">
-        <div style="padding:20px 24px; border-bottom:1px solid var(--border); display:flex; justify-content:space-between; align-items:center;">
-            <h3 style="margin:0; font-size:1.125rem; font-weight:600;">Customer Profile</h3>
-            <button onclick="closeUserProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div style="padding:24px; display:flex; flex-direction:column; gap:16px;">
-            <div style="display:flex; align-items:center; gap:16px;">
-                <div class="sidebar-avatar" style="width:56px; height:56px; font-size:1.5rem; background:var(--success);">{{ user.name[0].upper() if user and user.name else 'U' }}</div>
-                <div>
-                    <h4 style="margin:0; font-size:1.125rem;">{{ user.name if user else 'Customer' }}</h4>
-                    <span class="badge badge-success">Employer / Customer</span>
+<!-- ── MODAL: WORKER PROFILE DETAILS & REVIEWS ── -->
+<div id="worker-profile-modal" class="modal-backdrop" onclick="if(event.target===this) closeWorkerProfileModal()">
+    <div class="modal-box" style="max-width: 620px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="wmodal-name" style="margin:0; font-size:1.15rem; font-weight:700;">Worker Profile</h3>
+                <div style="display:flex; align-items:center; flex-wrap:wrap; gap:6px; margin-top:4px;">
+                    <span id="wmodal-work" class="badge badge-primary">Trade</span>
+                    <span id="wmodal-verified" class="badge">Verification</span>
+                    <span id="wmodal-status" class="badge badge-secondary">Status</span>
+                    <span id="wmodal-quote-pref" class="badge badge-secondary" style="font-size:0.75rem;">Quote Preference</span>
                 </div>
             </div>
-            <div style="display:flex; flex-direction:column; gap:8px; font-size:0.875rem; color:var(--text-secondary);">
-                <div><strong style="color:var(--text-main);">Phone:</strong> {{ user.phone if user and user.phone else 'Not provided' }}</div>
-                <div><strong style="color:var(--text-main);">Role:</strong> Customer / Job Poster</div>
-                <div><strong style="color:var(--text-main);">Status:</strong> Active</div>
+            <button type="button" onclick="closeWorkerProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark" style="font-size:1.25rem;"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+            <!-- Header Summary Row -->
+            <div style="background:var(--bg-alt); padding:16px; border-radius:var(--radius); border:1px solid var(--border); display:flex; align-items:center; justify-content:space-between;">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div id="wmodal-avatar" class="sidebar-avatar" style="width:52px; height:52px; font-size:1.4rem;">W</div>
+                    <div>
+                        <div id="wmodal-rate" style="font-size:1.2rem; font-weight:800; color:var(--dark);">₹500 <span style="font-size:0.75rem; font-weight:400; color:var(--muted);">/ standard rate</span></div>
+                        <div id="wmodal-rating-text" style="font-size:0.8125rem; color:var(--warning); font-weight:600;">⭐ No reviews yet (0 reviews)</div>
+                    </div>
+                </div>
+                <div id="wmodal-voice-box"></div>
             </div>
-            <div style="display:flex; gap:10px; margin-top:8px;">
-                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-secondary btn-sm" style="flex:1; text-align:center;">
-                    <i class="fa-solid fa-calendar-check mr-1"></i> My Bookings
-                </a>
-                <button onclick="closeUserProfileModal()" class="btn btn-primary btn-sm" style="flex:1;">Close</button>
+
+            <!-- Professional Bio -->
+            <div id="wmodal-bio-container" style="display:none; background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:10px 14px;">
+                <div style="font-size:0.75rem; font-weight:600; color:var(--muted); text-transform:uppercase; margin-bottom:4px;">Professional Bio</div>
+                <p id="wmodal-bio" style="font-size:0.8125rem; color:var(--dark); margin:0; line-height:1.5;"></p>
             </div>
+
+            <!-- Service Locality & Coverage Area -->
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div style="background:var(--bg); padding:10px; border-radius:var(--radius); border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--muted); margin-bottom:2px;"><i class="fa-solid fa-location-dot text-primary"></i> Operating Area</div>
+                    <div id="wmodal-location" style="font-size:0.875rem; font-weight:600; color:var(--dark);">Indirapuram</div>
+                </div>
+                <div style="background:var(--bg); padding:10px; border-radius:var(--radius); border:1px solid var(--border);">
+                    <div style="font-size:0.75rem; color:var(--muted); margin-bottom:2px;"><i class="fa-solid fa-briefcase text-primary"></i> Jobs Completed</div>
+                    <div id="wmodal-completed-jobs" style="font-size:0.875rem; font-weight:600; color:var(--dark);">0 completed</div>
+                </div>
+            </div>
+
+            <!-- Skills & Specializations -->
+            <div>
+                <h4 style="font-size:0.875rem; font-weight:600; color:var(--dark); margin-bottom:8px;">Specialized Skills</h4>
+                <div id="wmodal-skills-container" style="display:flex; flex-wrap:wrap; gap:6px;">
+                    <span class="badge" style="background:var(--bg-alt); border:1px solid var(--border);">General Service</span>
+                </div>
+            </div>
+
+            <!-- Verified Customer Reviews (Real Reviews Only) -->
+            <div>
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h4 style="font-size:0.875rem; font-weight:600; color:var(--dark); margin:0;">Verified Booking Reviews</h4>
+                    <span style="font-size:0.6875rem; color:var(--muted);"><i class="fa-solid fa-shield-halved text-success mr-1"></i> Completed bookings only</span>
+                </div>
+                <div id="wmodal-reviews-list" style="display:flex; flex-direction:column; gap:8px; max-height:180px; overflow-y:auto;">
+                    <div style="font-size:0.8125rem; color:var(--muted); padding:8px; text-align:center;">No written reviews yet for this worker.</div>
+                </div>
+            </div>
+
+            <!-- Trust & Safety Shield Notice -->
+            <div style="font-size:0.75rem; color:var(--muted); background:#F8FAFC; padding:10px 12px; border-radius:var(--radius); border-left:3px solid var(--primary);">
+                <i class="fa-solid fa-user-shield mr-1 text-primary"></i>
+                <strong>Privacy Guaranteed:</strong> Worker phone numbers and sensitive credentials are encrypted and released only upon mutual booking confirmation.
+            </div>
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:8px;">
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="openReportModalFromWorkerProfile()" title="Report inappropriate behavior or policy violation" style="color:var(--danger); border-color:#FECDD3;">
+                    <i class="fa-solid fa-triangle-exclamation mr-1"></i> Report
+                </button>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="blockCurrentWorker()" title="Block this worker from future interactions" style="color:var(--muted);">
+                    <i class="fa-solid fa-ban mr-1"></i> Block
+                </button>
+            </div>
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn-secondary btn-sm" onclick="closeWorkerProfileModal()">Close</button>
+                <button type="button" class="btn btn-primary btn-sm" id="wmodal-book-btn">
+                    <i class="fa-solid fa-calendar-plus mr-1"></i> Request Direct Booking
+                </button>
+            </div>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: DIRECT BOOKING WITH CONFIRMATION & DRAFT EDIT ── -->
+<div id="direct-booking-modal" class="modal-backdrop" onclick="if(event.target===this) closeDirectBookingModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700;">Direct Worker Booking</h3>
+                <span id="dbook-worker-sub" class="badge badge-primary mt-1">Worker Name</span>
+            </div>
+            <button type="button" onclick="closeDirectBookingModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark" style="font-size:1.25rem;"></i>
+            </button>
+        </div>
+
+        <!-- Form Step -->
+        <div class="modal-body" id="dbook-form-step" style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Select Appointment Date</label>
+                <input type="date" id="dbook-date" class="filter-input" required>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Select Time Slot</label>
+                <select id="dbook-slot" class="filter-input" required>
+                    <option value="09:00-11:00">09:00 AM - 11:00 AM (Morning)</option>
+                    <option value="11:00-13:00">11:00 AM - 01:00 PM (Midday)</option>
+                    <option value="13:00-15:00">01:00 PM - 03:00 PM (Afternoon)</option>
+                    <option value="15:00-17:00">03:00 PM - 05:00 PM (Late Afternoon)</option>
+                    <option value="17:00-19:00">05:00 PM - 07:00 PM (Evening)</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Job Notes / Instructions</label>
+                <textarea id="dbook-notes" class="filter-input" rows="3" placeholder="Describe the specific work needed, tools required, or directions..."></textarea>
+            </div>
+        </div>
+
+        <!-- Confirmation Step -->
+        <div class="modal-body" id="dbook-confirm-step" style="display:none; flex-direction:column; gap:16px;">
+            <div style="background:var(--primary-light); padding:16px; border-radius:var(--radius); border:1px solid var(--primary-mid);">
+                <h4 style="margin:0 0 10px; color:var(--primary); font-size:0.95rem;"><i class="fa-solid fa-clipboard-check mr-1"></i> Review Booking Details</h4>
+                <div style="font-size:0.875rem; display:flex; flex-direction:column; gap:6px;">
+                    <div><strong>Professional:</strong> <span id="confirm-dbook-worker"></span></div>
+                    <div><strong>Date & Slot:</strong> <span id="confirm-dbook-datetime"></span></div>
+                    <div><strong>Estimated Rate:</strong> <span id="confirm-dbook-price"></span></div>
+                    <div><strong>Instructions:</strong> <span id="confirm-dbook-notes"></span></div>
+                </div>
+            </div>
+            <p style="font-size:0.8125rem; color:var(--muted); margin:0;">
+                <i class="fa-solid fa-shield-halved mr-1 text-primary"></i> No advance payment required. You will verify worker arrival via QR check-in before paying.
+            </p>
+        </div>
+
+        <div class="modal-footer" id="dbook-form-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeDirectBookingModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="showDirectBookingConfirmation()">Review & Proceed</button>
+        </div>
+        <div class="modal-footer" id="dbook-confirm-footer" style="display:none;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="backToDirectBookingEdit()">Edit Details</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-submit-direct-booking" onclick="submitDirectBooking()">
+                Confirm & Book Worker
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: POST A JOB REQUEST WITH PREVIEW & CONFIRMATION ── -->
+<div id="post-job-modal" class="modal-backdrop" onclick="if(event.target===this) closePostJobModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <div>
+                <h3 style="margin:0; font-size:1.15rem; font-weight:700;">Post a Job Request</h3>
+                <span class="badge badge-primary mt-1">Receive Offers from Local Workers</span>
+            </div>
+            <button type="button" onclick="closePostJobModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark" style="font-size:1.25rem;"></i>
+            </button>
+        </div>
+
+        <!-- Form Step -->
+        <div class="modal-body" id="pjob-form-step" style="display:flex; flex-direction:column; gap:16px;">
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Required Service Category *</label>
+                <select id="pjob-service-type" class="filter-input" required>
+                    <option value="Plumbing">Plumbing (Pipes, Taps, Leaks, Bathroom)</option>
+                    <option value="Electrical">Electrical (Wiring, Switches, Lighting, Fans)</option>
+                    <option value="Carpentry">Carpentry (Doors, Furniture, Woodwork)</option>
+                    <option value="Cleaning">Cleaning (Deep Cleaning, Floors, Sanitation)</option>
+                    <option value="Painting">Painting (Walls, Touchups, Exterior)</option>
+                    <option value="Appliance Repair">Appliance Repair (AC, Fridge, Washing Machine)</option>
+                    <option value="Construction Helper">Construction Helper (Manual Labor, Shifting)</option>
+                    <option value="Driver & Transport">Driver & Transport (Driving, Moving, Goods)</option>
+                </select>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Plain-Language Description *</label>
+                <textarea id="pjob-description" class="filter-input" rows="3" placeholder="Describe what needs to be done in simple words..." required></textarea>
+            </div>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Job Location (Locality / Area) *</label>
+                <input type="text" id="pjob-location" class="filter-input" placeholder="e.g. Indirapuram, Sector 14, Ghaziabad" required>
+            </div>
+            <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                <div>
+                    <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Timing / Urgency</label>
+                    <select id="pjob-urgency" class="filter-input">
+                        <option value="false">Flexible / Scheduled</option>
+                        <option value="true">⚡ Urgent (Immediate Need)</option>
+                    </select>
+                </div>
+                <div>
+                    <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Approx. Budget (₹ Optional)</label>
+                    <input type="number" id="pjob-budget" class="filter-input" placeholder="e.g. 500" min="0">
+                </div>
+            </div>
+        </div>
+
+        <!-- Confirmation Step -->
+        <div class="modal-body" id="pjob-confirm-step" style="display:none; flex-direction:column; gap:16px;">
+            <div style="background:var(--primary-light); padding:16px; border-radius:var(--radius); border:1px solid var(--primary-mid);">
+                <h4 style="margin:0 0 10px; color:var(--primary); font-size:0.95rem;"><i class="fa-solid fa-bullhorn mr-1"></i> Confirm Your Job Request</h4>
+                <div style="font-size:0.875rem; display:flex; flex-direction:column; gap:6px;">
+                    <div><strong>Service:</strong> <span id="confirm-pjob-service"></span></div>
+                    <div><strong>Description:</strong> <span id="confirm-pjob-desc"></span></div>
+                    <div><strong>Location:</strong> <span id="confirm-pjob-location"></span></div>
+                    <div><strong>Urgency:</strong> <span id="confirm-pjob-urgency"></span></div>
+                    <div><strong>Proposed Budget:</strong> <span id="confirm-pjob-budget"></span></div>
+                </div>
+            </div>
+            <p style="font-size:0.8125rem; color:var(--muted); margin:0;">
+                <i class="fa-solid fa-lock mr-1 text-primary"></i> Your exact phone and house number will remain private until you accept an offer.
+            </p>
+        </div>
+
+        <div class="modal-footer" id="pjob-form-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closePostJobModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="showPostJobConfirmation()">Review & Preview</button>
+        </div>
+        <div class="modal-footer" id="pjob-confirm-footer" style="display:none;">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="backToPostJobEdit()">Edit Details</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-submit-post-job" onclick="submitPostJob()">
+                Confirm & Post Job
+            </button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: COMPARE JOB OFFERS ── -->
+<div id="job-offers-modal" class="modal-backdrop" onclick="if(event.target===this) closeJobOffersModal()">
+    <div class="modal-box" style="max-width: 600px;">
+        <div class="modal-header">
+            <div>
+                <h3 id="omodal-job-title" style="margin:0; font-size:1.15rem; font-weight:700;">Worker Offers Received</h3>
+                <span id="omodal-job-sub" class="badge badge-primary mt-1">Comparing Proposals</span>
+            </div>
+            <button type="button" onclick="closeJobOffersModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;" aria-label="Close modal">
+                <i class="fa-solid fa-xmark" style="font-size:1.25rem;"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+            <p style="font-size:0.8125rem; color:var(--muted); margin:0;">
+                Compare prices, worker ratings, arrival estimates, and choose the most suitable worker for your request.
+            </p>
+            <div id="omodal-offers-list" style="display:flex; flex-direction:column; gap:12px;">
+                <div style="text-align:center; padding:20px; color:var(--muted);">
+                    <i class="fa-solid fa-spinner fa-spin mr-2"></i> Fetching offers...
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeJobOffersModal()">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: CHANGE CUSTOMER LOCALITY / SEARCH CENTER ── -->
+<div id="customer-locality-modal" class="modal-backdrop" onclick="if(event.target===this) closeLocalityModal()">
+    <div class="modal-box">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:1.15rem; font-weight:700;"><i class="fa-solid fa-location-dot mr-2 text-primary"></i>Set Search Locality</h3>
+            <button type="button" onclick="closeLocalityModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;">
+                <i class="fa-solid fa-xmark"></i>
+            </button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:16px;">
+            <p style="font-size:0.875rem; color:var(--muted); margin:0;">
+                Enter your current neighborhood or town to find nearby available service workers.
+            </p>
+            <div>
+                <label style="display:block; font-size:0.8125rem; font-weight:600; color:var(--dark); margin-bottom:6px;">Neighborhood / Locality Name</label>
+                <input type="text" id="input-customer-locality" class="filter-input" placeholder="e.g. Indirapuram, Ghaziabad or Sector 62, Noida" value="Indirapuram, Ghaziabad">
+                <div style="display:flex; flex-wrap:wrap; gap:6px; margin-top:8px;">
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="setLocalityShortcut('Indirapuram, Ghaziabad', 28.6366, 77.3687)">Indirapuram</span>
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="setLocalityShortcut('Sector 62, Noida', 28.6250, 77.3600)">Noida Sec 62</span>
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="setLocalityShortcut('Connaught Place, New Delhi', 28.6315, 77.2167)">Connaught Place</span>
+                    <span class="badge" style="cursor:pointer; background:var(--bg-alt); border:1px solid var(--border);" onclick="setLocalityShortcut('Whitefield, Bengaluru', 12.9698, 77.7500)">Whitefield</span>
+                </div>
+            </div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeLocalityModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" onclick="saveCustomerLocality()">Apply Locality</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: Comprehensive Customer Profile, Saved Addresses & Voice Settings ── -->
+<div id="user-profile-modal" class="modal-backdrop" onclick="if(event.target===this) closeUserProfileModal()">
+    <div class="modal-box" style="max-width:660px;">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:1.15rem; font-weight:700;"><i class="fa-solid fa-user-gear mr-2 text-primary"></i>Customer Profile & Settings</h3>
+            <button type="button" onclick="closeUserProfileModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:18px;">
+
+            <!-- Customer Header & Activity Summary -->
+            <div style="background:var(--bg-alt); padding:16px; border-radius:var(--radius-lg); border:1px solid var(--border); display:flex; flex-wrap:wrap; align-items:center; justify-content:space-between; gap:14px;">
+                <div style="display:flex; align-items:center; gap:14px;">
+                    <div class="sidebar-avatar" style="width:52px; height:52px; font-size:1.4rem; background:var(--primary); color:white;">
+                        {{ user.name[0].upper() if user and user.name else 'U' }}
+                    </div>
+                    <div>
+                        <h4 style="margin:0; font-size:1.05rem; font-weight:700; color:var(--dark);">{{ user.name if user else 'Customer' }}</h4>
+                        <span class="badge badge-primary">Customer Account</span>
+                    </div>
+                </div>
+                <div style="display:flex; gap:12px; font-size:0.8125rem;">
+                    <div style="text-align:center; background:white; padding:6px 12px; border-radius:var(--radius); border:1px solid var(--border);">
+                        <div id="cp-stat-bookings" style="font-weight:800; font-size:1rem; color:var(--primary);">--</div>
+                        <span style="font-size:0.6875rem; color:var(--muted);">Bookings</span>
+                    </div>
+                    <div style="text-align:center; background:white; padding:6px 12px; border-radius:var(--radius); border:1px solid var(--border);">
+                        <div id="cp-stat-active" style="font-weight:800; font-size:1rem; color:var(--warning);">--</div>
+                        <span style="font-size:0.6875rem; color:var(--muted);">Active</span>
+                    </div>
+                    <div style="text-align:center; background:white; padding:6px 12px; border-radius:var(--radius); border:1px solid var(--border);">
+                        <div id="cp-stat-payments" style="font-weight:800; font-size:1rem; color:var(--success);">--</div>
+                        <span style="font-size:0.6875rem; color:var(--muted);">Paid</span>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 1: Basic Contact & Locality -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <strong style="font-size:0.875rem; color:var(--dark);"><i class="fa-solid fa-address-book mr-1 text-primary"></i> Contact & Service Locality</strong>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Full Name</label>
+                        <input type="text" id="cp-input-name" class="filter-input" value="{{ user.name if user else '' }}">
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Phone Number</label>
+                        <input type="text" id="cp-input-phone" class="filter-input" value="{{ user.phone if user else '' }}">
+                    </div>
+                </div>
+                <div>
+                    <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Preferred Locality</label>
+                    <input type="text" id="cp-input-locality" class="filter-input" placeholder="e.g. Indirapuram, Ghaziabad">
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="saveCustomerProfile()">
+                        Save Contact Info
+                    </button>
+                </div>
+            </div>
+
+            <!-- SECTION 2: Saved Delivery / Service Addresses -->
+            <div style="background:var(--bg); border:1px solid var(--border); border-radius:var(--radius); padding:14px; display:flex; flex-direction:column; gap:10px;">
+                <div style="display:flex; justify-content:space-between; align-items:center;">
+                    <strong style="font-size:0.875rem; color:var(--dark);"><i class="fa-solid fa-map-location mr-1 text-primary"></i> Saved Addresses</strong>
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAddAddressForm()" style="font-size:0.75rem;">
+                        <i class="fa-solid fa-plus mr-1"></i> Add Address
+                    </button>
+                </div>
+                <p style="font-size:0.75rem; color:var(--muted); margin:0;">
+                    Your saved addresses are encrypted. Exact house numbers are only shared with confirmed workers on scheduled bookings.
+                </p>
+
+                <!-- Saved Address List -->
+                <div id="cp-addresses-list" style="display:flex; flex-direction:column; gap:8px;">
+                    <div style="font-size:0.75rem; color:var(--muted); text-align:center; padding:8px;">Loading saved addresses...</div>
+                </div>
+
+                <!-- Add Address Form (Collapsible) -->
+                <div id="cp-add-address-form" style="display:none; flex-direction:column; gap:10px; border-top:1px dashed var(--border); padding-top:12px; margin-top:4px;">
+                    <div style="font-size:0.8125rem; font-weight:600; color:var(--dark);">Add New Address</div>
+                    <div style="display:grid; grid-template-columns:1fr 2fr; gap:8px;">
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:2px;">Label</label>
+                            <select id="addr-input-label" class="filter-input">
+                                <option value="Home">Home</option>
+                                <option value="Work">Work</option>
+                                <option value="Other">Other</option>
+                            </select>
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:2px;">Street / Building *</label>
+                            <input type="text" id="addr-input-street" class="filter-input" placeholder="Flat 402, Sunshine Towers, Plot 12">
+                        </div>
+                    </div>
+                    <div style="display:grid; grid-template-columns:1fr 1fr 1fr; gap:8px;">
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:2px;">Locality *</label>
+                            <input type="text" id="addr-input-locality" class="filter-input" placeholder="Indirapuram">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:2px;">City</label>
+                            <input type="text" id="addr-input-city" class="filter-input" placeholder="Ghaziabad">
+                        </div>
+                        <div>
+                            <label style="font-size:0.75rem; color:var(--muted); display:block; margin-bottom:2px;">Pincode</label>
+                            <input type="text" id="addr-input-pincode" class="filter-input" placeholder="201014">
+                        </div>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; align-items:center;">
+                        <label style="font-size:0.75rem; display:flex; align-items:center; gap:6px; cursor:pointer;">
+                            <input type="checkbox" id="addr-input-default"> Set as default address
+                        </label>
+                        <div style="display:flex; gap:6px;">
+                            <button type="button" class="btn btn-secondary btn-sm" onclick="toggleAddAddressForm()">Cancel</button>
+                            <button type="button" class="btn btn-primary btn-sm" onclick="saveNewAddress()">Save Address</button>
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- SECTION 3: Voice Assistant & Language Settings -->
+            <div style="display:flex; flex-direction:column; gap:10px;">
+                <strong style="font-size:0.875rem; color:var(--dark);"><i class="fa-solid fa-microphone-lines mr-1 text-primary"></i> Voice Assistant & Language Preferences</strong>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Assistant Language</label>
+                        <select id="cp-input-language" class="filter-input">
+                            <option value="en">English</option>
+                            <option value="hi">Hindi (हिंदी)</option>
+                            <option value="hinglish">Hinglish</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Voice Persona</label>
+                        <select id="cp-input-voice" class="filter-input">
+                            <option value="friendly">Friendly & Natural</option>
+                            <option value="professional">Professional & Direct</option>
+                            <option value="concise">Concise & Fast</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:10px; align-items:center;">
+                    <div>
+                        <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">
+                            Speech Speed: <span id="cp-speed-label">1.0x</span>
+                        </label>
+                        <input type="range" id="cp-input-speed" min="0.75" max="1.5" step="0.25" value="1.0" class="filter-input" style="padding:0;" oninput="document.getElementById('cp-speed-label').textContent = this.value + 'x'">
+                    </div>
+                    <div style="padding-top:16px;">
+                        <label style="font-size:0.8125rem; display:flex; align-items:center; gap:8px; cursor:pointer; color:var(--dark);">
+                            <input type="checkbox" id="cp-input-auto-speak" checked>
+                            <span>Auto-speak voice responses</span>
+                        </label>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="button" class="btn btn-secondary btn-sm" onclick="saveVoiceSettings()">
+                        Save Voice Settings
+                    </button>
+                </div>
+            </div>
+
+        </div>
+        <div class="modal-footer" style="display:flex; justify-content:space-between; align-items:center;">
+            <a href="{{ url_for('my_bookings_page') }}" class="btn btn-secondary btn-sm">
+                <i class="fa-solid fa-clock-rotate-left mr-1"></i> Full Booking History
+            </a>
+            <button type="button" onclick="closeUserProfileModal()" class="btn btn-primary btn-sm">Close</button>
+        </div>
+    </div>
+</div>
+
+<!-- ── MODAL: REPORT INAPPROPRIATE BEHAVIOR / JOB DISPUTE ── -->
+<div id="report-modal" class="modal-backdrop" onclick="if(event.target===this) closeReportModal()">
+    <div class="modal-box" style="max-width:480px;">
+        <div class="modal-header">
+            <h3 style="margin:0; font-size:1.15rem; font-weight:700; color:var(--danger);">
+                <i class="fa-solid fa-triangle-exclamation mr-1"></i> Report Safety or Service Issue
+            </h3>
+            <button type="button" onclick="closeReportModal()" class="btn-icon" style="border:none; background:none; cursor:pointer;"><i class="fa-solid fa-xmark"></i></button>
+        </div>
+        <div class="modal-body" style="display:flex; flex-direction:column; gap:14px;">
+            <p style="font-size:0.8125rem; color:var(--muted); margin:0;">
+                All reports are recorded on the server and investigated by our Trust & Safety operations team. We maintain an authoritative audit trail.
+            </p>
+
+            <input type="hidden" id="report-target-id">
+            <input type="hidden" id="report-target-role">
+            <input type="hidden" id="report-booking-id">
+
+            <div>
+                <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Report Category *</label>
+                <select id="report-category" class="filter-input" required>
+                    <option value="inappropriate_behavior">Inappropriate or abusive behavior</option>
+                    <option value="payment_dispute">Payment dispute / Unauthorized cash demand</option>
+                    <option value="no_show">No show / Worker did not arrive</option>
+                    <option value="poor_quality">Substandard or incomplete work</option>
+                    <option value="safety_issue">Safety / Property damage concern</option>
+                    <option value="other">Other issue</option>
+                </select>
+            </div>
+
+            <div>
+                <label style="display:block; font-size:0.75rem; font-weight:600; color:var(--dark); margin-bottom:4px;">Detailed Description *</label>
+                <textarea id="report-description" class="filter-input" rows="3" placeholder="Explain clearly what happened so safety operations can investigate..." required></textarea>
+            </div>
+
+            <div id="report-status-feedback" style="display:none; font-size:0.75rem; padding:8px 12px; border-radius:var(--radius);"></div>
+        </div>
+        <div class="modal-footer">
+            <button type="button" class="btn btn-secondary btn-sm" onclick="closeReportModal()">Cancel</button>
+            <button type="button" class="btn btn-primary btn-sm" id="btn-submit-report" onclick="submitSafetyReport()" style="background:var(--danger); border-color:var(--danger);">
+                Submit Report
+            </button>
         </div>
     </div>
 </div>
@@ -175,24 +1038,1335 @@
 
 {% block extra_scripts %}
 <script>
+/**
+ * VoiceHire — Customer Dashboard Reactive State Controller
+ * Manages Leaflet Map, Worker Discovery, Direct Bookings,
+ * Job Postings, Offer Comparisons, Geolocation Fallback & AI Hook.
+ */
+
+const CustomerState = {
+    userId: "{{ user.id if user else '' }}",
+    userName: "{{ user.name if user else 'Customer' }}",
+    userPhone: "{{ user.phone if user else '' }}",
+
+    // Location State
+    locality: "Indirapuram, Ghaziabad",
+    lat: 28.6366,
+    lng: 77.3687,
+    hasGps: false,
+
+    // Map & Markers
+    map: null,
+    customerMarker: null,
+    workerMarkers: new Map(), // workerId -> marker
+    currentView: 'split',     // 'split', 'list', 'map'
+
+    // Data Cache
+    allWorkers: [],
+    postedJobs: [],
+    activeWorker: null,
+    activeBookingDraft: null,
+    activeJobDraft: null,
+    activeOfferJobId: null,
+
+    // Timers
+    filterDebounceTimer: null
+};
+
+// Sidebar Navigation
 function openSidebar() {
-    document.getElementById('sidebar').classList.add('open');
-    document.getElementById('sidebar-overlay').classList.add('open');
+    document.getElementById('sidebar')?.classList.add('open');
+    document.getElementById('sidebar-overlay')?.classList.add('open');
 }
 function closeSidebar() {
-    document.getElementById('sidebar').classList.remove('open');
-    document.getElementById('sidebar-overlay').classList.remove('open');
+    document.getElementById('sidebar')?.classList.remove('open');
+    document.getElementById('sidebar-overlay')?.classList.remove('open');
 }
 
-function openUserProfileModal() {
+// Customer Profile, Saved Addresses, Voice Settings & Trust Functions
+async function openUserProfileModal() {
     const m = document.getElementById('user-profile-modal');
-    if (m) { m.style.display = 'flex'; }
+    if (m) m.style.display = 'flex';
+    await loadCustomerProfileData();
+    await loadCustomerAddresses();
 }
+
 function closeUserProfileModal() {
     const m = document.getElementById('user-profile-modal');
-    if (m) { m.style.display = 'none'; }
+    if (m) m.style.display = 'none';
 }
 
+async function loadCustomerProfileData() {
+    try {
+        const res = await fetch('/api/customer/profile');
+        if (!res.ok) return;
+        const d = await res.json();
+        const p = d.profile || {};
+        const vs = d.voice_settings || {};
+        const counts = d.counts || {};
+
+        const nameInp = document.getElementById('cp-input-name');
+        const phoneInp = document.getElementById('cp-input-phone');
+        const locInp = document.getElementById('cp-input-locality');
+
+        if (nameInp && p.name) nameInp.value = p.name;
+        if (phoneInp && p.phone) phoneInp.value = p.phone;
+        if (locInp) locInp.value = p.locality || CustomerState.locality || '';
+
+        // Voice settings
+        const langSelect = document.getElementById('cp-input-language');
+        const voiceSelect = document.getElementById('cp-input-voice');
+        const speedInput = document.getElementById('cp-input-speed');
+        const speedLabel = document.getElementById('cp-speed-label');
+        const autoSpeak = document.getElementById('cp-input-auto-speak');
+
+        if (langSelect && p.language_preference) langSelect.value = p.language_preference;
+        if (voiceSelect && vs.voice) voiceSelect.value = vs.voice;
+        if (speedInput && vs.speed) {
+            speedInput.value = vs.speed;
+            if (speedLabel) speedLabel.textContent = `${vs.speed}x`;
+        }
+        if (autoSpeak && vs.auto_speak !== undefined) {
+            autoSpeak.checked = !!vs.auto_speak;
+        }
+
+        // Activity counts
+        const statB = document.getElementById('cp-stat-bookings');
+        const statA = document.getElementById('cp-stat-active');
+        const statP = document.getElementById('cp-stat-payments');
+        if (statB) statB.textContent = counts.total_bookings !== undefined ? counts.total_bookings : 0;
+        if (statA) statA.textContent = counts.active_requests !== undefined ? counts.active_requests : 0;
+        if (statP) statP.textContent = counts.paid_bookings !== undefined ? counts.paid_bookings : 0;
+
+    } catch (e) {
+        console.warn('Error loading customer profile data:', e);
+    }
+}
+
+async function saveCustomerProfile() {
+    const name = document.getElementById('cp-input-name')?.value.trim();
+    const phone = document.getElementById('cp-input-phone')?.value.trim();
+    const locality = document.getElementById('cp-input-locality')?.value.trim();
+
+    if (!name) {
+        showToast('Please enter your full name.', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/customer/profile', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ name, phone, locality })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('✅ Profile information updated.', 'success');
+            if (locality) {
+                CustomerState.locality = locality;
+                document.getElementById('display-location-name').textContent = locality;
+            }
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to update profile'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error saving customer profile.', 'danger');
+    }
+}
+
+async function loadCustomerAddresses() {
+    const container = document.getElementById('cp-addresses-list');
+    if (!container) return;
+
+    try {
+        const res = await fetch('/api/customer/addresses');
+        if (!res.ok) throw new Error('Failed to load');
+        const addrs = await res.json();
+
+        if (!addrs || addrs.length === 0) {
+            container.innerHTML = `
+                <div style="font-size:0.75rem; color:var(--muted); text-align:center; padding:10px; background:white; border-radius:var(--radius); border:1px solid var(--border);">
+                    <i class="fa-solid fa-location-dot mr-1 text-primary"></i> No saved addresses yet. Click "Add Address" above to save one.
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = addrs.map(a => `
+            <div style="background:white; border:1px solid var(--border); border-radius:var(--radius); padding:10px 12px; display:flex; justify-content:space-between; align-items:center; font-size:0.8125rem;">
+                <div>
+                    <div style="display:flex; align-items:center; gap:6px; margin-bottom:2px;">
+                        <span class="badge ${a.is_default ? 'badge-primary' : 'badge-secondary'}" style="font-size:0.6875rem;">${a.label || 'Home'}</span>
+                        ${a.is_default ? '<span style="font-size:0.6875rem; color:var(--primary); font-weight:600;"><i class="fa-solid fa-star"></i> Default</span>' : ''}
+                    </div>
+                    <div style="font-weight:600; color:var(--dark);">${a.street_address || ''}</div>
+                    <div style="font-size:0.75rem; color:var(--muted);">
+                        ${a.locality || ''}${a.city ? ', ' + a.city : ''}${a.pincode ? ' - ' + a.pincode : ''}
+                    </div>
+                </div>
+                <button type="button" class="btn-icon" onclick="deleteSavedAddress('${a.id}')" title="Delete address" style="border:none; background:none; color:var(--muted); cursor:pointer;">
+                    <i class="fa-solid fa-trash-can" style="font-size:0.875rem; color:var(--danger);"></i>
+                </button>
+            </div>
+        `).join('');
+
+    } catch (e) {
+        container.innerHTML = `<div style="font-size:0.75rem; color:var(--danger); text-align:center; padding:8px;">Failed to load saved addresses.</div>`;
+    }
+}
+
+function toggleAddAddressForm() {
+    const f = document.getElementById('cp-add-address-form');
+    if (f) {
+        f.style.display = f.style.display === 'none' ? 'flex' : 'none';
+    }
+}
+
+async function saveNewAddress() {
+    const label = document.getElementById('addr-input-label')?.value || 'Home';
+    const street_address = document.getElementById('addr-input-street')?.value.trim();
+    const locality = document.getElementById('addr-input-locality')?.value.trim();
+    const city = document.getElementById('addr-input-city')?.value.trim();
+    const pincode = document.getElementById('addr-input-pincode')?.value.trim();
+    const is_default = !!document.getElementById('addr-input-default')?.checked;
+
+    if (!street_address || !locality) {
+        showToast('Please enter both street address and locality.', 'warning');
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/customer/addresses', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                label,
+                street_address,
+                locality,
+                city,
+                pincode,
+                is_default
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('✅ Address saved securely.', 'success');
+            // Clear inputs
+            document.getElementById('addr-input-street').value = '';
+            document.getElementById('addr-input-locality').value = '';
+            document.getElementById('addr-input-city').value = '';
+            document.getElementById('addr-input-pincode').value = '';
+            toggleAddAddressForm();
+            await loadCustomerAddresses();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to save address'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error saving address.', 'danger');
+    }
+}
+
+async function deleteSavedAddress(addressId) {
+    if (!confirm('Are you sure you want to remove this saved address?')) return;
+
+    try {
+        const res = await fetch(`/api/customer/addresses/${addressId}`, {
+            method: 'DELETE'
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('Address removed.', 'info');
+            await loadCustomerAddresses();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to delete address'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error deleting address.', 'danger');
+    }
+}
+
+async function saveVoiceSettings() {
+    const language_preference = document.getElementById('cp-input-language')?.value || 'en';
+    const voice = document.getElementById('cp-input-voice')?.value || 'friendly';
+    const speed = parseFloat(document.getElementById('cp-input-speed')?.value) || 1.0;
+    const auto_speak = !!document.getElementById('cp-input-auto-speak')?.checked;
+
+    try {
+        const res = await fetch('/api/customer/voice-settings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                language_preference,
+                voice_settings: {
+                    voice,
+                    speed,
+                    auto_speak
+                }
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast('🎙️ Voice preferences saved!', 'success');
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to save voice settings'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error saving voice settings.', 'danger');
+    }
+}
+
+// ── TRUST & SAFETY: REPORTING & BLOCKING ──
+function openReportModalFromWorkerProfile() {
+    if (!CustomerState.activeWorker) return;
+    openReportModal('worker', CustomerState.activeWorker.id, null);
+}
+
+function openReportModal(targetRole, targetId, bookingId) {
+    document.getElementById('report-target-id').value = targetId || '';
+    document.getElementById('report-target-role').value = targetRole || 'worker';
+    document.getElementById('report-booking-id').value = bookingId || '';
+    document.getElementById('report-description').value = '';
+    const fb = document.getElementById('report-status-feedback');
+    if (fb) fb.style.display = 'none';
+
+    const m = document.getElementById('report-modal');
+    if (m) m.style.display = 'flex';
+}
+
+function closeReportModal() {
+    const m = document.getElementById('report-modal');
+    if (m) m.style.display = 'none';
+}
+
+async function submitSafetyReport() {
+    const btn = document.getElementById('btn-submit-report');
+    const targetId = document.getElementById('report-target-id')?.value;
+    const targetRole = document.getElementById('report-target-role')?.value || 'worker';
+    const bookingId = document.getElementById('report-booking-id')?.value;
+    const category = document.getElementById('report-category')?.value;
+    const description = document.getElementById('report-description')?.value.trim();
+
+    if (!description || description.length < 5) {
+        showToast('Please provide a descriptive reason for this report (minimum 5 characters).', 'warning');
+        return;
+    }
+
+    if (btn) {
+        btn.disabled = true;
+        btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Filing report...';
+    }
+
+    try {
+        const res = await fetch('/api/reports', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                reported_id: targetId,
+                reported_role: targetRole,
+                booking_id: bookingId,
+                category: category,
+                reason: category,
+                description: description
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            const fb = document.getElementById('report-status-feedback');
+            if (fb) {
+                fb.style.display = 'block';
+                fb.style.background = '#ECFDF5';
+                fb.style.color = '#065F46';
+                fb.style.border = '1px solid #A7F3D0';
+                fb.innerHTML = `<strong>Report Filed (#${data.report_id}):</strong> Server-recorded status is <em>${data.status || 'Under Review'}</em>. Our safety team will review this report.`;
+            }
+            showToast('🛡️ Report filed successfully. Status: Under Review.', 'success');
+            setTimeout(closeReportModal, 2000);
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to submit report'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error while filing report.', 'danger');
+    } finally {
+        if (btn) {
+            btn.disabled = false;
+            btn.innerHTML = 'Submit Report';
+        }
+    }
+}
+
+async function blockCurrentWorker() {
+    if (!CustomerState.activeWorker) return;
+    const worker = CustomerState.activeWorker;
+
+    if (!confirm(`Are you sure you want to block ${worker.name || 'this worker'}? You will no longer be able to message or book each other.`)) {
+        return;
+    }
+
+    try {
+        const res = await fetch('/api/blocks', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                blocked_id: worker.id,
+                blocked_role: 'worker',
+                reason: 'Customer initiated block from profile inspection'
+            })
+        });
+        const data = await res.json();
+        if (res.ok && data.success) {
+            showToast(`🚫 ${worker.name || 'Worker'} has been blocked.`, 'info');
+            closeWorkerProfileModal();
+            loadAvailableWorkers();
+        } else {
+            showToast('❌ ' + (data.error || 'Failed to block worker'), 'danger');
+        }
+    } catch (e) {
+        showToast('Network error while blocking user.', 'danger');
+    }
+}
+
+// Locality Modal
+function openLocalityModal() {
+    const m = document.getElementById('customer-locality-modal');
+    if (m) m.style.display = 'flex';
+}
+function closeLocalityModal() {
+    const m = document.getElementById('customer-locality-modal');
+    if (m) m.style.display = 'none';
+}
+function setLocalityShortcut(loc, lat, lng) {
+    document.getElementById('input-customer-locality').value = loc;
+    CustomerState.lat = lat;
+    CustomerState.lng = lng;
+}
+function saveCustomerLocality() {
+    const loc = document.getElementById('input-customer-locality')?.value.trim();
+    if (loc) {
+        CustomerState.locality = loc;
+        document.getElementById('display-location-name').textContent = loc;
+        document.getElementById('location-source-label').textContent = '(Manually Set)';
+        closeLocalityModal();
+        recenterMapOnCustomer();
+        loadAvailableWorkers();
+        showToast('Locality updated.', 'info');
+    }
+}
+
+/**
+ * 1. GEOLOCATION INITIALIZATION
+ */
+function initCustomerLocation() {
+    if (!navigator.geolocation) {
+        document.getElementById('location-source-label').textContent = '(Default Area)';
+        loadAvailableWorkers();
+        return;
+    }
+
+    navigator.geolocation.getCurrentPosition(
+        (pos) => {
+            CustomerState.hasGps = true;
+            CustomerState.lat = pos.coords.latitude;
+            CustomerState.lng = pos.coords.longitude;
+            document.getElementById('location-source-label').textContent = '(GPS Active)';
+            recenterMapOnCustomer();
+            loadAvailableWorkers();
+        },
+        (err) => {
+            console.warn('Geolocation denied or failed:', err.message);
+            document.getElementById('location-source-label').textContent = '(Default Neighborhood)';
+            loadAvailableWorkers();
+        },
+        { timeout: 8000, maximumAge: 60000, enableHighAccuracy: false }
+    );
+}
+
+/**
+ * 2. LEAFLET MAP INTEGRATION
+ */
+function initCustomerMap() {
+    if (CustomerState.map) return;
+    const mapEl = document.getElementById('customer-workers-map');
+    if (!mapEl) return;
+
+    CustomerState.map = L.map('customer-workers-map', {
+        zoomControl: true,
+        scrollWheelZoom: false
+    }).setView([CustomerState.lat, CustomerState.lng], 12);
+
+    L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+        attribution: '&copy; OpenStreetMap contributors',
+        maxZoom: 18
+    }).addTo(CustomerState.map);
+
+    recenterMapOnCustomer();
+}
+
+function recenterMapOnCustomer() {
+    if (!CustomerState.map) return;
+    const center = [CustomerState.lat, CustomerState.lng];
+
+    if (CustomerState.customerMarker) {
+        CustomerState.map.removeLayer(CustomerState.customerMarker);
+    }
+
+    const custIcon = L.divIcon({
+        className: 'custom-map-pin pin-customer',
+        html: '<i class="fa-solid fa-street-view"></i>',
+        iconSize: [32, 32],
+        iconAnchor: [16, 16]
+    });
+    CustomerState.customerMarker = L.marker(center, { icon: custIcon })
+        .addTo(CustomerState.map)
+        .bindPopup(`<strong>Your Search Center</strong><br>${CustomerState.locality}`);
+
+    CustomerState.map.setView(center, 12);
+}
+
+function syncWorkerMapMarkers(workers) {
+    if (!CustomerState.map) return;
+
+    // Clear old worker markers
+    CustomerState.workerMarkers.forEach(m => CustomerState.map.removeLayer(m));
+    CustomerState.workerMarkers.clear();
+
+    const bounds = L.latLngBounds([[CustomerState.lat, CustomerState.lng]]);
+
+    workers.forEach(w => {
+        const lat = w.approx_lat;
+        const lng = w.approx_lng;
+        if (!lat || !lng) return;
+
+        bounds.extend([lat, lng]);
+        const isAvail = w.is_available !== false;
+
+        const pinIcon = L.divIcon({
+            className: `custom-map-pin ${isAvail ? 'pin-available' : 'pin-busy'}`,
+            html: isAvail ? '<i class="fa-solid fa-wrench"></i>' : '<i class="fa-solid fa-user-clock"></i>',
+            iconSize: [30, 30],
+            iconAnchor: [15, 15]
+        });
+
+        const marker = L.marker([lat, lng], { icon: pinIcon }).addTo(CustomerState.map);
+        const price = w.price ? `₹${w.price} / day` : 'Indicative Rate';
+
+        marker.bindPopup(`
+            <div style="font-family:var(--font-sans); min-width:180px;">
+                <div style="font-weight:700; font-size:0.9rem; color:var(--dark);">${w.name || 'Worker'}</div>
+                <div style="font-size:0.75rem; color:var(--primary); font-weight:600;">${w.work || 'Professional'}</div>
+                <div style="font-size:0.75rem; color:var(--muted); margin:4px 0;">
+                    <i class="fa-solid fa-location-dot"></i> ${w.location || 'Nearby'} ${w.distance_km ? '(' + w.distance_km + ' km)' : ''}
+                </div>
+                <div style="font-size:0.8125rem; font-weight:700; color:var(--dark); margin-bottom:6px;">${price}</div>
+                <div style="display:flex; gap:6px;">
+                    <button onclick="openWorkerProfileModalById('${w.id}')" style="flex:1; background:var(--primary); color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                        Profile
+                    </button>
+                    <button onclick="initiateDirectBooking('${w.id}', '${w.name}', '${w.work}', '${w.price || 500}')" style="flex:1; background:var(--success); color:white; border:none; padding:4px 8px; border-radius:4px; font-size:0.75rem; cursor:pointer;">
+                        Book
+                    </button>
+                </div>
+            </div>
+        `);
+
+        marker.on('click', () => {
+            highlightWorkerCard(w.id);
+        });
+
+        CustomerState.workerMarkers.set(String(w.id), marker);
+    });
+
+    if (workers.length > 0 && CustomerState.map) {
+        CustomerState.map.fitBounds(bounds, { padding: [40, 40], maxZoom: 14 });
+    }
+}
+
+function highlightWorkerCard(workerId) {
+    document.querySelectorAll('.worker-card').forEach(c => c.classList.remove('active-marker'));
+    const card = document.getElementById(`worker-card-${workerId}`);
+    if (card) {
+        card.classList.add('active-marker');
+        card.scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+    }
+}
+
+function switchCustomerView(mode) {
+    CustomerState.currentView = mode;
+    const mapWrapper = document.getElementById('customer-map-wrapper');
+    const workersGrid = document.getElementById('workers-list');
+
+    document.querySelectorAll('.view-toggle-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById(`btn-view-${mode}`)?.classList.add('active');
+
+    if (mode === 'split') {
+        mapWrapper.style.display = 'block';
+        workersGrid.style.display = 'grid';
+    } else if (mode === 'map') {
+        mapWrapper.style.display = 'block';
+        workersGrid.style.display = 'none';
+    } else if (mode === 'list') {
+        mapWrapper.style.display = 'none';
+        workersGrid.style.display = 'grid';
+    }
+
+    if (CustomerState.map) {
+        setTimeout(() => CustomerState.map.invalidateSize(), 150);
+    }
+}
+
+/**
+ * 3. LOAD WORKERS & FILTERS
+ */
+async function loadAvailableWorkers() {
+    const list = document.getElementById('workers-list');
+    const spinner = document.getElementById('refresh-workers-spinner');
+    if (spinner) spinner.classList.add('fa-spin');
+
+    const categoryVal = document.getElementById('filter-category')?.value || 'all';
+    const skillVal = document.getElementById('filter-skill-search')?.value.trim() || '';
+    const radiusVal = document.getElementById('filter-radius')?.value || '15';
+    const availVal = document.getElementById('filter-availability')?.value || 'all';
+    const ratingVal = document.getElementById('filter-rating')?.value || '0';
+    const sortVal = document.getElementById('filter-sort')?.value || 'relevance';
+
+    const params = new URLSearchParams({
+        lat: CustomerState.lat,
+        lng: CustomerState.lng,
+        radius_km: radiusVal,
+        sort_by: sortVal,
+        limit: '40'
+    });
+
+    if (categoryVal !== 'all') params.set('category', categoryVal);
+    if (skillVal) params.set('skill', skillVal);
+    if (availVal === 'available_only') params.set('available_only', 'true');
+    if (parseFloat(ratingVal) > 0) params.set('min_rating', ratingVal);
+
+    try {
+        const res = await fetch(`/api/workers?${params.toString()}`);
+        if (!res.ok) throw new Error(`HTTP ${res.status}`);
+        const workers = await res.json();
+
+        CustomerState.allWorkers = workers || [];
+        renderWorkersList(CustomerState.allWorkers);
+        syncWorkerMapMarkers(CustomerState.allWorkers);
+
+        const countBadge = document.getElementById('workers-count-badge');
+        if (countBadge) countBadge.textContent = `${CustomerState.allWorkers.length} workers found`;
+
+    } catch (err) {
+        console.error('Error fetching workers:', err);
+        list.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1; padding: 36px 16px; text-align: center;">
+                <i class="fa-solid fa-triangle-exclamation" style="font-size: 2rem; color: var(--danger); margin-bottom: 8px;"></i>
+                <h3 style="font-size: 1rem; margin-bottom: 4px;">Unable to load service workers</h3>
+                <p style="font-size: 0.8125rem; color: var(--muted); margin-bottom: 12px;">Network error or server unavailable.</p>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="loadAvailableWorkers()">
+                    <i class="fa-solid fa-arrows-rotate mr-1"></i> Try Again
+                </button>
+            </div>
+        `;
+    } finally {
+        if (spinner) spinner.classList.remove('fa-spin');
+    }
+}
+
+function renderWorkersList(workers) {
+    const list = document.getElementById('workers-list');
+    if (!list) return;
+
+    if (!workers || workers.length === 0) {
+        list.innerHTML = `
+            <div class="empty-state" style="grid-column: 1 / -1; padding: 40px 16px; text-align: center;">
+                <i class="fa-solid fa-users-slash" style="font-size: 2.25rem; color: var(--muted); margin-bottom: 12px; opacity:0.6;"></i>
+                <h3 style="font-size: 1.05rem; margin-bottom: 6px;">No Workers Found</h3>
+                <p style="font-size: 0.8125rem; color: var(--muted); max-width:360px; margin:0 auto 16px;">
+                    No verified professionals matched your filters. Try widening your radius or clearing specific filters.
+                </p>
+                <button type="button" class="btn btn-secondary btn-sm" onclick="resetWorkerFilters()">
+                    Reset Filters
+                </button>
+            </div>
+        `;
+        return;
+    }
+
+    list.innerHTML = workers.map(w => {
+        const name = w.name || 'Worker Professional';
+        const initial = (name.trim().charAt(0) || 'W').toUpperCase();
+        const work = w.work || 'Service Specialist';
+        const loc = w.location || 'Local Area';
+        const dist = w.distance_km ? `~${w.distance_km} km away` : 'In your zone';
+        const hasRating = (w.avg_rating && w.avg_rating > 0 && w.review_count > 0);
+        const price = w.price ? `₹${w.price} / day` : 'Indicative Rate';
+        const isAvail = w.is_available !== false;
+        const hasVoice = !!w.voice_note;
+
+        return `
+            <div class="worker-card" id="worker-card-${w.id}">
+                <div class="worker-card-avatar" style="background:var(--primary);color:white;position:relative;">
+                    ${initial}
+                    ${w.is_verified ? '<span style="position:absolute;bottom:0;right:0;background:white;border-radius:50%;color:var(--success);font-size:0.75rem;"><i class="fa-solid fa-circle-check"></i></span>' : ''}
+                </div>
+                <div class="worker-card-name">${name}</div>
+                <div class="worker-card-work"><i class="fa-solid fa-wrench mr-1"></i> ${work}</div>
+                <div class="worker-card-loc"><i class="fa-solid fa-location-dot"></i> ${loc} (${dist})</div>
+                <div class="worker-stars">
+                    ${hasRating ? `⭐ ${Number(w.avg_rating).toFixed(1)} <span style="color:var(--muted); font-size:.6875rem;">(${w.review_count} reviews)</span>` : '<span style="color:var(--muted); font-size:.75rem;">⭐ No reviews yet</span>'}
+                </div>
+                <div style="font-size:0.9375rem; font-weight:700; color:var(--dark); margin-bottom:12px;">
+                    ${price}
+                </div>
+                <div style="display:flex; gap:8px;">
+                    <button type="button" class="btn btn-secondary btn-sm" style="flex:1;" onclick="openWorkerProfileModalById('${w.id}')">
+                        <i class="fa-solid fa-user mr-1"></i> Profile
+                    </button>
+                    <button type="button" class="btn btn-primary btn-sm" style="flex:1;" onclick="initiateDirectBooking('${w.id}', '${name}', '${work}', '${w.price || 500}')">
+                        <i class="fa-solid fa-calendar-check mr-1"></i> Book
+                    </button>
+                    ${hasVoice ? `
+                        <button type="button" class="btn btn-ghost btn-sm" onclick="playVoiceBio('${w.voice_note}')" title="Listen to Voice Bio">
+                            <i class="fa-solid fa-volume-high"></i>
+                        </button>
+                    ` : ''}
+                </div>
+            </div>
+        `;
+    }).join('');
+}
+
+function applyWorkerFilters() {
+    loadAvailableWorkers();
+}
+function debounceApplyFilters() {
+    clearTimeout(CustomerState.filterDebounceTimer);
+    CustomerState.filterDebounceTimer = setTimeout(() => {
+        applyWorkerFilters();
+    }, 350);
+}
+function resetWorkerFilters() {
+    document.getElementById('filter-category').value = 'all';
+    document.getElementById('filter-skill-search').value = '';
+    document.getElementById('filter-radius').value = '15';
+    document.getElementById('filter-availability').value = 'all';
+    document.getElementById('filter-rating').value = '0';
+    document.getElementById('filter-sort').value = 'relevance';
+    loadAvailableWorkers();
+}
+
+/**
+ * 4. WORKER PROFILE DETAILS MODAL
+ */
+async function openWorkerProfileModalById(workerId) {
+    try {
+        const res = await fetch(`/api/workers/${workerId}`);
+        if (!res.ok) throw new Error('Worker profile not found');
+        const w = await res.json();
+        CustomerState.activeWorker = w;
+
+        document.getElementById('wmodal-name').textContent = w.name || 'Worker';
+        document.getElementById('wmodal-work').textContent = w.work || 'Specialist';
+        document.getElementById('wmodal-avatar').textContent = (w.name || 'W').charAt(0).toUpperCase();
+        document.getElementById('wmodal-rate').innerHTML = `₹${w.price || 500} <span style="font-size:0.75rem; font-weight:400; color:var(--muted);">/ indicative standard rate</span>`;
+        
+        // Real Rating (No fake 5.0 fallback or seeded reviews)
+        const ratingEl = document.getElementById('wmodal-rating-text');
+        if (ratingEl) {
+            if (w.review_count > 0 && w.avg_rating > 0) {
+                ratingEl.textContent = `⭐ ${Number(w.avg_rating).toFixed(1)} (${w.review_count} verified customer review${w.review_count > 1 ? 's' : ''})`;
+            } else {
+                ratingEl.textContent = '⭐ No reviews yet (0 verified customer reviews)';
+            }
+        }
+
+        // Real Verification Status
+        const vBadge = document.getElementById('wmodal-verified');
+        if (vBadge) {
+            if (w.is_verified) {
+                vBadge.className = 'badge badge-success';
+                vBadge.innerHTML = '<i class="fa-solid fa-circle-check mr-1"></i> Verified Pro';
+            } else if (w.verification_status === 'pending' || w.verification_status === 'under_review') {
+                vBadge.className = 'badge badge-warning';
+                vBadge.innerHTML = '<i class="fa-solid fa-clock mr-1"></i> ID Under Review';
+            } else {
+                vBadge.className = 'badge badge-secondary';
+                vBadge.textContent = 'Unverified Pro';
+            }
+        }
+
+        // Quote Preference Indicator
+        const qBadge = document.getElementById('wmodal-quote-pref');
+        if (qBadge) {
+            if (w.quote_preference === 'fixed_only') {
+                qBadge.textContent = 'Fixed Price Only';
+            } else if (w.quote_preference === 'inspection_required') {
+                qBadge.textContent = 'Inspection Required';
+            } else {
+                qBadge.textContent = 'Estimate then Confirm';
+            }
+        }
+
+        // Professional Bio
+        const bioBox = document.getElementById('wmodal-bio-container');
+        const bioText = document.getElementById('wmodal-bio');
+        if (bioBox && bioText) {
+            if (w.bio) {
+                bioText.textContent = w.bio;
+                bioBox.style.display = 'block';
+            } else {
+                bioBox.style.display = 'none';
+            }
+        }
+
+        document.getElementById('wmodal-location').textContent = `${w.location || 'Local Area'} (${w.service_radius_km || 15} km coverage)`;
+        document.getElementById('wmodal-completed-jobs').textContent = `${w.completed_jobs_count || 0} jobs successfully completed`;
+
+        const statusBadge = document.getElementById('wmodal-status');
+        if (w.is_available !== false) {
+            statusBadge.className = 'badge badge-success';
+            statusBadge.innerHTML = '<span class="pulse-dot mr-1"></span> Available Now';
+        } else {
+            statusBadge.className = 'badge badge-secondary';
+            statusBadge.textContent = 'Busy / Off Duty';
+        }
+
+        // Voice bio button
+        const voiceBox = document.getElementById('wmodal-voice-box');
+        if (w.voice_note) {
+            voiceBox.innerHTML = `
+                <button type="button" class="btn btn-secondary btn-sm" onclick="playVoiceBio('${w.voice_note}')" title="Play Worker Voice Bio">
+                    <i class="fa-solid fa-volume-high mr-1 text-primary"></i> Voice Bio
+                </button>
+            `;
+        } else {
+            voiceBox.innerHTML = '';
+        }
+
+        // Skills chips
+        const skillsContainer = document.getElementById('wmodal-skills-container');
+        if (w.skills && w.skills.length > 0) {
+            skillsContainer.innerHTML = w.skills.map(s => `
+                <span class="badge" style="background:var(--bg-alt); border:1px solid var(--border); font-size:0.75rem;">
+                    <i class="fa-solid fa-check mr-1 text-success"></i> ${s.skill_name} (${s.experience_years || 1} yrs)
+                </span>
+            `).join('');
+        } else {
+            skillsContainer.innerHTML = `<span class="badge" style="background:var(--bg-alt); border:1px solid var(--border);">${w.work || 'General Specialist'}</span>`;
+        }
+
+        // Reviews
+        const reviewsContainer = document.getElementById('wmodal-reviews-list');
+        if (w.reviews && w.reviews.length > 0) {
+            reviewsContainer.innerHTML = w.reviews.map(r => `
+                <div style="background:var(--bg); padding:8px 12px; border-radius:var(--radius); border:1px solid var(--border); font-size:0.8125rem;">
+                    <div style="display:flex; justify-content:space-between; margin-bottom:2px;">
+                        <span style="color:var(--warning); font-weight:600;">${'⭐'.repeat(r.rating || 5)}</span>
+                        <span style="color:var(--muted); font-size:0.6875rem;">${r.created_at ? r.created_at.slice(0, 10) : 'Verified Booking'}</span>
+                    </div>
+                    <div style="color:var(--dark);">${r.review || 'Excellent and timely service.'}</div>
+                </div>
+            `).join('');
+        } else {
+            reviewsContainer.innerHTML = `<div style="font-size:0.8125rem; color:var(--muted); padding:10px; text-align:center;">No written reviews yet for this worker.</div>`;
+        }
+
+        // Book Button
+        const bookBtn = document.getElementById('wmodal-book-btn');
+        bookBtn.onclick = () => {
+            closeWorkerProfileModal();
+            initiateDirectBooking(w.id, w.name, w.work, w.price || 500);
+        };
+
+        const modal = document.getElementById('worker-profile-modal');
+        if (modal) modal.style.display = 'flex';
+
+    } catch (e) {
+        showToast('Could not load worker profile.', 'error');
+    }
+}
+
+function closeWorkerProfileModal() {
+    const modal = document.getElementById('worker-profile-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+/**
+ * 5. DIRECT BOOKING FLOW WITH CONFIRMATION & EDIT DRAFT
+ */
+function initiateDirectBooking(workerId, workerName, workerWork, workerPrice) {
+    CustomerState.activeBookingDraft = {
+        workerId: workerId,
+        workerName: workerName,
+        workerWork: workerWork,
+        workerPrice: workerPrice
+    };
+
+    document.getElementById('dbook-worker-sub').textContent = `${workerName} (${workerWork})`;
+
+    // Default to tomorrow's date
+    const d = new Date();
+    d.setDate(d.getDate() + 1);
+    document.getElementById('dbook-date').value = d.toISOString().slice(0, 10);
+    document.getElementById('dbook-notes').value = '';
+
+    // Reset steps
+    document.getElementById('dbook-form-step').style.display = 'flex';
+    document.getElementById('dbook-form-footer').style.display = 'flex';
+    document.getElementById('dbook-confirm-step').style.display = 'none';
+    document.getElementById('dbook-confirm-footer').style.display = 'none';
+
+    const modal = document.getElementById('direct-booking-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closeDirectBookingModal() {
+    const modal = document.getElementById('direct-booking-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function showDirectBookingConfirmation() {
+    const date = document.getElementById('dbook-date').value;
+    const slot = document.getElementById('dbook-slot').value;
+    const notes = document.getElementById('dbook-notes').value.trim();
+
+    if (!date) {
+        alert('Please choose an appointment date.');
+        return;
+    }
+
+    const draft = CustomerState.activeBookingDraft;
+    document.getElementById('confirm-dbook-worker').textContent = `${draft.workerName} (${draft.workerWork})`;
+    document.getElementById('confirm-dbook-datetime').textContent = `${date} at ${slot}`;
+    document.getElementById('confirm-dbook-price').textContent = `₹${draft.workerPrice}`;
+    document.getElementById('confirm-dbook-notes').textContent = notes || 'Standard request instructions';
+
+    document.getElementById('dbook-form-step').style.display = 'none';
+    document.getElementById('dbook-form-footer').style.display = 'none';
+    document.getElementById('dbook-confirm-step').style.display = 'flex';
+    document.getElementById('dbook-confirm-footer').style.display = 'flex';
+}
+
+function backToDirectBookingEdit() {
+    document.getElementById('dbook-form-step').style.display = 'flex';
+    document.getElementById('dbook-form-footer').style.display = 'flex';
+    document.getElementById('dbook-confirm-step').style.display = 'none';
+    document.getElementById('dbook-confirm-footer').style.display = 'none';
+}
+
+async function submitDirectBooking() {
+    const btn = document.getElementById('btn-submit-direct-booking');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Booking...';
+
+    const draft = CustomerState.activeBookingDraft;
+    const date = document.getElementById('dbook-date').value;
+    const slot = document.getElementById('dbook-slot').value;
+    const notes = document.getElementById('dbook-notes').value.trim();
+
+    try {
+        const res = await fetch('/api/bookings', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                worker_id: draft.workerId,
+                date: date,
+                time_slot: slot,
+                notes: notes,
+                work_type: draft.workerWork
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            closeDirectBookingModal();
+            showToast('🎉 Booking requested successfully! Check My Bookings.', 'success');
+            loadBookings();
+        } else {
+            showToast(data.error || 'Failed to complete booking request.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Book Worker';
+        }
+    } catch (e) {
+        showToast('Network error submitting booking.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirm & Book Worker';
+    }
+}
+
+/**
+ * 6. POST A JOB FLOW WITH PREVIEW & CONFIRMATION
+ */
+function openPostJobModal() {
+    document.getElementById('pjob-location').value = CustomerState.locality;
+    document.getElementById('pjob-description').value = '';
+    document.getElementById('pjob-budget').value = '';
+
+    document.getElementById('pjob-form-step').style.display = 'flex';
+    document.getElementById('pjob-form-footer').style.display = 'flex';
+    document.getElementById('pjob-confirm-step').style.display = 'none';
+    document.getElementById('pjob-confirm-footer').style.display = 'none';
+
+    const modal = document.getElementById('post-job-modal');
+    if (modal) modal.style.display = 'flex';
+}
+
+function closePostJobModal() {
+    const modal = document.getElementById('post-job-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+function showPostJobConfirmation() {
+    const serviceType = document.getElementById('pjob-service-type').value;
+    const desc = document.getElementById('pjob-description').value.trim();
+    const loc = document.getElementById('pjob-location').value.trim();
+    const isUrgent = document.getElementById('pjob-urgency').value === 'true';
+    const budget = document.getElementById('pjob-budget').value.trim();
+
+    if (!desc || !loc) {
+        alert('Please provide both a description of work and a location.');
+        return;
+    }
+
+    document.getElementById('confirm-pjob-service').textContent = serviceType;
+    document.getElementById('confirm-pjob-desc').textContent = desc;
+    document.getElementById('confirm-pjob-location').textContent = loc;
+    document.getElementById('confirm-pjob-urgency').textContent = isUrgent ? '⚡ Urgent Need (Immediate Dispatch)' : 'Flexible / Standard';
+    document.getElementById('confirm-pjob-budget').textContent = budget ? `₹${budget}` : 'Open to competitive offers';
+
+    document.getElementById('pjob-form-step').style.display = 'none';
+    document.getElementById('pjob-form-footer').style.display = 'none';
+    document.getElementById('pjob-confirm-step').style.display = 'flex';
+    document.getElementById('pjob-confirm-footer').style.display = 'flex';
+}
+
+function backToPostJobEdit() {
+    document.getElementById('pjob-form-step').style.display = 'flex';
+    document.getElementById('pjob-form-footer').style.display = 'flex';
+    document.getElementById('pjob-confirm-step').style.display = 'none';
+    document.getElementById('pjob-confirm-footer').style.display = 'none';
+}
+
+async function submitPostJob() {
+    const btn = document.getElementById('btn-submit-post-job');
+    btn.disabled = true;
+    btn.innerHTML = '<i class="fa-solid fa-spinner fa-spin mr-1"></i> Posting...';
+
+    const serviceType = document.getElementById('pjob-service-type').value;
+    const desc = document.getElementById('pjob-description').value.trim();
+    const loc = document.getElementById('pjob-location').value.trim();
+    const isUrgent = document.getElementById('pjob-urgency').value === 'true';
+    const budget = parseFloat(document.getElementById('pjob-budget').value) || 0;
+
+    try {
+        const res = await fetch('/api/jobs', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                service_type: serviceType,
+                description: desc,
+                location: loc,
+                is_urgent: isUrgent,
+                budget_min: budget > 0 ? budget * 0.8 : 0,
+                budget_max: budget > 0 ? budget : 0,
+                lat: CustomerState.lat,
+                lng: CustomerState.lng
+            })
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            closePostJobModal();
+            showToast('🎉 Job posted! Eligible nearby workers have been notified.', 'success');
+            loadCustomerJobs();
+        } else {
+            showToast(data.error || 'Failed to post job request.', 'error');
+            btn.disabled = false;
+            btn.textContent = 'Confirm & Post Job';
+        }
+    } catch (e) {
+        showToast('Network error posting job.', 'error');
+        btn.disabled = false;
+        btn.textContent = 'Confirm & Post Job';
+    }
+}
+
+/**
+ * 7. LOAD CUSTOMER'S POSTED JOBS & OFFERS
+ */
+async function loadCustomerJobs() {
+    const container = document.getElementById('customer-jobs-container');
+    try {
+        const res = await fetch('/api/jobs/customer');
+        if (!res.ok) throw new Error('API error');
+        const jobs = await res.json();
+        CustomerState.postedJobs = jobs || [];
+
+        const countBadge = document.getElementById('posted-jobs-count-badge');
+        if (countBadge) countBadge.textContent = `${CustomerState.postedJobs.length} requests`;
+        document.getElementById('stat-posted').textContent = CustomerState.postedJobs.length;
+
+        // Calculate total pending offers
+        const totalOffers = CustomerState.postedJobs.reduce((sum, j) => sum + (j.offers_count || 0), 0);
+        const offersNavBadge = document.getElementById('active-offers-badge');
+        if (offersNavBadge) {
+            offersNavBadge.textContent = totalOffers;
+            offersNavBadge.style.display = totalOffers > 0 ? 'inline-block' : 'none';
+        }
+
+        if (CustomerState.postedJobs.length === 0) {
+            container.innerHTML = `
+                <div class="empty-state" style="grid-column: 1 / -1; padding: 28px 16px; text-align: center;">
+                    <i class="fa-solid fa-bullhorn" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
+                    <h3 style="font-size: 1rem; margin-bottom: 4px;">No Jobs Posted Yet</h3>
+                    <p style="font-size: 0.8125rem; color: var(--muted); margin-bottom: 12px;">Post a job request to receive proposals and prices from nearby workers.</p>
+                    <button type="button" class="btn btn-primary btn-sm" onclick="openPostJobModal()">
+                        <i class="fa-solid fa-plus mr-1"></i> Post Your First Job
+                    </button>
+                </div>
+            `;
+            return;
+        }
+
+        container.innerHTML = CustomerState.postedJobs.map(j => {
+            const isAssigned = j.status === 'accepted' || !!j.worker_id;
+            const offersCount = j.offers_count || 0;
+            const dateStr = j.created_at ? j.created_at.slice(0, 10) : 'Recent';
+
+            return `
+                <div class="job-card" style="display:flex; flex-direction:column; justify-content:space-between;">
+                    <div>
+                        <div class="job-card-header">
+                            <span class="badge ${j.is_urgent ? 'badge-danger' : 'badge-primary'}">${j.service_type}</span>
+                            <span class="badge badge-${j.status === 'open' ? 'warning' : 'success'}">${j.status.toUpperCase()}</span>
+                        </div>
+                        <div class="job-title">${j.description}</div>
+                        <div class="job-meta">
+                            <span class="job-meta-item"><i class="fa-solid fa-location-dot"></i> ${j.location}</span>
+                            <span class="job-meta-item"><i class="fa-solid fa-calendar"></i> ${dateStr}</span>
+                        </div>
+                    </div>
+                    <div style="margin-top:14px; border-top:1px solid var(--border); padding-top:10px;">
+                        ${isAssigned ? `
+                            <div style="display:flex; align-items:center; justify-content:space-between;">
+                                <div>
+                                    <div style="font-size:0.75rem; color:var(--muted);">Assigned Professional</div>
+                                    <strong style="color:var(--dark); font-size:0.875rem;">${j.worker_name || 'Worker Assigned'}</strong>
+                                </div>
+                                <a href="/tracking/${j.id}" class="btn btn-primary btn-sm">
+                                    <i class="fa-solid fa-location-arrow mr-1"></i> Track Worker
+                                </a>
+                            </div>
+                        ` : `
+                            <div style="display:flex; align-items:center; justify-content:space-between;">
+                                <span style="font-size:0.8125rem; font-weight:700; color:var(--primary);">
+                                    <i class="fa-solid fa-handshake mr-1"></i> ${offersCount} ${offersCount === 1 ? 'Offer' : 'Offers'} Received
+                                </span>
+                                <button type="button" class="btn btn-primary btn-sm" onclick="openJobOffersModal('${j.id}', '${j.service_type}')">
+                                    Compare Offers
+                                </button>
+                            </div>
+                        `}
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (e) {
+        container.innerHTML = `<div class="empty-state"><p>Could not load posted jobs.</p></div>`;
+    }
+}
+
+/**
+ * 8. COMPARE & ACCEPT WORKER OFFERS
+ */
+async function openJobOffersModal(jobId, serviceType) {
+    CustomerState.activeOfferJobId = jobId;
+    document.getElementById('omodal-job-title').textContent = `Worker Offers for ${serviceType || 'Job'}`;
+    const list = document.getElementById('omodal-offers-list');
+    list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--muted);"><i class="fa-solid fa-spinner fa-spin mr-2"></i> Loading offers...</div>`;
+
+    const modal = document.getElementById('job-offers-modal');
+    if (modal) modal.style.display = 'flex';
+
+    try {
+        const res = await fetch(`/api/jobs/${jobId}/offers`);
+        if (!res.ok) throw new Error('Failed to fetch offers');
+        const offers = await res.json();
+
+        if (!offers || offers.length === 0) {
+            list.innerHTML = `
+                <div style="text-align:center; padding:28px 12px; color:var(--muted);">
+                    <i class="fa-solid fa-hourglass-half" style="font-size:1.75rem; margin-bottom:8px; opacity:0.6;"></i>
+                    <h4 style="font-size:0.95rem; margin-bottom:4px;">No Offers Yet</h4>
+                    <p style="font-size:0.8125rem; margin:0;">Nearby qualified workers have been alerted. Check back shortly as they respond!</p>
+                </div>
+            `;
+            return;
+        }
+
+        list.innerHTML = offers.map(o => {
+            const w = o.worker || {};
+            const workerName = w.name || 'Service Professional';
+            const price = o.proposed_price ? `₹${o.proposed_price}` : '₹450';
+            const eta = o.estimated_arrival_minutes ? `ETA ~${o.estimated_arrival_minutes} mins` : 'Flexible timing';
+            const msg = o.message || 'Ready to complete this job efficiently.';
+            const dist = w.distance_km ? `~${w.distance_km} km away` : 'Nearby';
+
+            return `
+                <div style="background:var(--card); border:1px solid var(--border); border-radius:var(--radius-lg); padding:16px; box-shadow:var(--shadow-xs);">
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:8px;">
+                        <div>
+                            <div style="font-weight:700; font-size:1rem; color:var(--dark);">
+                                ${workerName}
+                                ${w.is_verified ? '<i class="fa-solid fa-circle-check text-success ml-1" title="Verified Worker"></i>' : ''}
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--muted);">
+                                ${w.work || 'Specialist'} • ${dist} • ⭐ ${w.avg_rating || 5.0} (${w.review_count || 0})
+                            </div>
+                        </div>
+                        <div style="text-align:right;">
+                            <div style="font-size:1.25rem; font-weight:800; color:var(--primary);">${price}</div>
+                            <div style="font-size:0.75rem; color:var(--success); font-weight:600;"><i class="fa-solid fa-bolt mr-1"></i>${eta}</div>
+                        </div>
+                    </div>
+                    <div style="background:var(--bg-alt); padding:8px 12px; border-radius:var(--radius); font-size:0.8125rem; color:var(--body); margin-bottom:12px;">
+                        "${msg}"
+                    </div>
+                    <div style="display:flex; justify-content:flex-end; gap:8px;">
+                        <button type="button" class="btn btn-secondary btn-sm" onclick="openWorkerProfileModalById('${o.worker_id}')">
+                            View Profile
+                        </button>
+                        <button type="button" class="btn btn-primary btn-sm" onclick="acceptWorkerOffer('${jobId}', '${o.id}')">
+                            <i class="fa-solid fa-check mr-1"></i> Accept Offer & Hire
+                        </button>
+                    </div>
+                </div>
+            `;
+        }).join('');
+
+    } catch (e) {
+        list.innerHTML = `<div style="text-align:center; padding:20px; color:var(--danger);">Error loading offers.</div>`;
+    }
+}
+
+function closeJobOffersModal() {
+    const modal = document.getElementById('job-offers-modal');
+    if (modal) modal.style.display = 'none';
+}
+
+async function acceptWorkerOffer(jobId, offerId) {
+    if (!confirm('Accept this worker proposal and hire them for this job?')) return;
+
+    try {
+        const res = await fetch(`/api/jobs/${jobId}/offers/${offerId}/accept`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({})
+        });
+
+        const data = await res.json();
+        if (res.ok) {
+            closeJobOffersModal();
+            showToast('🎉 Worker hired! Competing offers closed and details confirmed.', 'success');
+            loadCustomerJobs();
+        } else {
+            showToast(data.error || 'Failed to accept offer.', 'error');
+        }
+    } catch (e) {
+        showToast('Network error accepting offer.', 'error');
+    }
+}
+
+/**
+ * 9. AI ASSISTANT NATURAL PROMPT HOOK & CUSTOMER DASHBOARD ORCHESTRATION
+ */
+window.customAiReply = function(rawMsg) {
+    if (!rawMsg) return null;
+    const msg = rawMsg.toLowerCase().trim();
+
+    // Map keywords to service categories
+    const categoryKeywords = [
+        { cat: 'Electrical', label: 'Electrician', regex: /\b(electrician|bijli|wiring|fan|switch|light|fuse|electrical)\b/i },
+        { cat: 'Plumbing', label: 'Plumber', regex: /\b(plumber|nal|pipe|leak|tap|drainage|water pipe|plumbing)\b/i },
+        { cat: 'Carpentry', label: 'Carpenter', regex: /\b(carpenter|badhai|furniture|wood|door|table|chair|almirah)\b/i },
+        { cat: 'Cleaning', label: 'Cleaner', regex: /\b(cleaner|safai|cleaning|broom|deep clean|house cleaning)\b/i },
+        { cat: 'Painting', label: 'Painter', regex: /\b(paint|painter|rang|distemper|wall paint|painting)\b/i },
+        { cat: 'Appliance Repair', label: 'Appliance Repair Pro', regex: /\b(ac|refrigerator|fridge|washing machine|ro|geyser|appliance)\b/i },
+        { cat: 'Construction Helper', label: 'Construction Helper', regex: /\b(helper|majdoor|labour|construction|mistri)\b/i },
+        { cat: 'Driver & Transport', label: 'Driver', regex: /\b(driver|car driver|transport|gaadi|cab)\b/i }
+    ];
+
+    // 1. Service Discovery / Finding workers
+    for (const item of categoryKeywords) {
+        if (item.regex.test(msg)) {
+            // Apply category filter to the actual UI
+            const catSelect = document.getElementById('filter-category');
+            if (catSelect) {
+                catSelect.value = item.cat;
+                applyWorkerFilters();
+            }
+
+            // Check actual backend data evidence in CustomerState.allWorkers
+            const count = (CustomerState.allWorkers || []).filter(w => {
+                const wCat = (w.work || w.category || '').toLowerCase();
+                return wCat.includes(item.cat.toLowerCase()) || wCat.includes(item.label.toLowerCase());
+            }).length;
+
+            const locality = CustomerState.locality || 'your area';
+            const radius = document.getElementById('filter-radius')?.value || '15';
+
+            if (count > 0) {
+                return `I found <strong>${count} verified ${item.label}${count > 1 ? 's' : ''}</strong> available within ${radius} km of ${locality}. The map and list have been updated to show them. You can check their indicative rates, ratings, and click <em>Book</em> to hire directly.`;
+            } else {
+                return `No verified ${item.label}s are currently active within ${radius} km of ${locality}. You can try increasing your search radius above, or click <a href="javascript:void(0)" onclick="openPostJobModal()" style="color:var(--primary);font-weight:600">Post a Job Request</a> so eligible workers in nearby areas can send you proposals.`;
+            }
+        }
+    }
+
+    // 2. Post a Job flow
+    if (/\b(post( a)? job|kaam post|nayi request|create request|hire multiple)\b/i.test(msg)) {
+        openPostJobModal();
+        return `I have opened the <strong>Post a Job Request</strong> modal for you. Please describe what help you need, select timing and budget, and review the confirmation summary before posting.`;
+    }
+
+    // 3. Explain next steps / How to book
+    if (/\b(next step|kya karein|how to book|kaise book|process|procedure|steps)\b/i.test(msg)) {
+        return `Here are your next steps:<br>
+1️⃣ <strong>Browse & Compare:</strong> Search by trade or view the interactive map. Check badges, ratings, and verified reviews.<br>
+2️⃣ <strong>Direct Booking:</strong> Click <em>Book</em> on any verified worker card, select date & time slot, and confirm.<br>
+3️⃣ <strong>Post a Job:</strong> If you want multiple workers to submit price offers, click <em>Post a Job Request</em>.<br>
+4️⃣ <strong>Privacy Shield:</strong> Your exact street address and phone number are hidden until a booking is confirmed.`;
+    }
+
+    // 4. Rating & Verification inquiries
+    if (/\b(rating|review|verified|bharosa|trust|reviews)\b/i.test(msg)) {
+        return `On VoiceHire, all ratings (⭐) and completed-job statistics are verified from real completed customer bookings. You can click <em>Profile</em> on any worker card to view their complete service history and client feedback.`;
+    }
+
+    // 5. Filter adjustments
+    if (/\b(filter|radius|distance|sorting|kilo|km)\b/i.test(msg)) {
+        return `You can refine your worker search using the filter bar above the map: filter by Service Category, search specific skills (e.g. pipe, wiring), adjust distance radius (up to 50 km), filter by minimum rating, or select <em>Available Now Only</em>.`;
+    }
+
+    return null; // Fall through to standard fallback
+};
+
+function openAssistantPrompt(text) {
+    const aiToggle = document.getElementById('ai-toggle-btn');
+    const aiInput = document.getElementById('ai-input');
+    const aiSend = document.getElementById('ai-send-btn');
+
+    if (aiToggle && !document.getElementById('ai-panel')?.classList.contains('open')) {
+        aiToggle.click();
+    }
+    if (aiInput && aiSend) {
+        aiInput.value = text;
+        aiSend.click();
+    }
+}
+
+/**
+ * 10. VOICE BIO AUDIO PLAYER
+ */
 let activeAudio = null;
 function playVoiceBio(url) {
     if (!url) return;
@@ -203,41 +2377,43 @@ function playVoiceBio(url) {
     const audioUrl = url.startsWith('/') ? url : `/${url}`;
     activeAudio = new Audio(audioUrl);
     activeAudio.play().catch(e => {
-        console.warn('Could not play voice bio:', e);
+        showToast('Could not play voice bio audio.', 'info');
     });
 }
 
+/**
+ * 11. LOAD RECENT BOOKINGS & STATS
+ */
 async function loadBookings() {
     try {
         const res = await fetch('/api/bookings/user');
         const data = await res.json();
         const list = document.getElementById('bookings-list');
         if (data && data.length) {
-            const statusMap = { Pending: 'warning', Booked: 'primary', Completed: 'success', Cancelled: 'danger' };
+            const statusMap = { Pending: 'warning', Booked: 'primary', 'Work Started': 'warning', Completed: 'success', Cancelled: 'danger' };
             list.innerHTML = data.slice(0, 5).map(b => `
-                <div class="booking-item" onclick="window.location.href='/booking/${b.id}'">
+                <div class="booking-item" onclick="window.location.href='/booking/${b.id}'" style="cursor:pointer;">
                     <div class="booking-icon"><i class="fa-solid fa-briefcase"></i></div>
                     <div class="booking-info">
-                        <div class="booking-title">${b.work_type || 'Booking'}</div>
-                        <div class="booking-meta">${b.date || ''} · ${b.worker_name || ''}</div>
+                        <div class="booking-title">${b.work_type || 'Service Booking'}</div>
+                        <div class="booking-meta">${b.date || ''} · ${b.worker_name || 'Worker'} · ${b.time_slot || ''}</div>
                     </div>
-                    <span class="badge badge-${statusMap[b.status] || 'gray'}">${b.status}</span>
+                    <span class="badge badge-${statusMap[b.status] || 'secondary'}">${b.status}</span>
                 </div>
             `).join('');
-            const active = data.filter(b => b.status === 'Booked' || b.status === 'Pending').length;
+            const active = data.filter(b => b.status === 'Booked' || b.status === 'Pending' || b.status === 'Work Started').length;
             const completed = data.filter(b => b.status === 'Completed');
             const totalSpent = completed.reduce((sum, b) => sum + (parseFloat(b.total_price || b.price) || 0), 0);
-            
+
             document.getElementById('stat-active').textContent = active;
             document.getElementById('stat-hired').textContent = completed.length;
             document.getElementById('stat-spent').textContent = `₹${totalSpent.toLocaleString('en-IN')}`;
         } else {
             list.innerHTML = `
-                <div class="empty-state">
-                    <i class="fa-solid fa-calendar-xmark"></i>
-                    <h3>No bookings yet</h3>
-                    <p>Book a worker to get started.</p>
-                    <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm">Find Workers</a>
+                <div class="empty-state" style="padding:24px 12px; text-align:center;">
+                    <i class="fa-solid fa-calendar-xmark" style="font-size:1.75rem; color:var(--muted); margin-bottom:6px;"></i>
+                    <h3 style="font-size:0.95rem; margin-bottom:4px;">No Bookings Yet</h3>
+                    <p style="font-size:0.8125rem; color:var(--muted); margin:0;">Book a local professional directly or post a request to get started.</p>
                 </div>`;
             document.getElementById('stat-active').textContent = '0';
             document.getElementById('stat-hired').textContent = '0';
@@ -248,58 +2424,12 @@ async function loadBookings() {
     }
 }
 
-async function loadAvailableWorkers() {
-    const list = document.getElementById('workers-list');
-    try {
-        const res = await fetch('/get_workers?limit=6');
-        if (!res.ok) throw new Error('API error ' + res.status);
-        const workers = await res.json();
-        if (workers && workers.length > 0) {
-            list.innerHTML = workers.map(w => {
-                const name = w.name || 'Worker';
-                const initial = (name.trim().charAt(0) || 'W').toUpperCase();
-                const work = w.work || 'Specialist';
-                const loc = w.location || 'Nearby';
-                const rating = w.avg_rating ? w.avg_rating.toFixed(1) : '5.0';
-                const reviewCount = w.review_count ? `(${w.review_count})` : '';
-                const hasVoice = !!w.voice_note;
-                const bookUrl = `/book/${w.id}`;
-                return `
-                    <div class="worker-card">
-                        <div class="worker-card-avatar" style="background:var(--primary);color:white;">${initial}</div>
-                        <div class="worker-card-name">${name}</div>
-                        <div class="worker-card-work"><i class="fa-solid fa-briefcase mr-1"></i> ${work}</div>
-                        <div class="worker-card-loc"><i class="fa-solid fa-location-dot"></i> ${loc}</div>
-                        <div class="worker-stars">⭐⭐⭐⭐⭐ <span style="color:var(--muted); font-size:.6875rem;">(${rating} ${reviewCount})</span></div>
-                        <div style="display:flex; gap:8px;">
-                            <a href="${bookUrl}" class="btn btn-primary btn-sm" style="flex:1;">Book</a>
-                            ${hasVoice ? `<button class="btn btn-ghost btn-sm" onclick="playVoiceBio('${w.voice_note}')" title="Listen to Voice Bio"><i class="fa-solid fa-volume-high"></i></button>` : ''}
-                        </div>
-                    </div>
-                `;
-            }).join('');
-        } else {
-            list.innerHTML = `
-                <div class="empty-state" style="grid-column: 1 / -1; padding: 32px 16px; text-align: center;">
-                    <i class="fa-solid fa-users-slash" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
-                    <h3 style="font-size: 1rem; margin-bottom: 4px;">No Workers Available Yet</h3>
-                    <p style="font-size: 0.875rem; color: var(--muted); margin: 0;">Verified service providers in your area will appear here.</p>
-                </div>
-            `;
-        }
-    } catch(err) {
-        list.innerHTML = `
-            <div class="empty-state" style="grid-column: 1 / -1; padding: 32px 16px; text-align: center;">
-                <i class="fa-solid fa-users" style="font-size: 2rem; color: var(--muted); margin-bottom: 8px;"></i>
-                <h3 style="font-size: 1rem; margin-bottom: 4px;">Explore Service Providers</h3>
-                <p style="font-size: 0.875rem; color: var(--muted); margin-bottom: 12px;">Browse our verified directory of local trade professionals.</p>
-                <a href="{{ url_for('my_bookings_page') }}" class="btn btn-primary btn-sm">Find Workers</a>
-            </div>
-        `;
-    }
-}
-
-loadBookings();
-loadAvailableWorkers();
+// ── BOOTSTRAP ──
+window.addEventListener('DOMContentLoaded', () => {
+    initCustomerMap();
+    initCustomerLocation();
+    loadBookings();
+    loadCustomerJobs();
+});
 </script>
 {% endblock %}
