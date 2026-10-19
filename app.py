@@ -86,7 +86,8 @@ supabase_key = os.environ.get('SUPABASE_KEY')
 if not supabase_url or not supabase_key:
     raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in .env")
 
-supabase: Client = create_client(supabase_url, supabase_key)
+from local_db_adapter import get_resilient_supabase_client
+supabase = get_resilient_supabase_client(supabase_url, supabase_key)
 
 # ---- HELPERS ----
 def allowed_file(filename, allowed_set):
@@ -929,7 +930,7 @@ def get_worker_profile():
         worker_id = session['user_id']
         resp = supabase.table("workers").select("*").eq("id", worker_id).execute()
         if not resp.data:
-            return jsonify({'error': 'Worker not found'}), 404
+            return jsonify({'error': 'Worker not found', 'exists': False, 'worker': None, 'completeness': 0}), 404
         worker = resp.data[0]
         # Never leak password hash
         worker.pop('password', None)
@@ -938,6 +939,7 @@ def get_worker_profile():
         # Attach worker skills
         skills = WorkerSkillsManager.get_worker_skills(supabase, worker_id)
         worker['skills'] = skills
+        worker['exists'] = True
 
         # Mask payout VPA for safety
         vpa = worker.get('payout_vpa')
@@ -956,6 +958,15 @@ def get_worker_profile():
         # Payout readiness
         gw_ok, _ = RazorpayGatewayService.is_gateway_configured()
         worker['is_payout_ready'] = bool(worker.get('payout_vpa') and worker.get('payout_status') == 'active' and gw_ok)
+        worker['profile'] = dict(worker)
+        worker['verification'] = {
+            'is_verified': bool(worker.get('is_verified')),
+            'status': worker.get('verification_status', 'unsubmitted')
+        }
+        worker['payout_readiness'] = {
+            'is_ready': worker['is_payout_ready'],
+            'vpa_masked': worker.get('payout_vpa_masked', 'Not configured')
+        }
 
         return jsonify(worker), 200
     except Exception as e:
@@ -968,6 +979,7 @@ def update_worker_profile_api():
     """
     POST /api/worker/profile
     Worker edits public display info, trade categories, pricing, quote preferences, and service area.
+    Supports idempotent create-or-update workflow.
     """
     if 'user_id' not in session or session.get('role') != 'worker':
         return jsonify({'error': 'Unauthorized: Worker access only'}), 401
@@ -980,9 +992,14 @@ def update_worker_profile_api():
 
     updates = {"updated_at": utc_now_iso()}
     allowed_fields = [
-        'name', 'work', 'location', 'phone', 'price',
-        'service_radius_km', 'quote_preference', 'bio', 'experience_years', 'language_preference'
+        'name', 'work', 'trade', 'location', 'phone', 'price',
+        'service_radius_km', 'quote_preference', 'bio', 'experience_years', 'language_preference',
+        'is_available', 'is_published'
     ]
+
+    # Map trade to work if not provided
+    if 'trade' in data and 'work' not in data:
+        data['work'] = data['trade']
 
     for field in allowed_fields:
         if field in data and data[field] not in (None, ''):
@@ -1005,27 +1022,78 @@ def update_worker_profile_api():
                 clean_lang = get_verified_language(val)
                 updates['language_preference'] = clean_lang
                 session['lang'] = clean_lang
+            elif field in ('is_available', 'is_published'):
+                updates[field] = bool(val)
+            elif field == 'trade':
+                updates['work'] = safe_str(val)
             else:
                 updates[field] = safe_str(val)
 
-    if not updates or len(updates) <= 1:
+    # Ensure at least one actual field is being updated or created
+    real_fields = [k for k in updates.keys() if k != 'updated_at']
+    if not real_fields:
         return jsonify({'error': 'No valid fields provided for update'}), 400
 
     try:
-        resp = supabase.table("workers").update(updates).eq("id", worker_id).execute()
-        if not resp.data:
-            return jsonify({'error': 'Worker record not found'}), 404
+        # Check if worker record currently exists
+        existing_resp = supabase.table("workers").select("*").eq("id", worker_id).execute()
+        
+        if not existing_resp.data:
+            # Idempotent create worker profile
+            insert_data = {
+                "id": str(worker_id),
+                "name": safe_str(updates.get('name') or session.get('name') or 'Worker'),
+                "work": safe_str(updates.get('work') or 'General Helper'),
+                "location": safe_str(updates.get('location') or 'Delhi NCR'),
+                "phone": safe_str(updates.get('phone') or session.get('phone') or ''),
+                "price": float(updates.get('price', 0)),
+                "experience_years": int(updates.get('experience_years', 1)),
+                "bio": safe_str(updates.get('bio', '')),
+                "service_radius_km": int(updates.get('service_radius_km', 15)),
+                "quote_preference": safe_str(updates.get('quote_preference', 'estimate_then_confirm')),
+                "is_available": True,
+                "is_verified": False,
+                "created_at": utc_now_iso(),
+                "updated_at": utc_now_iso()
+            }
+            create_resp = supabase.table("workers").insert(insert_data).execute()
+            if not create_resp.data:
+                return jsonify({'error': 'Failed to create worker profile'}), 500
+            updated_worker = dict(create_resp.data[0])
+        else:
+            resp = supabase.table("workers").update(updates).eq("id", worker_id).execute()
+            if not resp.data:
+                return jsonify({'error': 'Worker record update failed'}), 500
+            updated_worker = dict(resp.data[0])
 
-        updated_worker = resp.data[0]
         updated_worker.pop('password', None)
         updated_worker.pop('password_hash', None)
 
         if 'name' in updates:
             session['name'] = updates['name']
 
+        # Add skill if trade or work updated
+        skill_to_add = updates.get('work') or data.get('skill')
+        if skill_to_add:
+            try:
+                WorkerSkillsManager.add_worker_skill(supabase, worker_id, str(skill_to_add).strip(), is_primary=True)
+            except Exception:
+                pass
+
+        if isinstance(data.get('skills'), list):
+            for sk in data['skills']:
+                if sk:
+                    try:
+                        WorkerSkillsManager.add_worker_skill(supabase, worker_id, str(sk).strip())
+                    except Exception:
+                        pass
+
         skills = WorkerSkillsManager.get_worker_skills(supabase, worker_id)
         completeness = WorkerProfileManager.calculate_completeness(updated_worker, skills)
         updated_worker['completeness'] = completeness
+        updated_worker['skills'] = skills
+        updated_worker['profile_completeness'] = completeness['score']
+        updated_worker['exists'] = True
 
         AuditLogger.log_event(
             supabase, actor_id=worker_id, actor_role="worker",
@@ -1035,9 +1103,11 @@ def update_worker_profile_api():
         )
 
         return jsonify({
+            'success': True,
             'message': 'Profile updated successfully',
             'worker': updated_worker,
-            'completeness': completeness
+            'completeness': completeness,
+            'exists': True
         }), 200
     except Exception as e:
         print(f"Error updating worker profile: {e}\n{traceback.format_exc()}")
@@ -1366,7 +1436,7 @@ def post_job():
 
     insert_payload = {
         "user_id": session['user_id'],
-        "user_name": session['name'],
+        "user_name": session.get('name', 'Customer'),
         "user_phone": session.get('phone', 'Unknown'),
         "user_profile_pic": session.get('profile_pic'),
         "service_type": service_type,
@@ -1883,7 +1953,7 @@ def accept_job(job_id):
 
     worker_id = session['user_id']
     try:
-        data = request.get_json() or {}
+        data = request.get_json(silent=True) or {}
         price = data.get('price', 0)
         try:
             price = float(price) if price else 0
@@ -1932,7 +2002,7 @@ def accept_job(job_id):
             metadata={"price": price}
         )
 
-        return jsonify({'message': 'Job accepted successfully', 'price': price, 'job': accepted_job}), 200
+        return jsonify({'success': True, 'message': 'Job accepted successfully', 'price': price, 'job': accepted_job}), 200
     except Exception as e:
         print("Error accepting job:\n", traceback.format_exc())
         return jsonify({'error': 'Server error'}), 500

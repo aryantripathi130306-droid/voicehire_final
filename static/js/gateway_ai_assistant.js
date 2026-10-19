@@ -1,14 +1,13 @@
 /**
- * VoiceHire — Unified Voice Assistant & Onboarding Shell
+ * VoiceHire — Unified Persistent Voice Assistant & Onboarding Shell
  * ═══════════════════════════════════════════════════════════════════════════
- * Complies with Master Engineering Rules (Rule 1-14):
- *  - High-accessibility voice & visual onboarding for informal workforce.
- *  - Browser Web Speech API (SpeechRecognition + SpeechSynthesis).
- *  - Handles audio autoplay blocking with non-intrusive activation button.
- *  - Requests microphone permission only when voice input is initiated.
- *  - Explicit Assistant State Model (no scattered boolean flags).
- *  - Zero password collection via voice (Strict Rule 8 Compliance).
- *  - Preserves existing UI and full manual navigation alternative.
+ * Phase 14.1 Production Implementation:
+ *  - Persistent conversation & onboarding state across navigation (Bug 1).
+ *  - Worker profile creation & completion via backend APIs (Bug 2).
+ *  - Hands-free auto-listening after speech + manual voice mode (Bug 3).
+ *  - 12 Indian languages defaulting to Hindi (hi-IN).
+ *  - Zero password / OTP collection over voice (Rule 8 Compliance).
+ *  - Idempotent backend synchronization & authoritative verification.
  * ═══════════════════════════════════════════════════════════════════════════
  */
 
@@ -24,19 +23,28 @@
      1. ASSISTANT STATE MODEL
   ───────────────────────────────────────────────────────────────────────── */
   const States = {
-    UNINITIALIZED:    'UNINITIALIZED',
-    AUTOPLAY_PROMPT:  'AUTOPLAY_PROMPT',
-    GREETING:         'GREETING',
-    LANGUAGE_SELECT:  'LANGUAGE_SELECT',
-    ROLE_SELECT:      'ROLE_SELECT',
-    ACTION_SELECT:    'ACTION_SELECT',
-    NAVIGATING:       'NAVIGATING',
-    IDLE:             'IDLE'
+    UNINITIALIZED:                 'UNINITIALIZED',
+    AUTOPLAY_PROMPT:               'AUTOPLAY_PROMPT',
+    GREETING:                      'GREETING',
+    LANGUAGE_SELECT:               'LANGUAGE_SELECT',
+    ROLE_SELECT:                   'ROLE_SELECT',
+    ACTION_SELECT:                 'ACTION_SELECT',
+    AUTH_IN_PROGRESS:              'AUTH_IN_PROGRESS',
+    AUTHENTICATED:                 'AUTHENTICATED',
+    CHECKING_PROFILE:              'CHECKING_PROFILE',
+    COLLECTING_PROFILE_FIELDS:     'COLLECTING_PROFILE_FIELDS',
+    SAVING_PROFILE:                'SAVING_PROFILE',
+    AWAITING_PROFILE_CONFIRMATION: 'AWAITING_PROFILE_CONFIRMATION',
+    PROFILE_COMPLETE:              'PROFILE_COMPLETE',
+    DASHBOARD_GUIDANCE:            'DASHBOARD_GUIDANCE',
+    NAVIGATING:                    'NAVIGATING',
+    MANUAL_MODE:                   'MANUAL_MODE',
+    RECOVERABLE_ERROR:             'RECOVERABLE_ERROR',
+    IDLE:                          'IDLE'
   };
 
   /* ─────────────────────────────────────────────────────────────────────────
      2. VERIFIED LANGUAGE REGISTRY
-     Prioritizes Hindi, Punjabi, and English first, followed by verified Indian languages.
   ───────────────────────────────────────────────────────────────────────── */
   const LANGUAGES = {
     hi: { code: 'hi', name: 'Hindi',     native: 'हिंदी',      speechCode: 'hi-IN', flag: '🇮🇳' },
@@ -296,9 +304,9 @@
       ur: "سن رہا ہوں... بولیے"
     },
     micDenied: {
-      hi: "माइक्रोफ़ोन की अनुमति नहीं मिली। आप नीचे दिए गए बटन पर टैप कर सकते हैं।",
+      hi: "माइक्रोफ़ोन की अनुमति नहीं मिली। आप नीचे दिए गए बटन पर टैप कर सकते हैं या लिख सकते हैं।",
       pa: "ਮਾਈਕ੍ਰੋਫੋਨ ਦੀ ਇਜਾਜ਼ਤ ਨਹੀਂ ਮਿਲੀ। ਤੁਸੀਂ ਹੇਠਾਂ ਦਿੱਤੇ ਬਟਨਾਂ 'ਤੇ ਟੈਪ ਕਰ ਸਕਦੇ ਹੋ।",
-      en: "Microphone permission was not granted. You can tap any option below.",
+      en: "Microphone permission was not granted. You can tap options below or type.",
       bn: "মাইক্রোফোনের অনুমতি পাওয়া যায়নি। আপনি নিচের অপশনে চাপ দিতে পারেন।",
       mr: "मायक्रोफोनची परवानगी मिळाली नाही. आपण खालील पर्यायांवर टॅप करू शकता.",
       ta: "மைக்ரோஃபோன் அனுமதி கிடைக்கவில்லை. நீங்கள் கீழே உள்ள விருப்பங்களை தேர்வு செய்யலாம்.",
@@ -308,11 +316,262 @@
       ml: "മൈക്രോഫോൺ അനുമതി ലഭിച്ചില്ല. താഴെയുള്ള ഓപ്ഷനുകൾ ഉപയോഗിക്കുക.",
       or: "ମାଇକ୍ରୋଫୋନ୍ ଅନୁମତି ମିଳିଲା ନାହିଁ। ଆପଣ ତଳେ ଥିବା ବଟନ୍ ବ୍ୟବହାର କରିପାରିବେ।",
       ur: "مائیکروفون کی اجازت نہیں ملی۔ آپ نیچے دیے گئے آپشنز پر ٹیپ کر سکتے ہیں۔"
+    },
+
+    // ── Phase 14.1 Worker Profile Dialogues ──────────────────────────────────
+    workerProfileGreeting: {
+      hi: "आइए मिलकर आपकी वर्कर प्रोफ़ाइल तैयार करते हैं ताकि आपको स्थानीय काम मिलना शुरू हो सके।",
+      pa: "ਆਓ ਤੁਹਾਡੀ ਵਰਕਰ ਪ੍ਰੋਫਾਈਲ ਬਣਾਈਏ ਤਾਂ ਜੋ ਤੁਹਾਨੂੰ ਕੰਮ ਮਿਲਣਾ ਸ਼ੁਰੂ ਹੋ ਸਕੇ।",
+      en: "Let's set up your worker profile so local customers can hire you.",
+      bn: "আসুন আপনার কর্মী প্রোফাইল তৈরি করি যাতে আপনি কাজ পেতে পারেন।",
+      mr: "चला तुमची कामगार प्रोफाईल तयार करूया जेणेकरून तुम्हाला काम मिळू शकेल.",
+      ta: "உங்களுக்கு வேலை கிடைக்க உங்கள் சுயவிவரத்தை உருவாக்குவோம்.",
+      te: "మీకు పని దొరకడానికి మీ వర్కర్ ప్రొఫైల్‌ను సిద్ధం చేద్దాం.",
+      gu: "ચાલો તમારી વર્કર પ્રોફાઇલ બનાવીએ જેથી તમને કામ મળવાનું શરૂ થાય.",
+      kn: "ನಿಮಗೆ ಕೆಲಸ ಸಿಗಲು ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ರಚಿಸೋಣ.",
+      ml: "ജോലി ലഭിക്കുന്നതിനായി പ്രൊഫൈൽ തയ്യാറാക്കാം.",
+      or: "ଆସନ୍ତୁ ଆପଣଙ୍କ ଶ୍ରମିକ ପ୍ରୋଫାଇଲ୍ ତିଆରି କରିବା ଯାହାଦ୍ୱାରା କାମ ମିଳିପାରିବ।",
+      ur: "آئیے مل کر آپ کی ورکر پروفائل بناتے ہیں تاکہ آپ کو کام مل سکے۔"
+    },
+    askName: {
+      hi: "आपका पूरा नाम क्या है?",
+      pa: "ਤੁਹਾਡਾ ਪੂਰਾ ਨਾਮ ਕੀ ਹੈ?",
+      en: "What is your full name?",
+      bn: "আপনার পুরো নাম কী?",
+      mr: "तुमचे पूर्ण नाव काय आहे?",
+      ta: "உங்கள் முழு பெயர் என்ன?",
+      te: "మీ పూర్తి పేరు ఏమిటి?",
+      gu: "તમારું પૂરું નામ શું છે?",
+      kn: "ನಿಮ್ಮ ಪೂರ್ಣ ಹೆಸರು ಏನು?",
+      ml: "നിങ്ങളുടെ മുഴുവൻ പേര് എന്താണ്?",
+      or: "ଆପଣଙ୍କର ପୂରା ନାମ କ'ଣ?",
+      ur: "آپ کا پورا نام کیا ہے؟"
+    },
+    askTrade: {
+      hi: "आपका मुख्य काम या पेशा क्या है? जैसे प्लंबर, इलेक्ट्रीशियन, पेंटर, या बढ़ई।",
+      pa: "ਤੁਹਾਡਾ ਮੁੱਖ ਕੰਮ ਜਾਂ ਹੁਨਰ ਕੀ ਹੈ? ਜਿਵੇਂ ਕਿ ਪਲੰਬਰ, ਇਲੈਕਟ੍ਰੀਸ਼ੀਅਨ, ਪੇਂਟਰ, ਜਾਂ ਤਰਖਾਣ।",
+      en: "What is your primary trade or skill? For example, Plumber, Electrician, Painter, or Carpenter.",
+      bn: "আপনার প্রধান কাজ বা পেশা কী? যেমন প্লাম্বার, ইলেকট্রিশিয়ান, পেইন্টার বা ছুতোর।",
+      mr: "तुमचे मुख्य काम काय आहे? जसे की प्लंबर, इलेक्ट्रिशियन, पेंटर, किंवा सुतार.",
+      ta: "உங்கள் முதன்மை தொழில் என்ன? எ.கா. பிளம்பர், எலக்ட்ரீஷியன், பெயிண்டர்.",
+      te: "మీ ప్రధాన వృత్తి ఏమిటి? ఉదాహరణకు ప్లంబర్, ఎలక్ట్రీషియన్, పెయింటర్.",
+      gu: "તમારું મુખ્ય કામ શું છે? જેમ કે પ્લમ્બર, ઇલેક્ટ્રિશિયન, પેઇન્ટર કે સુથાર.",
+      kn: "ನಿಮ್ಮ ಮುಖ್ಯ ವೃತ್ತಿ ಯಾವುದು? ಉದಾಹರಣೆಗೆ ಪ್ಲಂಬರ್, ಎಲೆಕ್ಟ್ರಿಷಿಯನ್.",
+      ml: "നിങ്ങളുടെ പ്രധാന ജോലി എന്താണ്? ഉദാഹരണത്തിന് പ്ലംബർ, ഇലക്ട്രീഷ്യൻ.",
+      or: "ଆପଣଙ୍କର ମୁଖ୍ୟ କାମ କ'ଣ? ଯେପରିକି ପ୍ଲମ୍ବର, ଇଲେକ୍ଟ୍ରିସିଆନ୍, ପେଣ୍ଟର୍ ବା ବଢ଼େଇ।",
+      ur: "آپ کا بنیادی کام کیا ہے؟ جیسے پلمبر، الیکٹریشن، پینٹر یا بڑھئی۔"
+    },
+    askLocation: {
+      hi: "आप किस शहर या इलाके में काम करना चाहते हैं?",
+      pa: "ਤੁਸੀਂ ਕਿਸ ਸ਼ਹਿਰ ਜਾਂ ਇਲਾਕੇ ਵਿੱਚ ਕੰਮ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?",
+      en: "In which city or area do you want to work?",
+      bn: "আপনি কোন শহর বা এলাকায় কাজ করতে চান?",
+      mr: "तुम्हाला कोणत्या शहरात किंवा भागात काम करायचे आहे?",
+      ta: "நீங்கள் எந்த நகரம் அல்லது பகுதியில் வேலை செய்ய விரும்புகிறீர்கள்?",
+      te: "మీరు ఏ నగరం లేదా ప్రాంతంలో పని చేయాలనుకుంటున్నారు?",
+      gu: "તમે કયા શહેરમાં કે વિસ્તારમાં કામ કરવા માંગો છો?",
+      kn: "ನೀವು ಯಾವ ನಗರ ಅಥವಾ ಪ್ರದೇಶದಲ್ಲಿ ಕೆಲಸ ಮಾಡಲು ಬಯಸುತ್ತೀರಿ?",
+      ml: "ഏത് നഗരത്തിലോ പ്രദേശത്തോ ആണ് ജോലി ചെയ്യാൻ ആഗ്രഹിക്കുന്നത്?",
+      or: "ଆପଣ କେଉଁ ସହର କିମ୍ବା ଅଞ୍ଚଳରେ କାମ କରିବାକୁ ଚାହାଁନ୍ତି?",
+      ur: "آپ کس شہر یا علاقے میں کام کرنا چاہتے ہیں؟"
+    },
+    askPrice: {
+      hi: "आपकी दैनिक मजदूरी या रेट (रुपये प्रति दिन) क्या है?",
+      pa: "ਤੁਹਾਡੀ ਰੋਜ਼ਾਨਾ ਦਿਹਾੜੀ ਜਾਂ ਰੇਟ (ਰੁਪਏ ਪ੍ਰਤੀ ਦਿਨ) ਕੀ ਹੈ?",
+      en: "What is your daily wage or rate (in Rupees per day)?",
+      bn: "আপনার দৈনিক মজুরি বা রেট (টাকা প্রতিদিন) কত?",
+      mr: "तुमचा दैनंदिन दर (रुपये प्रति दिवस) काय आहे?",
+      ta: "உங்கள் தினசரி கூலி (ரூபாய்/நாள்) எவ்வளவு?",
+      te: "మీ రోజువారీ కూలీ (రూపాయలు/రోజు) ఎంత?",
+      gu: "તમારો દૈનિક દર (રૂપિયા પ્રતિ દિવસ) કેટલો છે?",
+      kn: "ನಿಮ್ಮ ದಿನಗೂಲಿ (ರೂಪಾಯಿ/ದಿನ) ಎಷ್ಟು?",
+      ml: "നിങ്ങളുടെ ദിവസക്കൂലി (രൂപ/ദിവസം) എത്രയാണ്?",
+      or: "ଆପଣଙ୍କ ଦୈନିକ ମଜୁରୀ (ଟଙ୍କା ପ୍ରତି ଦିନ) କେତେ?",
+      ur: "آپ کی روزانہ مزدوری یا ریٹ (روپے فی دن) کیا ہے؟"
+    },
+    askExperience: {
+      hi: "आपको इस काम में कितने वर्षों का अनुभव है?",
+      pa: "ਤੁਹਾਨੂੰ ਇਸ ਕੰਮ ਵਿੱਚ ਕਿੰਨੇ ਸਾਲਾਂ ਦਾ ਤਜਰਬਾ ਹੈ?",
+      en: "How many years of experience do you have in this trade?",
+      bn: "এই কাজে আপনার কত বছরের অভিজ্ঞতা আছে?",
+      mr: "या कामात तुम्हाला किती वर्षांचा अनुभव आहे?",
+      ta: "இந்த தொழிலில் உங்களுக்கு எத்தனை ஆண்டுகள் அனுபவம் உள்ளது?",
+      te: "ఈ పనిలో మీకు ఎన్ని సంవత్సరాల అనుభవం ఉంది?",
+      gu: "આ કામમાં તમને કેટલા વર્ષનો અનુભવ છે?",
+      kn: "ಈ ಕೆಲಸದಲ್ಲಿ ನಿಮಗೆ ಎಷ್ಟು ವರ್ಷಗಳ ಅನುಭವವಿದೆ?",
+      ml: "ഈ ജോലിയിൽ എത്ര വർഷത്തെ പരിചയമുണ്ട്?",
+      or: "ଏହି କାମରେ ଆପଣଙ୍କର କେତେ ବର୍ଷର ଅଭିଜ୍ଞତା ଅଛି?",
+      ur: "آپ کو اس کام میں کتنے سال کا تجربہ ہے؟"
+    },
+    fieldSaved: {
+      hi: "सफलतापूर्वक सुरक्षित हो गया!",
+      pa: "ਸਫਲਤਾਪੂਰਵਕ ਸੁਰੱਖਿਅਤ ਹੋ ਗਿਆ!",
+      en: "Successfully saved to your profile!",
+      bn: "সফলভাবে সংরক্ষিত হয়েছে!",
+      mr: "यशस्वीरित्या सेव्ह केले!",
+      ta: "வெற்றிகரமாக சேமிக்கப்பட்டது!",
+      te: "విజయవంతంగా సేవ్ చేయబడింది!",
+      gu: "સફળતાપૂર્વક સાચવવામાં આવ્યું!",
+      kn: "ಯಶಸ್ವಿಯಾಗಿ ಉಳಿಸಲಾಗಿದೆ!",
+      ml: "വിജയകരമായി സംരക്ഷിച്ചു!",
+      or: "ସଫଳତାର ସହ ସଂରକ୍ଷିତ ହେଲା!",
+      ur: "کامیابی سے محفوظ ہو گیا!"
+    },
+    profileConfirmPrompt: {
+      hi: "आपकी प्रोफ़ाइल तैयार है। क्या यह जानकारी सही है? पुष्टि के लिए 'हाँ' बोलें या नीचे कन्फर्म दबाएँ।",
+      pa: "ਤੁਹਾਡੀ ਪ੍ਰੋਫਾਈਲ ਤਿਆਰ ਹੈ। ਕੀ ਇਹ ਜਾਣਕਾਰੀ ਸਹੀ ਹੈ? ਪੁਸ਼ਟੀ ਲਈ 'ਹਾਂ' ਕਹੋ ਜਾਂ ਕਨਫਰਮ ਦਬਾਓ।",
+      en: "Your profile summary is ready. Is this correct? Say 'Yes' or tap Confirm to activate.",
+      bn: "আপনার প্রোফাইল প্রস্তুত। তথ্য কি সঠিক? নিশ্চিত করতে 'হ্যাঁ' বলুন বা কনফার্ম চাপুন।",
+      mr: "तुमची प्रोफाईल तयार आहे. ही माहिती बरोबर आहे का? खात्री करण्यासाठी 'हो' म्हणा किंवा कन्फर्म दाबा.",
+      ta: "உங்கள் சுயவிவரம் தயார். இது சரியானதா? உறுதிப்படுத்த 'ஆம்' என்று சொல்லவும்.",
+      te: "మీ ప్రొఫైల్ సిద్ధంగా ఉంది. వివరాలు సరైనవేనా? నిర్ధారించడానికి 'అవును' అనండి.",
+      gu: "તમારી પ્રોફાઇલ તૈયાર છે. શું આ વિગત સાચી છે? પુષ્ટિ માટે 'હા' બોલો.",
+      kn: "ನಿಮ್ಮ ಪ್ರೊಫೈಲ್ ಸಿದ್ಧವಾಗಿದೆ. ದೃಢೀಕರಿಸಲು 'ಹೌದು' ಎಂದು ಹೇಳಿ.",
+      ml: "പ്രൊഫൈൽ തയ്യാറാണ്. ഇത് ശരിയാണോ? സ്ഥിരീകരിക്കാൻ 'ശരി' എന്ന് പറയുക.",
+      or: "ଆପଣଙ୍କ ପ୍ରୋଫାଇଲ୍ ପ୍ରସ୍ତୁତ। ତଥ୍ୟ ଠିକ୍ ଅଛି କି? ନିଶ୍ଚିତ କରିବାକୁ 'ହଁ' କୁହନ୍ତୁ।",
+      ur: "آپ کی پروفائل تیار ہے۔ کیا یہ معلومات درست ہیں؟ تصدیق کے لیے 'ہاں' کہیں۔"
+    },
+    profileCompleteCelebration: {
+      hi: "बधाई हो! आपकी वर्कर प्रोफ़ाइल सक्रिय हो गई है। अब आप स्थानीय काम के लिए तैयार हैं।",
+      pa: "ਵਧਾਈਆਂ! ਤੁਹਾਡੀ ਵਰਕਰ ਪ੍ਰੋਫਾਈਲ ਸਰਗਰਮ ਹੋ ਗਈ ਹੈ। ਹੁਣ ਤੁਸੀਂ ਕੰਮ ਲੈਣ ਲਈ ਤਿਆਰ ਹੋ।",
+      en: "Congratulations! Your worker profile is now live and active. You are ready to get jobs.",
+      bn: "অভিনন্দন! আপনার কর্মী প্রোফাইল এখন সক্রিয়। আপনি এখন কাজের জন্য প্রস্তুত।",
+      mr: "अभिनंदन! तुमची कामगार प्रोफाईल आता सक्रिय झाली आहे. तुम्ही कामासाठी तयार आहात.",
+      ta: "வாழ்த்துக்கள்! உங்கள் சுயவிவரம் இப்போது நேரலையில் உள்ளது.",
+      te: "అభినందనలు! మీ వర్కర్ ప్రొఫైల్ సక్రియం చేయబడింది.",
+      gu: "અભિનંદન! તમારી વર્કર પ્રોફાઇલ હવે સક્રિય થઈ ગઈ છે.",
+      kn: "ಅಭಿನಂದನೆಗಳು! ನಿಮ್ಮ ಕೆಲಸಗಾರ ಪ್ರೊಫೈಲ್ ಈಗ ಸಕ್ರಿಯವಾಗಿದೆ.",
+      ml: "അഭിനന്ദനങ്ങൾ! പ്രൊഫൈൽ ഇപ്പോൾ സജീവമാണ്.",
+      or: "ଅଭିନନ୍ଦନ! ଆପଣଙ୍କ ଶ୍ରମିକ ପ୍ରୋଫାଇଲ୍ ଏବେ ସକ୍ରିୟ ହୋଇଛି।",
+      ur: "مبارک ہو! آپ کی ورکر پروفائل اب فعال ہو گئی ہے۔"
+    },
+    loginGuidance: {
+      hi: "लॉगिन पेज पर आपका स्वागत है। कृपया स्क्रीन पर अपना 10 अंकों का मोबाइल नंबर और पासवर्ड दर्ज करें। सुरक्षा के लिए पासवर्ड कभी बोलकर न बताएं।",
+      pa: "ਲੌਗਇਨ ਪੇਜ 'ਤੇ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ। ਕਿਰਪਾ ਕਰਕੇ ਸਕ੍ਰੀਨ 'ਤੇ ਆਪਣਾ ਮੋਬਾਈਲ ਨੰਬਰ ਅਤੇ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ।",
+      en: "Welcome to Login. Please enter your mobile number and password on screen. For security, never speak passwords aloud.",
+      bn: "লগইন পেজে স্বাগতম। দয়া করে স্ক্রিনে আপনার মোবাইল নম্বর এবং পাসওয়ার্ড টাইপ করুন।",
+      mr: "लॉगिन पृष्ठावर आपले स्वागत आहे. कृपया स्क्रीनवर तुमचा मोबाईल नंबर आणि पासवर्ड टाका.",
+      ta: "உள்நுழைவு பக்கத்திற்கு வரவேற்கிறோம். திரையில் கடவுச்சொல்லை தட்டச்சு செய்யவும்.",
+      te: "లాగిన్ పేజీకి స్వాగతం. దయచేసి స్క్రీన్‌పై మొబైల్ నంబర్ మరియు పాస్‌వర్డ్ నమోదు చేయండి.",
+      gu: "લૉગિન પેજ પર તમારું સ્વાગત છે. કૃપા કરીને સ્ક્રીન પર તમારો મોબાઈલ નંબર અને પાસવર્ડ લખો.",
+      kn: "ಲಾಗಿನ್ ಪುಟಕ್ಕೆ ಸುಸ್ವಾಗತ. ದಯವಿಟ್ಟು ಪರದೆಯ ಮೇಲೆ ಮೊಬೈಲ್ ಸಂಖ್ಯೆ ಮತ್ತು ಪಾಸ್‌ವರ್ಡ್ ನಮೂದಿಸಿ.",
+      ml: "ലോഗിൻ പേജിലേക്ക് സ്വാഗതം. ദയവായി സ്ക്രീനിൽ പാസ്‌വേഡ് ടൈപ്പ് ചെയ്യുക.",
+      or: "ଲଗ୍ ଇନ୍ ପୃଷ୍ଠାକୁ ସ୍ୱାଗତ। ଦୟାକରି ସ୍କ୍ରିନ୍ରେ ମୋବାଇଲ୍ ନମ୍ବର ଏବଂ ପାସୱାର୍ଡ ଲେଖନ୍ତୁ।",
+      ur: "لاگ ان صفحے پر خوش آمدید۔ برائے مہربانی اسکرین پر اپنا موبائل نمبر اور پاس ورڈ درج کریں۔"
+    },
+    signupGuidance: {
+      hi: "पंजीकरण पेज पर आपका स्वागत है। आप अपना विवरण बोलकर भी बता सकते हैं। पासवर्ड स्क्रीन पर सुरक्षित रूप से टाइप करें।",
+      pa: "ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਪੇਜ 'ਤੇ ਤੁਹਾਡਾ ਸੁਆਗਤ ਹੈ। ਪਾਸਵਰਡ ਸਕ੍ਰੀਨ 'ਤੇ ਸੁਰੱਖਿਅਤ ਢੰਗ ਨਾਲ ਟਾਈਪ ਕਰੋ।",
+      en: "Welcome to Sign Up. You can speak your basic details. Please type your password securely on screen.",
+      bn: "নিবন্ধন পেজে স্বাগতম। আপনি আপনার বিবরণ মুখে বলতে পারেন। পাসওয়ার্ড স্ক্রিনে টাইপ করুন।",
+      mr: "नोंदणी पृष्ठावर आपले स्वागत आहे. पासवर्ड स्क्रीनवर सुरक्षितपणे टाइप करा.",
+      ta: "பதிவு பக்கத்திற்கு வரவேற்கிறோம். கடவுச்சொல்லை திரையில் பாதுகாப்பாக தட்டச்சு செய்யவும்.",
+      te: "నమోదు పేజీకి స్వాగతం. పాస్‌వర్డ్‌ను స్క్రీన్‌పై సురక్షితంగా టైప్ చేయండి.",
+      gu: "નોંધણી પેજ પર તમારું સ્વાગત છે. પાસવર્ડ સ્ક્રીન પર સુરક્ષિત રીતે લખો.",
+      kn: "ನೋಂದಣಿ ಪುಟಕ್ಕೆ ಸುಸ್ವಾಗತ. ಪಾಸ್‌ವರ್ಡ್ ಅನ್ನು ಪರದೆಯ ಮೇಲೆ ಸುರಕ್ಷಿತವಾಗಿ ಟೈಪ್ ಮಾಡಿ.",
+      ml: "രജിസ്ട്രേഷൻ പേജിലേക്ക് സ്വാഗതം. പാസ്‌വേഡ് സ്ക്രീനിൽ സുരക്ഷിതമായി ടൈപ്പ് ചെയ്യുക.",
+      or: "ପଞ୍ଜୀକରଣ ପୃଷ୍ଠାକୁ ସ୍ୱାଗତ। ପାସୱାର୍ଡ ସ୍କ୍ରିନ୍ରେ ସୁରକ୍ଷିତ ଭାବରେ ଟାଇପ୍ କରନ୍ତୁ।",
+      ur: "رجسٹریشن صفحے پر خوش آمدید۔ پاس ورڈ اسکرین پر محفوظ طریقے سے ٹائپ کریں۔"
+    },
+    restartNotice: {
+      hi: "सहायक बातचीत को फिर से शुरू किया गया है।",
+      pa: "ਸਹਾਇਕ ਗੱਲਬਾਤ ਮੁੜ ਸ਼ੁਰੂ ਕੀਤੀ ਗਈ ਹੈ।",
+      en: "Assistant conversation restarted from beginning.",
+      bn: "সহকারী কথোপকথন পুনরায় শুরু হয়েছে।",
+      mr: "सहाय्यक संभाषण पुन्हा सुरू झाले आहे.",
+      ta: "உரையாடல் மீண்டும் தொடங்கப்பட்டது.",
+      te: "సంభాషణ మొదటి నుండి పునఃప్రారంభించబడింది.",
+      gu: "સહાયક વાતચીત ફરીથી શરૂ કરવામાં આવી છે.",
+      kn: "ಸಂಭಾಷಣೆಯನ್ನು ಮೊದಲಿನಿಂದ ಪ್ರಾರಂಭಿಸಲಾಗಿದೆ.",
+      ml: "സംഭാഷണം വീണ്ടും ആരംഭിച്ചു.",
+      or: "ସହାୟକ କଥାବାର୍ତ୍ତା ପୁନରାରମ୍ଭ ହେଲା।",
+      ur: "معاون گفتگو کو دوبارہ شروع کر دیا گیا ہے۔"
+    },
+    manualModeEnabled: {
+      hi: "मैनुअल मोड सक्रिय: बोलने के लिए माइक बटन दबाएं।",
+      pa: "ਮੈਨੂਅਲ ਮੋਡ ਕਿਰਿਆਸ਼ੀਲ: ਬੋਲਣ ਲਈ ਮਾਈਕ ਬਟਨ ਦਬਾਓ।",
+      en: "Manual Mode active: Tap the microphone button when you want to speak.",
+      bn: "ম্যানুয়াল মোড সক্রিয়: কথা বলার জন্য মাইক বোতাম টিপুন।",
+      mr: "मॅन्युअल मोड सक्रिय: बोलण्यासाठी माइक बटण दाबा.",
+      ta: "கைமுறை பயன்முறை செயலில் உள்ளது: பேச மைக் பொத்தானை அழுத்தவும்.",
+      te: "మాన్యువల్ మోడ్ సక్రియంగా ఉంది: మాట్లాడటానికి మైక్ బటన్‌ను నొక్కండి.",
+      gu: "મેન્યુઅલ મોડ સક્રિય: બોલવા માટે માઇક બટન દબાવો.",
+      kn: "ಹಸ್ತಚಾಲಿತ ಮೋಡ್ ಸಕ್ರಿಯವಾಗಿದೆ: ಮಾತನಾಡಲು ಮೈಕ್ ಬಟನ್ ಒತ್ತಿರಿ.",
+      ml: "മാനുവൽ മോഡ് സജീവമാണ്: സംസാരിക്കാൻ മൈക്ക് ബട്ടൺ അമർത്തുക.",
+      or: "ମାନୁଆଲ୍ ମୋଡ୍ ସକ୍ରିୟ: କହିବା ପାଇଁ ମାଇକ୍ ବଟନ୍ ଦବାନ୍ତୁ।",
+      ur: "دستی موڈ فعال: بولنے کے لیے مائیک بٹن دبائیں۔"
+    },
+    handsFreeEnabled: {
+      hi: "हैंड्स-फ्री मोड सक्रिय: सहायक के बोलने के बाद माइक खुद शुरू हो जाएगा।",
+      pa: "ਹੈਂਡਸ-ਫ੍ਰੀ ਮੋਡ ਕਿਰਿਆਸ਼ੀਲ: ਸਹਾਇਕ ਦੇ ਬੋਲਣ ਤੋਂ ਬਾਅਦ ਮਾਈਕ ਆਪਣੇ ਆਪ ਸ਼ੁਰੂ ਹੋ ਜਾਵੇਗਾ।",
+      en: "Hands-Free Mode active: Microphone will listen automatically after the assistant speaks.",
+      bn: "হ্যান্ডস-ফ্রি মোড সক্রিয়: সহকারী কথা বলার পর মাইক নিজে থেকেই শুনবে।",
+      mr: "हँड्स-फ्री मोड सक्रिय: सहाय्यक बोलल्यानंतर माइक आपोआप सुरू होईल.",
+      ta: "ஹேண்ட்ஸ்-ஃப்ரீ பயன்முறை செயலில் உள்ளது: உதவியாளர் பேசிய பிறகு மைக் தானாக இயங்கும்.",
+      te: "హ్యాండ్స్-ఫ్రీ మోడ్ సక్రియంగా ఉంది: అసిస్టెంట్ మాట్లాడిన తర్వాత మైక్ స్వయంచాలకంగా వింటుంది.",
+      gu: "હેન્ડ્સ-ફ્રી મોડ સક્રિય: સહાયકના બોલ્યા પછી માઇક આપમેળે શરૂ થશે.",
+      kn: "ಹ್ಯಾಂಡ್ಸ್-ಫ್ರೀ ಮೋಡ್ ಸಕ್ರಿಯವಾಗಿದೆ: ಸಹಾಯಕರು ಮಾತನಾಡಿದ ನಂತರ ಮೈಕ್ ಸ್ವಯಂಚಾಲಿತವಾಗಿ ಕೇಳುತ್ತದೆ.",
+      ml: "ഹാൻഡ്സ്-ഫ്രീ മോഡ് സജീവമാണ്: അസിസ്റ്റന്റ് സംസാരിച്ച ശേഷം മൈക്ക് സ്വയമേവ കേൾക്കും.",
+      or: "ହାଣ୍ଡସ୍-ଫ୍ରି ମୋଡ୍ ସକ୍ରିୟ: ସହାୟକ କହିବା ପରେ ମାଇକ୍ ଆପେ ଆପେ ଶୁଣିବ।",
+      ur: "ہینڈز فری موڈ فعال: معاون کے بولنے کے بعد مائیک خود بخود سننا شروع کر دے گا۔"
     }
   };
 
   /* ─────────────────────────────────────────────────────────────────────────
-     4. VOICEHIRE ASSISTANT CORE CONTROLLER
+     4. TRADE RECOGNITION KEYWORD MAPPING
+  ───────────────────────────────────────────────────────────────────────── */
+  const TRADE_MAP = {
+    'plumber': 'Plumber',
+    'plumbing': 'Plumber',
+    'nal': 'Plumber',
+    'nal mistri': 'Plumber',
+    'plumber hu': 'Plumber',
+    'electrician': 'Electrician',
+    'bijli': 'Electrician',
+    'bijli mistri': 'Electrician',
+    'electrician hu': 'Electrician',
+    'carpenter': 'Carpenter',
+    'badhai': 'Carpenter',
+    'carpenter hu': 'Carpenter',
+    'painter': 'Painter',
+    'rangai': 'Painter',
+    'putai': 'Painter',
+    'painter hu': 'Painter',
+    'driver': 'Driver',
+    'gadi': 'Driver',
+    'driver hu': 'Driver',
+    'cleaner': 'House Help / Maid',
+    'maid': 'House Help / Maid',
+    'safai': 'House Help / Maid',
+    'security': 'Security Guard',
+    'guard': 'Security Guard',
+    'helper': 'Construction Helper',
+    'majdoor': 'Construction Helper',
+    'gardener': 'Gardener',
+    'mali': 'Gardener',
+    'tailor': 'Tailor',
+    'darzi': 'Tailor',
+    'cook': 'Cook / Helper',
+    'khana': 'Cook / Helper'
+  };
+
+  function detectTradeFromText(text) {
+    if (!text) return null;
+    const lower = text.toLowerCase();
+    for (const [key, trade] of Object.entries(TRADE_MAP)) {
+      if (lower.includes(key)) return trade;
+    }
+    return null;
+  }
+
+  function extractDigits(text) {
+    if (!text) return null;
+    const match = text.match(/\d+/);
+    return match ? parseInt(match[0], 10) : null;
+  }
+
+  /* ─────────────────────────────────────────────────────────────────────────
+     5. VOICEHIRE ASSISTANT CORE CONTROLLER
   ───────────────────────────────────────────────────────────────────────── */
   class VoiceHireAssistant {
     constructor() {
@@ -320,15 +579,35 @@
       this.currentLang = localStorage.getItem('vh_lang') || (window.VH && window.VH.lang) || 'hi';
       if (!LANGUAGES[this.currentLang]) this.currentLang = 'hi';
 
-      this.isManualMode = localStorage.getItem('vh_manual_mode') === 'true';
+      // Bug 3: Voice Interaction Modes ('hands_free' | 'manual')
+      const savedMode = localStorage.getItem('vh_voice_mode');
+      if (savedMode === 'manual') {
+        this.voiceMode = 'manual';
+      } else {
+        this.voiceMode = 'hands_free'; // Default hands-free
+      }
+
       this.isMuted = localStorage.getItem('vh_muted') === 'true';
       this.isDismissed = sessionStorage.getItem('vh_dismissed') === 'true';
 
-      // State Management
+      // State Machine (Phase 14.1)
       this.state = States.UNINITIALIZED;
       this.selectedRole = null;       // 'worker' | 'user'
       this.selectedAction = null;     // 'login' | 'register'
       this.lastInstruction = '';
+
+      // Bug 2: Worker Profile Model (authoritative in-flight state)
+      this.workerProfile = {
+        name: '',
+        work: '',
+        location: '',
+        price: '',
+        experience_years: '',
+        bio: '',
+        isComplete: false,
+        isConfirmed: false
+      };
+      this.workerProfilePendingField = null; // currently queried mandatory field
 
       // Production Voice Services Engine
       this.tts = new (window.VoiceHireVoice ? window.VoiceHireVoice.TextToSpeechService : Object)();
@@ -337,6 +616,10 @@
       this.isSpeaking = false;
       this.isListening = false;
       this.isProcessing = false;
+      this.micPermissionGranted = localStorage.getItem('vh_mic_granted') === 'true';
+
+      // Message history cache
+      this.messagesHistory = [];
 
       // DOM References
       this.dom = {};
@@ -349,11 +632,18 @@
       this.renderWidget();
       this.bindControls();
       this.initVoiceServices();
+      this.setupSensitiveInputProtection();
+
+      // Bug 1: Session recovery across routes and page refreshes
+      const savedSession = this.getSavedSession();
+      if (savedSession) {
+        this.restoreSession(savedSession);
+        return;
+      }
 
       // Check whether user explicitly preferred manual mode
-      if (this.isManualMode) {
+      if (this.voiceMode === 'manual') {
         this.updateStatus('Manual Mode', 'ready');
-        return; // Stays minimized as floating FAB
       }
 
       // If already dismissed for this tab session, do not auto-open
@@ -361,11 +651,191 @@
         return;
       }
 
-      // Auto-open for new visitor after short delay
-      setTimeout(() => {
+      // Brand new session on landing or home: auto-open and begin Hindi onboarding
+      const path = window.location.pathname;
+      const isGateway = path === '/' || path === '/gateway' || path === '/home';
+      if (isGateway) {
+        setTimeout(() => {
+          this.open();
+          this.startOnboarding();
+        }, 750);
+      } else {
+        // Direct arrival on an interior page without prior session
+        this.handleDirectPageVisit();
+      }
+    }
+
+    /* ── Bug 1: State Persistence & Session Management ─────────────────── */
+    getSavedSession() {
+      try {
+        const raw = sessionStorage.getItem('vh_assistant_session');
+        if (!raw) return null;
+        return JSON.parse(raw);
+      } catch (e) {
+        return null;
+      }
+    }
+
+    saveSession() {
+      try {
+        // Sanitize: strictly strip passwords, tokens, pins, credentials
+        const safeMessages = (this.messagesHistory || []).slice(-25).map(m => ({
+          text: String(m.text || '').substring(0, 300),
+          sender: m.sender === 'user' ? 'user' : 'bot'
+        }));
+
+        const payload = {
+          state: this.state,
+          currentLang: this.currentLang,
+          selectedRole: this.selectedRole,
+          selectedAction: this.selectedAction,
+          workerProfile: this.workerProfile,
+          workerProfilePendingField: this.workerProfilePendingField,
+          voiceMode: this.voiceMode,
+          isMuted: this.isMuted,
+          lastRoute: window.location.pathname,
+          lastInstruction: this.lastInstruction,
+          messages: safeMessages,
+          timestamp: Date.now()
+        };
+        sessionStorage.setItem('vh_assistant_session', JSON.stringify(payload));
+      } catch (e) {
+        console.warn('[Assistant Session Save Warning]', e);
+      }
+    }
+
+    clearSession() {
+      try {
+        sessionStorage.removeItem('vh_assistant_session');
+      } catch (e) {}
+    }
+
+    restoreSession(saved) {
+      if (!saved) return;
+      this.currentLang = saved.currentLang || this.currentLang;
+      this.selectedRole = saved.selectedRole || (window.VH && window.VH.role) || null;
+      this.selectedAction = saved.selectedAction || null;
+      this.state = saved.state || States.IDLE;
+      if (saved.voiceMode) this.voiceMode = saved.voiceMode;
+      if (saved.workerProfile) this.workerProfile = Object.assign(this.workerProfile, saved.workerProfile);
+      this.workerProfilePendingField = saved.workerProfilePendingField || null;
+
+      // Update toolbar UI for restored preferences
+      this.updateModeButtonUI();
+      this.setLanguage(this.currentLang, false);
+
+      // Re-populate chat history
+      if (Array.isArray(saved.messages) && saved.messages.length > 0) {
+        this.messagesHistory = saved.messages;
+        saved.messages.forEach(m => {
+          this.renderBubbleToDOM(m.text, m.sender);
+        });
+      }
+
+      const currentPath = window.location.pathname;
+      const lastPath = saved.lastRoute || '';
+
+      // Check whether user is authenticated via server session
+      const isAuthenticated = Boolean(window.VH && window.VH.userId);
+      const isWorker = (window.VH && window.VH.role === 'worker') || this.selectedRole === 'worker';
+
+      // Always open panel if user had an in-progress onboarding or arrived on auth/dashboard
+      if (this.state !== States.IDLE && !this.isDismissed) {
         this.open();
+      }
+
+      // Handle Route Change vs Explicit Restart
+      if (currentPath !== lastPath) {
+        // User navigated to a new page!
+        if (currentPath === '/login') {
+          this.state = States.AUTH_IN_PROGRESS;
+          const loginPrompt = DIALOGUES.loginGuidance[this.currentLang] || DIALOGUES.loginGuidance.hi;
+          this.addMessage(loginPrompt, 'bot');
+          this.lastInstruction = loginPrompt;
+          this.speak(loginPrompt, this.currentLang);
+        } else if (currentPath === '/signup/worker') {
+          this.state = States.AUTH_IN_PROGRESS;
+          this.selectedRole = 'worker';
+          const signupPrompt = DIALOGUES.signupGuidance[this.currentLang] || DIALOGUES.signupGuidance.hi;
+          this.addMessage(signupPrompt, 'bot');
+          this.lastInstruction = signupPrompt;
+          this.speak(signupPrompt, this.currentLang);
+        } else if (currentPath === '/signup/user') {
+          this.state = States.AUTH_IN_PROGRESS;
+          this.selectedRole = 'user';
+          const signupPrompt = DIALOGUES.signupGuidance[this.currentLang] || DIALOGUES.signupGuidance.hi;
+          this.addMessage(signupPrompt, 'bot');
+          this.lastInstruction = signupPrompt;
+          this.speak(signupPrompt, this.currentLang);
+        } else if (currentPath === '/dashboard/worker' || (isAuthenticated && isWorker)) {
+          // Returning from auth / arrived on Worker Dashboard!
+          this.state = States.CHECKING_PROFILE;
+          this.saveSession();
+          this.checkWorkerProfileOnServer();
+        } else if (currentPath === '/dashboard/user' || (isAuthenticated && !isWorker)) {
+          this.state = States.DASHBOARD_GUIDANCE;
+          const msg = this.currentLang === 'hi' ? "डैशबोर्ड पर आपका स्वागत है। आप यहाँ से वर्कर ढूँढ सकते हैं।" : "Welcome to your dashboard. You can search and book workers.";
+          this.addMessage(msg, 'bot');
+          this.speak(msg, this.currentLang);
+        }
+      } else {
+        // Page was refreshed on the same URL: safely resume where left off
+        if (this.state === States.COLLECTING_PROFILE_FIELDS && this.workerProfilePendingField) {
+          this.askWorkerProfileField(this.workerProfilePendingField, false);
+        } else if (this.state === States.AWAITING_PROFILE_CONFIRMATION) {
+          this.showProfileSummaryAndConfirm(false);
+        } else if (isAuthenticated && isWorker && currentPath === '/dashboard/worker') {
+          this.checkWorkerProfileOnServer();
+        }
+      }
+
+      this.saveSession();
+    }
+
+    handleDirectPageVisit() {
+      const path = window.location.pathname;
+      const isAuthenticated = Boolean(window.VH && window.VH.userId);
+      const isWorker = (window.VH && window.VH.role === 'worker');
+
+      if (path === '/login') {
+        this.open();
+        this.state = States.AUTH_IN_PROGRESS;
+        const msg = DIALOGUES.loginGuidance[this.currentLang] || DIALOGUES.loginGuidance.hi;
+        this.addMessage(msg, 'bot');
+        this.lastInstruction = msg;
+        this.speak(msg, this.currentLang);
+      } else if (path === '/signup/worker') {
+        this.open();
+        this.state = States.AUTH_IN_PROGRESS;
+        this.selectedRole = 'worker';
+        const msg = DIALOGUES.signupGuidance[this.currentLang] || DIALOGUES.signupGuidance.hi;
+        this.addMessage(msg, 'bot');
+        this.lastInstruction = msg;
+        this.speak(msg, this.currentLang);
+      } else if (isAuthenticated && isWorker) {
+        this.open();
+        this.state = States.CHECKING_PROFILE;
+        this.checkWorkerProfileOnServer();
+      }
+      this.saveSession();
+    }
+
+    restartConversation() {
+      // Explicit user-initiated conversation restart
+      this.cancelVoice();
+      this.clearSession();
+      this.clearMessagesDOM();
+      this.messagesHistory = [];
+      this.selectedRole = null;
+      this.selectedAction = null;
+      this.workerProfile = { name: '', work: '', location: '', price: '', experience_years: '', bio: '', isComplete: false, isConfirmed: false };
+      this.workerProfilePendingField = null;
+
+      const notice = DIALOGUES.restartNotice[this.currentLang] || DIALOGUES.restartNotice.hi;
+      this.addMessage(`🔄 ${notice}`, 'bot');
+      setTimeout(() => {
         this.startOnboarding();
-      }, 750);
+      }, 350);
     }
 
     /* ── DOM & Styling ─────────────────────────────────────────────────── */
@@ -431,7 +901,7 @@
           position: absolute;
           bottom: 74px;
           right: 0;
-          width: 380px;
+          width: 390px;
           max-width: calc(100vw - 32px);
           max-height: 85vh;
           background: #FFFFFF;
@@ -453,84 +923,84 @@
           transform: scale(1) translateY(0);
         }
 
-        /* Panel Header */
+        /* Header */
         .vh-header {
-          background: linear-gradient(135deg, #0F172A 0%, #1E293B 100%);
+          background: linear-gradient(135deg, #1E40AF 0%, #2563EB 100%);
           color: #FFFFFF;
-          padding: 12px 16px;
+          padding: 14px 16px;
           display: flex;
           align-items: center;
           justify-content: space-between;
-          border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+          border-top-left-radius: 20px;
+          border-top-right-radius: 20px;
         }
         .vh-header-info {
           display: flex;
           align-items: center;
-          gap: 10px;
+          gap: 12px;
         }
         .vh-header-avatar {
-          position: relative;
-          width: 38px;
-          height: 38px;
+          width: 42px;
+          height: 42px;
           border-radius: 50%;
-          background: #2563EB;
+          background: rgba(255, 255, 255, 0.2);
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.15rem;
-          color: #FFFFFF;
+          font-size: 1.3rem;
+          position: relative;
         }
         .vh-header-ring {
           position: absolute;
-          inset: -4px;
+          inset: -3px;
           border-radius: 50%;
           border: 2px solid transparent;
           transition: all 0.3s ease;
         }
         .vh-header-ring.speaking {
-          border-color: #F59E0B;
-          animation: vh-spin 1.5s linear infinite;
+          border-color: #38BDF8;
+          animation: vh-spin 3s linear infinite;
         }
         .vh-header-ring.listening {
-          border-color: #10B981;
-          animation: vh-spin 1s linear infinite;
+          border-color: #EF4444;
+          box-shadow: 0 0 12px rgba(239, 68, 68, 0.6);
+          animation: vh-pulse 1s infinite alternate;
         }
-        @keyframes vh-spin { to { transform: rotate(360deg); } }
+        @keyframes vh-spin { 100% { transform: rotate(360deg); } }
+        @keyframes vh-pulse { from { opacity: 0.6; transform: scale(0.98); } to { opacity: 1; transform: scale(1.08); } }
 
         .vh-header-title {
-          font-size: 0.9375rem;
           font-weight: 700;
+          font-size: 0.95rem;
           line-height: 1.2;
         }
         .vh-header-status {
           font-size: 0.75rem;
-          color: #94A3B8;
+          color: rgba(255, 255, 255, 0.85);
           display: flex;
           align-items: center;
-          gap: 5px;
+          gap: 6px;
           margin-top: 2px;
         }
         .vh-status-dot {
-          width: 7px;
-          height: 7px;
+          width: 8px;
+          height: 8px;
           border-radius: 50%;
-          background: #10B981;
-          display: inline-block;
+          background: #4ADE80;
         }
-        .vh-status-dot.speaking { background: #F59E0B; }
-        .vh-status-dot.listening { background: #2563EB; animation: vh-pulse 1s infinite; }
-        .vh-status-dot.processing { background: #8B5CF6; }
+        .vh-status-dot.speaking { background: #38BDF8; }
+        .vh-status-dot.listening { background: #EF4444; }
+        .vh-status-dot.processing { background: #FBBF24; }
 
-        /* Header Control Toolbar */
         .vh-toolbar {
           display: flex;
           align-items: center;
           gap: 4px;
         }
         .vh-tool-btn {
-          background: rgba(255, 255, 255, 0.12);
+          background: rgba(255, 255, 255, 0.15);
           border: none;
-          color: #E2E8F0;
+          color: #FFFFFF;
           width: 30px;
           height: 30px;
           border-radius: 8px;
@@ -538,66 +1008,64 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 0.8125rem;
-          transition: background 0.15s ease, color 0.15s ease;
+          font-size: 0.825rem;
+          transition: background 0.2s ease;
         }
-        .vh-tool-btn:hover {
-          background: rgba(255, 255, 255, 0.25);
-          color: #FFFFFF;
-        }
-        .vh-tool-btn.active {
-          background: #2563EB;
-          color: #FFFFFF;
-        }
+        .vh-tool-btn:hover { background: rgba(255, 255, 255, 0.3); }
+        .vh-tool-btn.active { background: #10B981; }
 
         /* Language Drawer */
         .vh-lang-drawer {
           background: #F8FAFC;
           border-bottom: 1px solid #E2E8F0;
-          padding: 12px 14px;
+          padding: 12px;
           display: none;
-          max-height: 220px;
+          max-height: 200px;
           overflow-y: auto;
         }
         .vh-lang-drawer.is-open { display: block; }
         .vh-lang-drawer-title {
           font-size: 0.75rem;
-          font-weight: 700;
+          font-weight: 600;
           color: #64748B;
+          margin-bottom: 8px;
           text-transform: uppercase;
           letter-spacing: 0.05em;
-          margin-bottom: 8px;
         }
         .vh-lang-grid {
           display: grid;
-          grid-template-columns: repeat(3, 1fr);
+          grid-template-columns: repeat(2, 1fr);
           gap: 6px;
         }
         .vh-lang-card {
           background: #FFFFFF;
-          border: 1.5px solid #E2E8F0;
-          border-radius: 10px;
-          padding: 8px 6px;
-          text-align: center;
+          border: 1px solid #CBD5E1;
+          border-radius: 8px;
+          padding: 6px 10px;
+          display: flex;
+          align-items: center;
+          gap: 8px;
           cursor: pointer;
-          font-family: inherit;
-          transition: all 0.15s ease;
+          transition: all 0.18s ease;
+          text-align: left;
         }
-        .vh-lang-card:hover, .vh-lang-card.selected {
+        .vh-lang-card:hover {
           border-color: #2563EB;
           background: #EFF6FF;
-          color: #2563EB;
-          font-weight: 700;
         }
-        .vh-lang-flag { font-size: 1.1rem; display: block; margin-bottom: 2px; }
-        .vh-lang-native { font-size: 0.8125rem; font-weight: 600; display: block; }
-        .vh-lang-name { font-size: 0.6875rem; color: #64748B; display: block; }
+        .vh-lang-card.selected {
+          border-color: #2563EB;
+          background: #DBEAFE;
+          font-weight: 600;
+        }
+        .vh-lang-native { font-size: 0.85rem; color: #0F172A; }
+        .vh-lang-name { font-size: 0.72rem; color: #64748B; }
 
         /* Autoplay Blocked Banner */
         .vh-autoplay-banner {
           background: #FEF3C7;
-          border-bottom: 1px solid #FDE68A;
-          padding: 12px 16px;
+          border-bottom: 1px solid #F59E0B;
+          padding: 10px 14px;
           display: none;
           align-items: center;
           justify-content: space-between;
@@ -605,179 +1073,177 @@
         }
         .vh-autoplay-banner.is-visible { display: flex; }
         .vh-autoplay-text {
-          font-size: 0.8125rem;
+          font-size: 0.8rem;
           color: #92400E;
           font-weight: 500;
-          line-height: 1.4;
+          line-height: 1.3;
         }
         .vh-autoplay-btn {
           background: #D97706;
           color: #FFFFFF;
           border: none;
-          border-radius: 8px;
           padding: 6px 12px;
-          font-size: 0.75rem;
-          font-weight: 700;
+          border-radius: 6px;
+          font-size: 0.8rem;
+          font-weight: 600;
           cursor: pointer;
           white-space: nowrap;
-          display: flex;
-          align-items: center;
-          gap: 6px;
         }
         .vh-autoplay-btn:hover { background: #B45309; }
 
-        /* Conversation Messages Area */
+        /* Messages Stream */
         .vh-messages {
           flex: 1;
-          padding: 16px;
+          padding: 14px;
           overflow-y: auto;
           display: flex;
           flex-direction: column;
           gap: 12px;
           background: #F8FAFC;
-          min-height: 240px;
+          min-height: 220px;
           max-height: 380px;
         }
         .vh-bubble {
-          max-width: 90%;
-          padding: 12px 14px;
+          max-width: 86%;
+          padding: 10px 14px;
           border-radius: 14px;
           font-size: 0.875rem;
-          line-height: 1.5;
-          animation: vh-fade-in 0.25s ease;
+          line-height: 1.45;
+          word-break: break-word;
+          animation: vh-fade-in 0.2s ease;
         }
-        @keyframes vh-fade-in {
-          from { opacity: 0; transform: translateY(6px); }
-          to { opacity: 1; transform: translateY(0); }
-        }
+        @keyframes vh-fade-in { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
         .vh-bubble.bot {
-          background: #FFFFFF;
-          color: #0F172A;
-          border: 1px solid #E2E8F0;
-          border-top-left-radius: 4px;
           align-self: flex-start;
-          box-shadow: 0 1px 3px rgba(0,0,0,0.04);
+          background: #FFFFFF;
+          color: #1E293B;
+          border: 1px solid #E2E8F0;
+          border-bottom-left-radius: 4px;
+          box-shadow: 0 1px 3px rgba(0, 0, 0, 0.05);
         }
         .vh-bubble.user {
+          align-self: flex-end;
           background: #2563EB;
           color: #FFFFFF;
-          border-top-right-radius: 4px;
-          align-self: flex-end;
-          font-weight: 500;
+          border-bottom-right-radius: 4px;
+          box-shadow: 0 1px 4px rgba(37, 99, 235, 0.25);
         }
 
-        /* Large Interactive Choices Area */
+        /* Choices Container & Buttons */
         .vh-choices {
           display: flex;
           flex-direction: column;
           gap: 8px;
           margin-top: 4px;
+          animation: vh-fade-in 0.2s ease;
         }
         .vh-choice-btn {
           background: #FFFFFF;
-          border: 2px solid #E2E8F0;
-          border-radius: 12px;
-          padding: 12px 14px;
-          text-align: left;
+          border: 1.5px solid #CBD5E1;
+          color: #1E293B;
+          padding: 10px 12px;
+          border-radius: 10px;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 12px;
+          gap: 10px;
+          font-size: 0.85rem;
+          font-weight: 500;
           transition: all 0.16s ease;
-          width: 100%;
+          text-align: left;
         }
         .vh-choice-btn:hover {
           border-color: #2563EB;
           background: #EFF6FF;
           transform: translateY(-1px);
-          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.1);
         }
         .vh-choice-btn.primary {
-          border-color: #BFDBFE;
+          background: #2563EB;
+          border-color: #2563EB;
+          color: #FFFFFF;
+        }
+        .vh-choice-btn.primary:hover {
+          background: #1D4ED8;
+          border-color: #1D4ED8;
         }
         .vh-choice-icon {
-          font-size: 1.6rem;
+          font-size: 1.2rem;
           flex-shrink: 0;
-          width: 40px;
-          height: 40px;
-          border-radius: 10px;
-          background: #F1F5F9;
-          display: flex;
-          align-items: center;
-          justify-content: center;
-        }
-        .vh-choice-btn:hover .vh-choice-icon {
-          background: #DBEAFE;
         }
         .vh-choice-content {
-          flex: 1;
-        }
-        .vh-choice-title {
-          font-size: 0.9375rem;
-          font-weight: 700;
-          color: #0F172A;
-          display: block;
-        }
-        .vh-choice-sub {
-          font-size: 0.75rem;
-          color: #64748B;
-          display: block;
-          margin-top: 2px;
-        }
-
-        /* Speaking Wave Indicator */
-        .vh-wave-wrap {
           display: flex;
+          flex-direction: column;
+        }
+        .vh-choice-title { font-weight: 600; }
+        .vh-choice-sub { font-size: 0.725rem; opacity: 0.85; }
+
+        /* Profile Summary Card */
+        .vh-profile-summary-card {
+          background: #FFFFFF;
+          border: 1.5px solid #10B981;
+          border-radius: 12px;
+          padding: 12px;
+          margin-top: 6px;
+          box-shadow: 0 4px 12px rgba(16, 185, 129, 0.15);
+        }
+        .vh-summary-title {
+          font-weight: 700;
+          color: #065F46;
+          font-size: 0.85rem;
+          margin-bottom: 8px;
+          border-bottom: 1px solid #E2E8F0;
+          padding-bottom: 4px;
+        }
+        .vh-summary-row {
+          display: flex;
+          justify-content: space-between;
+          font-size: 0.8rem;
+          padding: 3px 0;
+          color: #334155;
+        }
+        .vh-summary-row strong { color: #0F172A; }
+        .vh-summary-actions {
+          display: flex;
+          gap: 8px;
+          margin-top: 10px;
+        }
+        .vh-saved-badge {
+          display: inline-flex;
           align-items: center;
           gap: 4px;
-          height: 18px;
-          padding: 0 4px;
-          display: none;
-        }
-        .vh-wave-wrap.is-active { display: flex; }
-        .vh-wave-bar {
-          width: 3.5px;
-          height: 4px;
-          border-radius: 3px;
-          background: #2563EB;
-          animation: vh-wave-anim 1s ease-in-out infinite;
-        }
-        .vh-wave-bar:nth-child(1) { animation-delay: 0.0s; }
-        .vh-wave-bar:nth-child(2) { animation-delay: 0.15s; }
-        .vh-wave-bar:nth-child(3) { animation-delay: 0.3s; }
-        .vh-wave-bar:nth-child(4) { animation-delay: 0.45s; }
-        .vh-wave-bar:nth-child(5) { animation-delay: 0.3s; }
-        .vh-wave-bar:nth-child(6) { animation-delay: 0.15s; }
-        @keyframes vh-wave-anim {
-          0%, 100% { height: 4px; }
-          50% { height: 18px; }
+          background: #D1FAE5;
+          color: #065F46;
+          font-size: 0.72rem;
+          font-weight: 600;
+          padding: 2px 8px;
+          border-radius: 6px;
+          margin-top: 4px;
         }
 
-        /* Interim Speech Preview */
+        /* Interim recognition display */
         .vh-interim {
-          font-size: 0.8125rem;
+          background: #FEF3C7;
+          border-left: 3px solid #F59E0B;
+          color: #78350F;
+          padding: 6px 12px;
+          font-size: 0.8rem;
           font-style: italic;
-          color: #64748B;
-          padding: 6px 10px;
-          background: #F1F5F9;
-          border-radius: 8px;
           display: none;
         }
         .vh-interim.is-active { display: block; }
 
-        /* Panel Footer & Controls */
+        /* Footer Controls */
         .vh-footer {
           background: #FFFFFF;
           border-top: 1px solid #E2E8F0;
-          padding: 10px 14px;
+          padding: 12px 14px;
           display: flex;
           align-items: center;
-          justify-content: space-between;
-          gap: 10px;
+          gap: 12px;
         }
         .vh-mic-action {
-          width: 44px;
-          height: 44px;
+          width: 50px;
+          height: 50px;
           border-radius: 50%;
           background: #2563EB;
           color: #FFFFFF;
@@ -786,168 +1252,108 @@
           display: flex;
           align-items: center;
           justify-content: center;
-          font-size: 1.15rem;
+          font-size: 1.3rem;
+          box-shadow: 0 4px 12px rgba(37, 99, 235, 0.3);
           transition: all 0.2s ease;
-          position: relative;
+          flex-shrink: 0;
         }
-        .vh-mic-action:hover { background: #1D4ED8; transform: scale(1.05); }
+        .vh-mic-action:hover {
+          transform: scale(1.05);
+          background: #1D4ED8;
+        }
         .vh-mic-action.is-listening {
           background: #DC2626;
-          animation: vh-mic-pulse 1.2s infinite;
+          box-shadow: 0 0 16px rgba(220, 38, 38, 0.5);
+          animation: vh-mic-pulse 1.2s infinite alternate;
         }
-        @keyframes vh-mic-pulse {
-          0% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0.4); }
-          70% { box-shadow: 0 0 0 10px rgba(220, 38, 38, 0); }
-          100% { box-shadow: 0 0 0 0 rgba(220, 38, 38, 0); }
-        }
+        @keyframes vh-mic-pulse { from { transform: scale(1); } to { transform: scale(1.1); } }
+
         .vh-footer-info {
           flex: 1;
+          display: flex;
+          flex-direction: column;
         }
         .vh-mic-hint {
-          font-size: 0.8125rem;
+          font-size: 0.85rem;
           font-weight: 600;
-          color: #1E293B;
-          line-height: 1.2;
+          color: #0F172A;
         }
         .vh-mic-subhint {
-          font-size: 0.6875rem;
+          font-size: 0.72rem;
           color: #64748B;
         }
+
         .vh-repeat-btn {
           background: #F1F5F9;
-          border: 1px solid #E2E8F0;
+          border: 1px solid #CBD5E1;
           color: #475569;
-          padding: 7px 11px;
+          padding: 6px 10px;
           border-radius: 8px;
           font-size: 0.75rem;
-          font-weight: 600;
           cursor: pointer;
           display: flex;
           align-items: center;
-          gap: 6px;
-          white-space: nowrap;
-          transition: all 0.15s ease;
+          gap: 4px;
         }
-        .vh-repeat-btn:hover {
-          background: #E2E8F0;
-          color: #0F172A;
-        }
+        .vh-repeat-btn:hover { background: #E2E8F0; color: #0F172A; }
 
-        /* Typed Input Fallback */
+        /* Sound Wave Indicator */
+        .vh-wave-wrap {
+          display: flex;
+          align-items: center;
+          gap: 2px;
+          height: 12px;
+          margin-top: 3px;
+          display: none;
+        }
+        .vh-wave-wrap.is-active { display: flex; }
+        .vh-wave-bar {
+          width: 3px;
+          height: 100%;
+          background: #2563EB;
+          border-radius: 2px;
+          animation: vh-wave 0.8s ease-in-out infinite alternate;
+        }
+        .vh-wave-bar:nth-child(2) { animation-delay: 0.15s; height: 70%; }
+        .vh-wave-bar:nth-child(3) { animation-delay: 0.3s; height: 100%; }
+        .vh-wave-bar:nth-child(4) { animation-delay: 0.45s; height: 60%; }
+        .vh-wave-bar:nth-child(5) { animation-delay: 0.6s; height: 80%; }
+        @keyframes vh-wave { from { transform: scaleY(0.2); } to { transform: scaleY(1); } }
+
+        /* Typed input row */
         .vh-typed-row {
           display: flex;
-          gap: 8px;
-          padding: 8px 14px 12px 14px;
+          border-top: 1px solid #F1F5F9;
+          padding: 8px 12px;
           background: #FFFFFF;
-          border-top: 1px dashed #E2E8F0;
+          gap: 6px;
         }
         .vh-typed-input {
           flex: 1;
           border: 1px solid #CBD5E1;
           border-radius: 8px;
-          padding: 7px 12px;
-          font-size: 0.8125rem;
-          font-family: inherit;
+          padding: 6px 10px;
+          font-size: 0.8rem;
           outline: none;
-          transition: border-color 0.15s ease;
         }
-        .vh-typed-input:focus {
-          border-color: #2563EB;
-        }
+        .vh-typed-input:focus { border-color: #2563EB; }
         .vh-typed-send {
           background: #2563EB;
-          color: #FFFFFF;
           border: none;
-          border-radius: 8px;
-          padding: 0 14px;
-          cursor: pointer;
-          font-size: 0.8125rem;
-          transition: background 0.15s ease;
-        }
-        .vh-typed-send:hover {
-          background: #1D4ED8;
-        }
-
-        /* Transcript Confirmation & Correction Card */
-        .vh-confirm-card {
-          background: #F8FAFC;
-          border: 1px solid #CBD5E1;
-          border-radius: 12px;
-          padding: 10px 12px;
-          margin: 6px 0;
-          display: flex;
-          flex-direction: column;
-          gap: 6px;
-        }
-        .vh-confirm-header {
-          font-size: 0.75rem;
-          color: #64748B;
-          display: flex;
-          align-items: center;
-          gap: 6px;
-        }
-        .vh-confirm-text {
-          font-size: 0.875rem;
-          font-weight: 600;
-          color: #0F172A;
-          word-break: break-word;
-        }
-        .vh-confirm-edit-input {
-          width: 100%;
-          border: 1px solid #3B82F6;
-          border-radius: 6px;
-          padding: 6px 8px;
-          font-size: 0.8125rem;
-          font-family: inherit;
-          outline: none;
-        }
-        .vh-confirm-actions {
-          display: flex;
-          gap: 6px;
-          margin-top: 2px;
-        }
-        .vh-confirm-btn {
-          padding: 5px 9px;
-          border-radius: 6px;
-          font-size: 0.6875rem;
-          font-weight: 600;
-          cursor: pointer;
-          border: 1px solid transparent;
-          display: flex;
-          align-items: center;
-          gap: 4px;
-          transition: all 0.15s ease;
-        }
-        .vh-confirm-btn.primary {
-          background: #2563EB;
           color: #FFFFFF;
-        }
-        .vh-confirm-btn.secondary {
-          background: #FFFFFF;
-          border-color: #CBD5E1;
-          color: #334155;
-        }
-        .vh-confirm-btn:hover {
-          filter: brightness(0.95);
-        }
-
-        /* Mobile Adjustments */
-        @media (max-width: 480px) {
-          #vh-assistant-root { bottom: 16px; right: 16px; }
-          .vh-panel {
-            width: calc(100vw - 32px);
-            bottom: 70px;
-            right: 0;
-            max-height: 80vh;
-          }
-          .vh-lang-grid { grid-template-columns: repeat(2, 1fr); }
+          width: 32px;
+          height: 32px;
+          border-radius: 8px;
+          cursor: pointer;
+          display: flex;
+          align-items: center;
+          justify-content: center;
         }
       `;
       document.head.appendChild(s);
     }
 
     renderWidget() {
-      // Remove any lingering legacy nodes if present
       ['vh-assistant-root', 'vhai-root', 'vgb-root', 'vh-gateway-bot'].forEach(id => {
         const el = document.getElementById(id);
         if (el) el.remove();
@@ -956,23 +1362,24 @@
       const root = document.createElement('div');
       root.id = 'vh-assistant-root';
 
-      // Generate language cards HTML
       const langCardsHtml = Object.values(LANGUAGES).map(l => `
         <button class="vh-lang-card ${l.code === this.currentLang ? 'selected' : ''}" data-code="${l.code}">
           <span class="vh-lang-flag">${l.flag}</span>
-          <span class="vh-lang-native">${l.native}</span>
-          <span class="vh-lang-name">${l.name}</span>
+          <div>
+            <div class="vh-lang-native">${l.native}</div>
+            <div class="vh-lang-name">${l.name}</div>
+          </div>
         </button>
       `).join('');
 
       root.innerHTML = `
-        <!-- Floating Toggle Trigger -->
+        <!-- Floating FAB -->
         <button class="vh-fab" id="vh-fab-trigger" title="VoiceHire Voice Assistant" aria-label="Open VoiceHire Assistant">
           <i class="fa-solid fa-microphone-lines"></i>
           <span class="vh-fab-pulse"></span>
         </button>
 
-        <!-- Main Assistant Panel -->
+        <!-- Main Panel -->
         <div class="vh-panel" id="vh-main-panel" role="dialog" aria-label="VoiceHire Voice Assistant">
           
           <!-- Header -->
@@ -992,15 +1399,23 @@
             </div>
 
             <div class="vh-toolbar">
+              <!-- Restart button (Bug 1: Deliberate conversation restart) -->
+              <button class="vh-tool-btn" id="vh-btn-restart" title="Restart Assistant / शुरुआत से शुरू करें" aria-label="Restart Assistant">
+                <i class="fa-solid fa-rotate-left"></i>
+              </button>
+              <!-- Voice Mode Toggle (Bug 3: Hands-Free vs Manual) -->
+              <button class="vh-tool-btn ${this.voiceMode === 'hands_free' ? 'active' : ''}" id="vh-btn-mode" title="Toggle Hands-Free / Manual Mode" aria-label="Voice Interaction Mode">
+                <i class="fa-solid ${this.voiceMode === 'hands_free' ? 'fa-headset' : 'fa-hand'}"></i>
+              </button>
+              <!-- Language Drawer Toggle -->
               <button class="vh-tool-btn" id="vh-btn-lang" title="Change Language / भाषा बदलें">
                 <i class="fa-solid fa-language"></i>
               </button>
+              <!-- Sound Mute/Unmute -->
               <button class="vh-tool-btn ${this.isMuted ? 'active' : ''}" id="vh-btn-sound" title="${this.isMuted ? 'Unmute Voice' : 'Mute Voice'}">
                 <i class="fa-solid ${this.isMuted ? 'fa-volume-xmark' : 'fa-volume-high'}"></i>
               </button>
-              <button class="vh-tool-btn ${this.isManualMode ? 'active' : ''}" id="vh-btn-manual" title="Manual Mode (Disable auto-voice)">
-                <i class="fa-solid fa-hand"></i>
-              </button>
+              <!-- Minimize & Close -->
               <button class="vh-tool-btn" id="vh-btn-min" title="Minimize">
                 <i class="fa-solid fa-window-minimize"></i>
               </button>
@@ -1010,9 +1425,9 @@
             </div>
           </div>
 
-          <!-- Language Drawer -->
+          <!-- Language Selection Drawer -->
           <div class="vh-lang-drawer" id="vh-lang-drawer">
-            <div class="vh-lang-drawer-title">🌐 Choose Your Language / अपनी भाषा चुनें</div>
+            <div class="vh-lang-drawer-title">🌐 Choose Language / अपनी भाषा चुनें</div>
             <div class="vh-lang-grid" id="vh-lang-grid">
               ${langCardsHtml}
             </div>
@@ -1028,7 +1443,7 @@
             </button>
           </div>
 
-          <!-- Message History & Choices Transcript -->
+          <!-- Message History Stream -->
           <div class="vh-messages" id="vh-messages-stream"></div>
 
           <!-- Interim Speech Transcript -->
@@ -1040,10 +1455,9 @@
               <i class="fa-solid fa-microphone"></i>
             </button>
             <div class="vh-footer-info">
-              <div class="vh-mic-hint" id="vh-mic-hint">Tap to Speak</div>
-              <div class="vh-mic-subhint" id="vh-mic-subhint">Or speak / type below</div>
+              <div class="vh-mic-hint" id="vh-mic-hint">${this.voiceMode === 'hands_free' ? 'Hands-Free Active' : 'Tap to Speak'}</div>
+              <div class="vh-mic-subhint" id="vh-mic-subhint">${this.voiceMode === 'hands_free' ? 'Auto-listens after speaking' : 'Tap mic when ready'}</div>
               <div class="vh-wave-wrap" id="vh-wave-indicator">
-                <div class="vh-wave-bar"></div>
                 <div class="vh-wave-bar"></div>
                 <div class="vh-wave-bar"></div>
                 <div class="vh-wave-bar"></div>
@@ -1051,15 +1465,15 @@
                 <div class="vh-wave-bar"></div>
               </div>
             </div>
-            <button class="vh-repeat-btn" id="vh-repeat-btn" title="Repeat Spoken Prompt">
-              <i class="fa-solid fa-rotate-right"></i> Repeat
+            <button class="vh-repeat-btn" id="vh-repeat-btn" title="Repeat Prompt">
+              <i class="fa-solid fa-rotate-right"></i>
             </button>
           </div>
 
           <!-- Typed Input Fallback -->
           <div class="vh-typed-row" id="vh-typed-row">
-            <input type="text" class="vh-typed-input" id="vh-typed-input" placeholder="यहाँ बोलें या टाइप करें... / Speak or type..." aria-label="Type message fallback">
-            <button class="vh-typed-send" id="vh-typed-send" title="Send / भेजें" aria-label="Send message">
+            <input type="text" class="vh-typed-input" id="vh-typed-input" placeholder="यहाँ टाइप करें / Type message..." aria-label="Type message fallback">
+            <button class="vh-typed-send" id="vh-typed-send" title="Send" aria-label="Send message">
               <i class="fa-solid fa-paper-plane"></i>
             </button>
           </div>
@@ -1069,7 +1483,6 @@
 
       document.body.appendChild(root);
 
-      // Cache DOM references
       this.dom = {
         root: document.getElementById('vh-assistant-root'),
         fab: document.getElementById('vh-fab-trigger'),
@@ -1077,9 +1490,10 @@
         statusRing: document.getElementById('vh-status-ring'),
         statusDot: document.getElementById('vh-status-dot'),
         statusText: document.getElementById('vh-status-text'),
+        btnRestart: document.getElementById('vh-btn-restart'),
+        btnMode: document.getElementById('vh-btn-mode'),
         btnLang: document.getElementById('vh-btn-lang'),
         btnSound: document.getElementById('vh-btn-sound'),
-        btnManual: document.getElementById('vh-btn-manual'),
         btnMin: document.getElementById('vh-btn-min'),
         btnClose: document.getElementById('vh-btn-close'),
         langDrawer: document.getElementById('vh-lang-drawer'),
@@ -1113,13 +1527,14 @@
       });
 
       // Header controls
-      this.dom.btnMin.addEventListener('click', () => this.minimize());
-      this.dom.btnClose.addEventListener('click', () => this.dismiss());
+      this.dom.btnRestart.addEventListener('click', () => this.restartConversation());
+      this.dom.btnMode.addEventListener('click', () => this.toggleVoiceMode());
       this.dom.btnLang.addEventListener('click', () => this.toggleLangDrawer());
       this.dom.btnSound.addEventListener('click', () => this.toggleSound());
-      this.dom.btnManual.addEventListener('click', () => this.toggleManualMode());
+      this.dom.btnMin.addEventListener('click', () => this.minimize());
+      this.dom.btnClose.addEventListener('click', () => this.dismiss());
 
-      // Language selection buttons in drawer
+      // Language cards
       this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(btn => {
         btn.addEventListener('click', () => {
           const code = btn.dataset.code;
@@ -1131,9 +1546,8 @@
       // Autoplay unblock button
       this.dom.startVoiceBtn.addEventListener('click', () => {
         this.dom.autoplayBanner.classList.remove('is-visible');
-        if (this.currentUtterance) {
-          this.speechSynth.cancel();
-        }
+        this.micPermissionGranted = true;
+        localStorage.setItem('vh_mic_granted', 'true');
         this.speakCurrentInstruction();
       });
 
@@ -1148,14 +1562,17 @@
         });
       }
 
-      // Microphone button with rapid click debouncing
+      // Mic button (Bug 3: Stop listening or manual speak)
       this.dom.micBtn.addEventListener('click', () => {
         const now = Date.now();
-        if (now - this.lastClickTime < 350) return;
+        if (now - this.lastClickTime < 300) return;
         this.lastClickTime = now;
-        if (this.stt && this.stt.state === (window.VoiceHireVoice ? window.VoiceHireVoice.VoiceStates.LISTENING : 'LISTENING')) {
+
+        if (this.isListening) {
+          // Explicit Stop Listening
           this.stopListening();
         } else {
+          // Manual Voice Input activation
           this.startListening();
         }
       });
@@ -1166,40 +1583,623 @@
       });
     }
 
-    /* ── State Transition Engine ───────────────────────────────────────── */
-    setState(newState) {
-      this.state = newState;
-      console.log(`[VoiceHire Assistant] Transition -> ${newState}`);
+    /* ── Voice Services & STT/TTS Layer ───────────────────────────────── */
+    initVoiceServices() {
+      if (!this.stt || !this.stt.isSupported || !this.stt.isSupported()) {
+        this.showTypedFallbackNotice();
+        return;
+      }
+
+      this.stt.onStateChange = (state) => {
+        const VS = window.VoiceHireVoice ? window.VoiceHireVoice.VoiceStates : {};
+        if (state === (VS.LISTENING || 'LISTENING')) {
+          this.isListening = true;
+          this.dom.micBtn.classList.add('is-listening');
+          this.dom.statusRing.className = 'vh-header-ring listening';
+          this.dom.statusDot.className = 'vh-status-dot listening';
+          const listeningText = DIALOGUES.micListening[this.currentLang] || 'Listening...';
+          this.dom.statusText.textContent = listeningText;
+          this.dom.micHint.textContent = listeningText;
+          this.dom.micSubhint.textContent = 'Tap red button to stop';
+          this.dom.interim.classList.add('is-active');
+          this.dom.interim.textContent = '';
+        } else {
+          this.isListening = false;
+          this.dom.micBtn.classList.remove('is-listening');
+          this.dom.statusRing.className = 'vh-header-ring';
+          this.dom.statusDot.className = 'vh-status-dot';
+          this.dom.statusText.textContent = 'Ready';
+          this.dom.micHint.textContent = this.voiceMode === 'hands_free' ? 'Hands-Free Active' : 'Tap to Speak';
+          this.dom.micSubhint.textContent = this.voiceMode === 'hands_free' ? 'Auto-listens after speaking' : 'Tap mic when ready';
+          this.dom.interim.classList.remove('is-active');
+        }
+      };
+
+      this.stt.onInterim = (text) => {
+        if (this.dom.interim) {
+          this.dom.interim.textContent = text;
+        }
+      };
+
+      this.stt.onFinal = (text, confidence) => {
+        if (!text || !text.trim()) return;
+        this.stopListening();
+        this.processUserUtterance(text.trim(), confidence);
+      };
+
+      this.stt.onPermissionDenied = () => {
+        const denied = DIALOGUES.micDenied[this.currentLang] || DIALOGUES.micDenied.hi;
+        this.addMessage(denied, 'bot');
+        this.showTypedFallbackNotice();
+      };
+
+      this.stt.onError = (errType, msg) => {
+        if (errType !== 'aborted' && errType !== 'canceled') {
+          console.warn('[Assistant STT Error]', errType, msg);
+        }
+      };
     }
 
-    startOnboarding() {
-      this.clearMessages();
-      this.setState(States.GREETING);
+    // Bug 3: Hands-Free auto-restart vs Manual Mode
+    toggleVoiceMode() {
+      if (this.voiceMode === 'hands_free') {
+        this.voiceMode = 'manual';
+        this.stopListening();
+        const notice = (DIALOGUES.manualModeEnabled && (DIALOGUES.manualModeEnabled[this.currentLang] || DIALOGUES.manualModeEnabled.hi)) || "Manual Mode active: Tap the microphone button when you want to speak.";
+        this.addMessage(`✋ ${notice}`, 'bot');
+        this.speak(notice, this.currentLang);
+      } else {
+        this.voiceMode = 'hands_free';
+        const notice = (DIALOGUES.handsFreeEnabled && (DIALOGUES.handsFreeEnabled[this.currentLang] || DIALOGUES.handsFreeEnabled.hi)) || "Hands-Free Mode active: Microphone will listen automatically after the assistant speaks.";
+        this.addMessage(`🎧 ${notice}`, 'bot');
+        this.speak(notice, this.currentLang);
+      }
+      localStorage.setItem('vh_voice_mode', this.voiceMode);
+      this.updateModeButtonUI();
+      this.saveSession();
+    }
 
-      // Play initial Hindi greeting explaining finding work or booking a worker
+    updateModeButtonUI() {
+      if (!this.dom.btnMode) return;
+      if (this.voiceMode === 'hands_free') {
+        this.dom.btnMode.classList.add('active');
+        this.dom.btnMode.innerHTML = '<i class="fa-solid fa-headset"></i>';
+        this.dom.btnMode.title = 'Hands-Free Mode Active (Click to switch to Manual)';
+        this.dom.micHint.textContent = 'Hands-Free Active';
+        this.dom.micSubhint.textContent = 'Auto-listens after speaking';
+      } else {
+        this.dom.btnMode.classList.remove('active');
+        this.dom.btnMode.innerHTML = '<i class="fa-solid fa-hand"></i>';
+        this.dom.btnMode.title = 'Manual Mode Active (Click to switch to Hands-Free)';
+        this.dom.micHint.textContent = 'Tap to Speak';
+        this.dom.micSubhint.textContent = 'Tap mic when ready';
+      }
+    }
+
+    startListening() {
+      if (this.isSpeaking || this.isProcessing) return;
+      if (this.isMuted) return;
+
+      // Sensitive input guard: never listen when focused on password or OTP
+      if (this.isFocusedOnSensitiveField()) return;
+
+      if (!this.stt || !this.stt.isSupported || !this.stt.isSupported()) {
+        this.showTypedFallbackNotice();
+        return;
+      }
+      this.micPermissionGranted = true;
+      localStorage.setItem('vh_mic_granted', 'true');
+      this.stt.start(this.currentLang);
+    }
+
+    stopListening() {
+      if (this.stt && this.stt.stop) {
+        this.stt.stop();
+      }
+      this.isListening = false;
+      this.dom.micBtn.classList.remove('is-listening');
+      this.dom.statusRing.className = 'vh-header-ring';
+      this.dom.statusDot.className = 'vh-status-dot';
+      this.dom.statusText.textContent = 'Ready';
+      this.dom.interim.classList.remove('is-active');
+    }
+
+    cancelVoice() {
+      if (this.stt && this.stt.cancel) this.stt.cancel();
+      if (this.tts && this.tts.cancel) this.tts.cancel();
+      this.stopListening();
+      this.stopSpeaking();
+    }
+
+    speak(text, langCode) {
+      if (!text || this.isMuted) return Promise.resolve();
+
+      this.stopListening();
+      this.isSpeaking = true;
+      this.updateSpeakingIndicators(true);
+
+      const chosenLang = langCode || this.currentLang || 'hi';
+
+      return new Promise((resolve) => {
+        if (this.tts && this.tts.speak) {
+          this.tts.speak(text, chosenLang).then(() => {
+            this.handleSpeechCompleted();
+            resolve();
+          }).catch((err) => {
+            if (err === 'autoplay_blocked') {
+              this.showAutoplayBlockedBanner();
+            }
+            this.handleSpeechCompleted();
+            resolve();
+          });
+        } else {
+          this.handleSpeechCompleted();
+          resolve();
+        }
+      });
+    }
+
+    // Bug 3: Trigger hands-free auto-listening after speech completes
+    handleSpeechCompleted() {
+      this.isSpeaking = false;
+      this.updateSpeakingIndicators(false);
+
+      if (this.voiceMode === 'hands_free' && !this.isMuted && !this.isProcessing) {
+        // Echo cancellation delay: allow room audio to settle before opening mic
+        setTimeout(() => {
+          if (!this.isSpeaking && !this.isProcessing && this.dom.panel.classList.contains('is-open')) {
+            this.startListening();
+          }
+        }, 350);
+      }
+    }
+
+    speakCurrentInstruction() {
+      if (this.lastInstruction) {
+        this.speak(this.lastInstruction, this.currentLang);
+      }
+    }
+
+    stopSpeaking() {
+      if (this.tts && this.tts.cancel) {
+        this.tts.cancel();
+      }
+      this.isSpeaking = false;
+      this.updateSpeakingIndicators(false);
+    }
+
+    setupSensitiveInputProtection() {
+      // Rule 8 & Security: Pause voice & stop microphone when touching password/OTP fields
+      document.addEventListener('focusin', (e) => {
+        const target = e.target;
+        if (!target) return;
+        const type = (target.getAttribute('type') || '').toLowerCase();
+        const id = (target.id || '').toLowerCase();
+        const name = (target.name || '').toLowerCase();
+        const isSensitive = type === 'password' || id.includes('password') || id.includes('otp') || id.includes('pin') ||
+                            name.includes('password') || name.includes('otp') || name.includes('pin');
+        if (isSensitive) {
+          this.stopListening();
+          this.stopSpeaking();
+          this.updateStatus('Sensitive Field (Voice Paused)', 'processing');
+        }
+      }, true);
+
+      document.addEventListener('focusout', (e) => {
+        const target = e.target;
+        if (!target) return;
+        const type = (target.getAttribute('type') || '').toLowerCase();
+        if (type === 'password') {
+          this.updateStatus('Ready', 'ready');
+        }
+      }, true);
+    }
+
+    isFocusedOnSensitiveField() {
+      const el = document.activeElement;
+      if (!el) return false;
+      const type = (el.getAttribute('type') || '').toLowerCase();
+      const id = (el.id || '').toLowerCase();
+      const name = (el.name || '').toLowerCase();
+      return type === 'password' || id.includes('password') || id.includes('otp') || id.includes('pin') ||
+             name.includes('password') || name.includes('otp') || name.includes('pin');
+    }
+
+    /* ── Conversational Orchestration & Utterance Processing ─────────── */
+    handleTypedInput() {
+      if (!this.dom.typedInput) return;
+      const text = this.dom.typedInput.value.trim();
+      if (!text) return;
+      this.dom.typedInput.value = '';
+      this.processUserUtterance(text, 1.0);
+    }
+
+    processUserUtterance(text, confidence = 1.0) {
+      if (!text) return;
+      this.addMessage(text, 'user');
+      this.saveSession();
+
+      // State machine branching
+      if (this.state === States.GREETING || this.state === States.LANGUAGE_SELECT) {
+        this.handleLanguageChoiceUtterance(text);
+      } else if (this.state === States.ROLE_SELECT) {
+        this.handleRoleChoiceUtterance(text);
+      } else if (this.state === States.ACTION_SELECT) {
+        this.handleActionChoiceUtterance(text);
+      } else if (this.state === States.COLLECTING_PROFILE_FIELDS && this.workerProfilePendingField) {
+        this.handleWorkerProfileAnswer(text);
+      } else if (this.state === States.AWAITING_PROFILE_CONFIRMATION) {
+        this.handleProfileConfirmationAnswer(text);
+      } else {
+        // General conversational turn through Orchestration Engine API
+        this.executeGeneralVoiceIntent(text, confidence);
+      }
+    }
+
+    /* ── Phase 14.1 Worker Profile Creation & Completion (Bug 2) ─────── */
+    async checkWorkerProfileOnServer() {
+      this.updateStatus('Checking Profile...', 'processing');
+
+      try {
+        const res = await fetch('/api/worker/profile', {
+          headers: { 'Accept': 'application/json' }
+        });
+        const data = await res.json();
+
+        if (res.status === 404 || (data && data.exists === false)) {
+          // No profile row exists yet: initiate creation!
+          this.state = States.COLLECTING_PROFILE_FIELDS;
+          const greeting = DIALOGUES.workerProfileGreeting[this.currentLang] || DIALOGUES.workerProfileGreeting.hi;
+          this.addMessage(greeting, 'bot');
+          this.speak(greeting, this.currentLang).then(() => {
+            this.askNextWorkerProfileField();
+          });
+          return;
+        }
+
+        if (res.ok && data) {
+          // Profile exists: inspect mandatory attributes
+          this.workerProfile = {
+            name: data.name || '',
+            work: data.work || '',
+            location: data.location || '',
+            price: data.price ? String(data.price) : '',
+            experience_years: data.experience_years ? String(data.experience_years) : '',
+            bio: data.bio || '',
+            isComplete: (data.completeness && data.completeness.score >= 50),
+            isConfirmed: Boolean(data.is_available)
+          };
+
+          // Update visible dashboard progress bar and checklist if present on page
+          this.syncDashboardDOM(data);
+
+          const missingField = this.findMissingMandatoryField();
+          if (missingField) {
+            this.state = States.COLLECTING_PROFILE_FIELDS;
+            const msg = this.currentLang === 'hi' 
+              ? "आपकी प्रोफ़ाइल में कुछ ज़रूरी विवरण बाकी हैं। आइए इन्हें पूरा करते हैं।"
+              : "Some mandatory details are missing from your profile. Let's complete them.";
+            this.addMessage(msg, 'bot');
+            this.speak(msg, this.currentLang).then(() => {
+              this.askWorkerProfileField(missingField);
+            });
+          } else {
+            // Profile is already complete!
+            this.state = States.DASHBOARD_GUIDANCE;
+            this.workerProfile.isComplete = true;
+            const readyMsg = DIALOGUES.profileCompleteCelebration[this.currentLang] || DIALOGUES.profileCompleteCelebration.hi;
+            this.addMessage(`🎉 ${readyMsg}`, 'bot');
+            this.showProfileSummaryCard(true);
+            this.speak(readyMsg, this.currentLang);
+          }
+        }
+      } catch (err) {
+        console.warn('[Assistant Profile Check Error]', err);
+        // Fallback: start interactive collection
+        this.state = States.COLLECTING_PROFILE_FIELDS;
+        this.askNextWorkerProfileField();
+      }
+      this.saveSession();
+    }
+
+    findMissingMandatoryField() {
+      const order = ['name', 'work', 'location', 'price', 'experience_years'];
+      for (const field of order) {
+        const val = this.workerProfile[field];
+        if (!val || val === 'New Worker' || val === 'General Helper' || val === '0' || val === 0) {
+          return field;
+        }
+      }
+      return null;
+    }
+
+    askNextWorkerProfileField() {
+      const field = this.findMissingMandatoryField();
+      if (!field) {
+        // All fields gathered: show summary and request explicit confirmation
+        this.showProfileSummaryAndConfirm();
+      } else {
+        this.askWorkerProfileField(field);
+      }
+    }
+
+    askWorkerProfileField(field, doSpeak = true) {
+      this.workerProfilePendingField = field;
+      this.state = States.COLLECTING_PROFILE_FIELDS;
+
+      let question = '';
+      if (field === 'name') question = DIALOGUES.askName[this.currentLang] || DIALOGUES.askName.hi;
+      else if (field === 'work') question = DIALOGUES.askTrade[this.currentLang] || DIALOGUES.askTrade.hi;
+      else if (field === 'location') question = DIALOGUES.askLocation[this.currentLang] || DIALOGUES.askLocation.hi;
+      else if (field === 'price') question = DIALOGUES.askPrice[this.currentLang] || DIALOGUES.askPrice.hi;
+      else if (field === 'experience_years') question = DIALOGUES.askExperience[this.currentLang] || DIALOGUES.askExperience.hi;
+
+      this.addMessage(question, 'bot');
+      this.lastInstruction = question;
+      this.saveSession();
+
+      if (doSpeak) {
+        this.speak(question, this.currentLang);
+      }
+    }
+
+    async handleWorkerProfileAnswer(answer) {
+      const field = this.workerProfilePendingField;
+      if (!field) return;
+
+      this.isProcessing = true;
+      this.updateStatus('Saving to Server...', 'processing');
+
+      let cleanVal = answer.trim();
+      let updatePayload = {};
+
+      if (field === 'name') {
+        cleanVal = cleanVal.replace(/mera naam|my name is/i, '').trim();
+        if (cleanVal.length < 2) {
+          this.isProcessing = false;
+          const retryMsg = this.currentLang === 'hi' ? "कृपया अपना सही नाम बताएँ।" : "Please provide a valid full name.";
+          this.addMessage(retryMsg, 'bot');
+          this.speak(retryMsg, this.currentLang);
+          return;
+        }
+        updatePayload.name = cleanVal;
+      } else if (field === 'work') {
+        const detected = detectTradeFromText(cleanVal);
+        cleanVal = detected || cleanVal;
+        updatePayload.work = cleanVal;
+        updatePayload.trade = cleanVal;
+      } else if (field === 'location') {
+        cleanVal = cleanVal.replace(/main|me rehta hu|locality|city/i, '').trim();
+        updatePayload.location = cleanVal;
+      } else if (field === 'price') {
+        const num = extractDigits(cleanVal);
+        if (!num || num <= 0) {
+          this.isProcessing = false;
+          const retryMsg = this.currentLang === 'hi' ? "कृपया अंकों में अपनी दिहाड़ी बताएँ, जैसे 500 रुपये।" : "Please specify your daily rate in numbers, e.g. 500.";
+          this.addMessage(retryMsg, 'bot');
+          this.speak(retryMsg, this.currentLang);
+          return;
+        }
+        cleanVal = String(num);
+        updatePayload.price = num;
+      } else if (field === 'experience_years') {
+        const num = extractDigits(cleanVal) || 1;
+        cleanVal = String(num);
+        updatePayload.experience_years = num;
+      }
+
+      try {
+        // Authorized Server-Side Persistence (Bug 2)
+        const res = await fetch('/api/worker/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify(updatePayload)
+        });
+        const data = await res.json();
+
+        if (res.ok) {
+          this.workerProfile[field] = cleanVal;
+          if (field === 'work') this.workerProfile.trade = cleanVal;
+
+          // Verify saved response and update UI
+          const savedBadge = `<span class="vh-saved-badge"><i class="fa-solid fa-check"></i> ${DIALOGUES.fieldSaved[this.currentLang] || 'Saved'}</span>`;
+          this.addMessage(`${cleanVal} ${savedBadge}`, 'bot');
+
+          // Sync with visible form inputs if present on page
+          this.syncFormFieldDOM(field, cleanVal);
+          if (data.completeness) {
+            this.syncDashboardDOM(data);
+          }
+
+          this.isProcessing = false;
+          this.saveSession();
+
+          // Move to next missing field
+          this.askNextWorkerProfileField();
+        } else {
+          this.isProcessing = false;
+          const errText = data.error || 'Server error saving detail.';
+          this.addMessage(`⚠️ ${errText}`, 'bot');
+          this.speak(errText, this.currentLang);
+        }
+      } catch (e) {
+        this.isProcessing = false;
+        console.error('[Worker Profile Save Error]', e);
+        const errMsg = this.currentLang === 'hi' ? "सर्वर से संपर्क नहीं हो पाया। पुनः प्रयास करें।" : "Network error. Please try again.";
+        this.addMessage(errMsg, 'bot');
+        this.speak(errMsg, this.currentLang);
+      }
+    }
+
+    showProfileSummaryAndConfirm(doSpeak = true) {
+      this.state = States.AWAITING_PROFILE_CONFIRMATION;
+      this.workerProfilePendingField = null;
+
+      const card = document.createElement('div');
+      card.className = 'vh-profile-summary-card';
+      card.innerHTML = `
+        <div class="vh-summary-title">📋 ${this.currentLang === 'hi' ? 'आपकी प्रोफ़ाइल का सारांश' : 'Profile Summary'}</div>
+        <div class="vh-summary-row"><strong>नाम (Name):</strong> <span>${this.workerProfile.name || '—'}</span></div>
+        <div class="vh-summary-row"><strong>काम (Trade):</strong> <span>${this.workerProfile.work || this.workerProfile.trade || '—'}</span></div>
+        <div class="vh-summary-row"><strong>इलाका (Area):</strong> <span>${this.workerProfile.location || '—'}</span></div>
+        <div class="vh-summary-row"><strong>दर (Daily Rate):</strong> <span>₹${this.workerProfile.price || '500'}/day</span></div>
+        <div class="vh-summary-row"><strong>अनुभव (Experience):</strong> <span>${this.workerProfile.experience_years || '1'} वर्ष (Years)</span></div>
+        <div class="vh-summary-actions">
+          <button class="vh-choice-btn primary" id="vh-confirm-profile-btn" style="flex:1;">
+            <i class="fa-solid fa-check"></i> ${this.currentLang === 'hi' ? 'हाँ, पक्का करें (Confirm)' : 'Confirm & Publish'}
+          </button>
+          <button class="vh-choice-btn" id="vh-edit-profile-btn">
+            <i class="fa-solid fa-pen"></i> ${this.currentLang === 'hi' ? 'बदलें (Edit)' : 'Edit'}
+          </button>
+        </div>
+      `;
+
+      this.dom.messages.appendChild(card);
+      this.scrollToBottom();
+
+      card.querySelector('#vh-confirm-profile-btn').addEventListener('click', () => {
+        this.confirmAndActivateWorkerProfile();
+      });
+
+      card.querySelector('#vh-edit-profile-btn').addEventListener('click', () => {
+        this.workerProfile.name = '';
+        this.askNextWorkerProfileField();
+      });
+
+      const prompt = DIALOGUES.profileConfirmPrompt[this.currentLang] || DIALOGUES.profileConfirmPrompt.hi;
+      this.lastInstruction = prompt;
+      this.saveSession();
+
+      if (doSpeak) {
+        this.speak(prompt, this.currentLang);
+      }
+    }
+
+    handleProfileConfirmationAnswer(answer) {
+      const lower = answer.toLowerCase();
+      if (/haan|ha|yes|theek|sahi|confirm|pakka|kar do|proceed|done/.test(lower)) {
+        this.confirmAndActivateWorkerProfile();
+      } else if (/nahi|na|no|cancel|badlo|change|galat/.test(lower)) {
+        const msg = this.currentLang === 'hi' ? "ठीक है, आप क्या बदलना चाहते हैं?" : "Okay, what detail would you like to edit?";
+        this.addMessage(msg, 'bot');
+        this.speak(msg, this.currentLang);
+        this.workerProfile.name = '';
+        this.askNextWorkerProfileField();
+      } else {
+        const prompt = DIALOGUES.profileConfirmPrompt[this.currentLang] || DIALOGUES.profileConfirmPrompt.hi;
+        this.speak(prompt, this.currentLang);
+      }
+    }
+
+    async confirmAndActivateWorkerProfile() {
+      this.isProcessing = true;
+      this.updateStatus('Publishing Profile...', 'processing');
+
+      try {
+        const res = await fetch('/api/worker/profile', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            is_available: true,
+            is_published: true
+          })
+        });
+        const data = await res.json();
+
+        this.isProcessing = false;
+        this.state = States.PROFILE_COMPLETE;
+        this.workerProfile.isComplete = true;
+        this.workerProfile.isConfirmed = true;
+
+        const celebration = DIALOGUES.profileCompleteCelebration[this.currentLang] || DIALOGUES.profileCompleteCelebration.hi;
+        this.addMessage(`🎉 ${celebration}`, 'bot');
+        this.speak(celebration, this.currentLang);
+
+        if (data.completeness) {
+          this.syncDashboardDOM(data);
+        }
+
+        this.saveSession();
+
+        // If not already on worker dashboard, navigate to it to showcase saved status
+        if (window.location.pathname !== '/dashboard/worker') {
+          setTimeout(() => {
+            window.location.href = '/dashboard/worker';
+          }, 1500);
+        } else {
+          this.state = States.DASHBOARD_GUIDANCE;
+          this.saveSession();
+        }
+      } catch (err) {
+        this.isProcessing = false;
+        console.error('[Worker Profile Publish Error]', err);
+      }
+    }
+
+    syncFormFieldDOM(field, val) {
+      const selectors = [
+        `input[name="${field}"]`, `input[id="${field}"]`,
+        `select[name="${field}"]`, `select[id="${field}"]`,
+        `textarea[name="${field}"]`, `textarea[id="${field}"]`
+      ];
+      selectors.forEach(sel => {
+        const el = document.querySelector(sel);
+        if (el) {
+          el.value = val;
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.dispatchEvent(new Event('change', { bubbles: true }));
+        }
+      });
+    }
+
+    syncDashboardDOM(data) {
+      if (!data) return;
+      const comp = data.completeness || {};
+      const score = comp.score || data.profile_completeness || 100;
+
+      const badge = document.getElementById('wp-completeness-badge');
+      if (badge) badge.textContent = `${score}%`;
+
+      const fill = document.getElementById('wp-completeness-fill');
+      if (fill) fill.style.width = `${score}%`;
+
+      const listContainer = document.getElementById('wp-completeness-checklist');
+      if (listContainer && Array.isArray(comp.checklist)) {
+        listContainer.innerHTML = comp.checklist.map(item => `
+          <div style="background:${item.completed ? '#D1FAE5' : '#F1F5F9'}; color:${item.completed ? '#065F46' : '#64748B'}; padding:4px 8px; border-radius:6px; font-weight:500;">
+            <i class="fa-solid ${item.completed ? 'fa-check' : 'fa-clock'} mr-1"></i> ${item.item}
+          </div>
+        `).join('');
+      }
+    }
+
+    showProfileSummaryCard(isFinal = false) {
+      const card = document.createElement('div');
+      card.className = 'vh-profile-summary-card';
+      card.innerHTML = `
+        <div class="vh-summary-title">
+          <i class="fa-solid fa-circle-check text-success"></i> ${this.currentLang === 'hi' ? 'सक्रिय प्रोफ़ाइल' : 'Active Profile'}
+        </div>
+        <div class="vh-summary-row"><strong>नाम (Name):</strong> <span>${this.workerProfile.name || 'Worker'}</span></div>
+        <div class="vh-summary-row"><strong>काम (Trade):</strong> <span>${this.workerProfile.work || this.workerProfile.trade || 'General'}</span></div>
+        <div class="vh-summary-row"><strong>स्थान (Area):</strong> <span>${this.workerProfile.location || 'Delhi NCR'}</span></div>
+        <div class="vh-summary-row"><strong>रेट (Rate):</strong> <span>₹${this.workerProfile.price || '500'}/day</span></div>
+        <div class="vh-summary-row"><strong>स्थिति (Status):</strong> <span class="badge badge-success" style="background:#10B981;color:#fff;padding:2px 6px;border-radius:4px;font-size:0.75rem;">Active & Visible</span></div>
+      `;
+      this.dom.messages.appendChild(card);
+      this.scrollToBottom();
+    }
+
+    /* ── Initial Onboarding Sequence (Gateway / First Visit) ─────────── */
+    startOnboarding() {
+      this.setState(States.GREETING);
       const greetingHi = DIALOGUES.greeting.hi;
       this.addMessage(greetingHi, 'bot');
       this.lastInstruction = greetingHi;
 
-      this.speak(greetingHi, 'hi')
-        .then(() => {
-          // Immediately advance to Language Selection
-          this.showLanguageSelection();
-        })
-        .catch(err => {
-          if (err === 'autoplay_blocked') {
-            this.showAutoplayBlockedBanner();
-            this.showLanguageSelection();
-          }
-        });
-    }
-
-    showAutoplayBlockedBanner() {
-      const bannerText = (DIALOGUES.autoplayBlockedMsg[this.currentLang] || DIALOGUES.autoplayBlockedMsg.hi);
-      const btnText = (DIALOGUES.startVoiceBtn[this.currentLang] || DIALOGUES.startVoiceBtn.hi);
-      this.dom.autoplayText.textContent = bannerText;
-      this.dom.startVoiceBtn.innerHTML = btnText;
-      this.dom.autoplayBanner.classList.add('is-visible');
+      this.speak(greetingHi, 'hi').then(() => {
+        this.showLanguageSelection();
+      });
     }
 
     showLanguageSelection() {
@@ -1208,13 +2208,10 @@
       this.addMessage(askText, 'bot');
       this.lastInstruction = askText;
 
-      // Render large, visible language buttons
       const choicesContainer = document.createElement('div');
       choicesContainer.className = 'vh-choices';
 
-      // Required: Begin with Hindi, Punjabi, and English first, followed by verified Indian languages
       const orderedCodes = ['hi', 'pa', 'en', 'bn', 'mr', 'ta', 'te', 'gu', 'kn', 'ml', 'or', 'ur'];
-
       const grid = document.createElement('div');
       grid.style.cssText = 'display:grid; grid-template-columns: repeat(2, 1fr); gap: 8px; margin-top: 6px;';
 
@@ -1233,7 +2230,6 @@
         btn.addEventListener('click', () => {
           this.addMessage(`${lang.flag} ${lang.native} (${lang.name})`, 'user');
           this.setLanguage(code, false);
-          // Confirm language in chosen tongue and move to role selection
           const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
           this.addMessage(confirmText, 'bot');
           this.speak(confirmText, code).then(() => {
@@ -1248,6 +2244,23 @@
       this.scrollToBottom();
 
       this.speak(askText, 'hi');
+    }
+
+    handleLanguageChoiceUtterance(text) {
+      const lower = text.toLowerCase();
+      for (const [code, meta] of Object.entries(LANGUAGES)) {
+        if (lower.includes(meta.name.toLowerCase()) || lower.includes(meta.native.toLowerCase()) || lower === code) {
+          this.setLanguage(code, false);
+          const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
+          this.addMessage(confirmText, 'bot');
+          this.speak(confirmText, code).then(() => {
+            this.showRoleSelection();
+          });
+          return;
+        }
+      }
+      // If language not cleanly resolved, fall back to general intent
+      this.executeGeneralVoiceIntent(text);
     }
 
     showRoleSelection() {
@@ -1265,7 +2278,6 @@
       const choices = document.createElement('div');
       choices.className = 'vh-choices';
 
-      // Choice 1: Worker
       const btnWorker = document.createElement('button');
       btnWorker.className = 'vh-choice-btn primary';
       btnWorker.innerHTML = `
@@ -1281,7 +2293,6 @@
         this.showActionSelection();
       });
 
-      // Choice 2: Customer / Employer
       const btnCustomer = document.createElement('button');
       btnCustomer.className = 'vh-choice-btn primary';
       btnCustomer.innerHTML = `
@@ -1305,6 +2316,20 @@
       this.speak(askRoleText, lang);
     }
 
+    handleRoleChoiceUtterance(text) {
+      const lower = text.toLowerCase();
+      if (/worker|kaam|rozgar|naukri|mistri|plumber|electrician|helper/.test(lower)) {
+        this.selectedRole = 'worker';
+        const title = DIALOGUES.roleWorker[this.currentLang] || 'Worker';
+        this.showActionSelection();
+      } else if (/customer|maalik|booking|hire|bulao|chahiye/.test(lower)) {
+        this.selectedRole = 'user';
+        this.showActionSelection();
+      } else {
+        this.executeGeneralVoiceIntent(text);
+      }
+    }
+
     showActionSelection() {
       this.setState(States.ACTION_SELECT);
       const lang = this.currentLang;
@@ -1320,7 +2345,6 @@
       const choices = document.createElement('div');
       choices.className = 'vh-choices';
 
-      // Option A: Login
       const btnLogin = document.createElement('button');
       btnLogin.className = 'vh-choice-btn';
       btnLogin.innerHTML = `
@@ -1336,7 +2360,6 @@
         this.navigateToTargetPage();
       });
 
-      // Option B: Create Account
       const btnRegister = document.createElement('button');
       btnRegister.className = 'vh-choice-btn primary';
       btnRegister.innerHTML = `
@@ -1360,6 +2383,19 @@
       this.speak(askActionText, lang);
     }
 
+    handleActionChoiceUtterance(text) {
+      const lower = text.toLowerCase();
+      if (/login|pehle|purana|sign in|already/.test(lower)) {
+        this.selectedAction = 'login';
+        this.navigateToTargetPage();
+      } else if (/naya|register|signup|create|new/.test(lower)) {
+        this.selectedAction = 'register';
+        this.navigateToTargetPage();
+      } else {
+        this.executeGeneralVoiceIntent(text);
+      }
+    }
+
     navigateToTargetPage() {
       this.setState(States.NAVIGATING);
       const lang = this.currentLang;
@@ -1375,190 +2411,22 @@
         targetUrl = role === 'worker' ? '/signup/worker' : '/signup/user';
       }
 
+      this.saveSession();
+
       this.speak(navText, lang).finally(() => {
         setTimeout(() => {
           window.location.href = targetUrl;
-        }, 500);
+        }, 400);
       });
     }
 
-    /* ── Speech Synthesis Engine ───────────────────────────────────────── */
-    speak(text, langCode) {
-      if (this.tts && this.tts.speak) {
-        return this.tts.speak(text, langCode || this.currentLang);
-      }
-      return Promise.resolve();
-    }
-
-    speakCurrentInstruction() {
-      if (this.lastInstruction) {
-        this.speak(this.lastInstruction, this.currentLang);
-      }
-    }
-
-    stopSpeaking() {
-      if (this.tts && this.tts.cancel) {
-        this.tts.cancel();
-      }
-      this.isSpeaking = false;
-      this.updateSpeakingIndicators(false);
-    }
-
-    /* ── Speech Recognition & Voice Services Engine ────────────────────── */
-    initVoiceServices() {
-      if (!this.stt || !this.stt.isSupported || !this.stt.isSupported()) {
-        this.showTypedFallbackNotice();
-        return;
-      }
-
-      this.stt.onStateChange = (state) => {
-        const VS = window.VoiceHireVoice ? window.VoiceHireVoice.VoiceStates : {};
-        if (state === (VS.LISTENING || 'LISTENING')) {
-          this.isListening = true;
-          this.dom.micBtn.classList.add('is-listening');
-          this.dom.statusRing.className = 'vh-header-ring listening';
-          this.dom.statusDot.className = 'vh-status-dot listening';
-          this.dom.statusText.textContent = DIALOGUES.micListening[this.currentLang] || 'Listening...';
-          this.dom.micHint.textContent = DIALOGUES.micListening[this.currentLang] || 'Listening...';
-          this.dom.interim.classList.add('is-active');
-          this.dom.interim.textContent = '';
-        } else {
-          this.isListening = false;
-          this.dom.micBtn.classList.remove('is-listening');
-          this.dom.statusRing.className = 'vh-header-ring';
-          this.dom.statusDot.className = 'vh-status-dot';
-          this.dom.statusText.textContent = 'Ready';
-          this.dom.micHint.textContent = 'Tap to Speak';
-          this.dom.interim.classList.remove('is-active');
-        }
-      };
-
-      this.stt.onInterim = (text) => {
-        if (this.dom.interim) {
-          this.dom.interim.textContent = text;
-        }
-      };
-
-      this.stt.onFinal = (text, confidence) => {
-        if (this.dom.interim) {
-          this.dom.interim.textContent = text;
-        }
-        this.showTranscriptConfirmation(text, confidence);
-      };
-
-      this.stt.onPermissionDenied = () => {
-        const denied = DIALOGUES.micDenied[this.currentLang] || DIALOGUES.micDenied.hi;
-        this.addMessage(denied, 'bot');
-        this.showTypedFallbackNotice();
-      };
-
-      this.stt.onError = (errType, msg) => {
-        if (errType !== 'aborted' && errType !== 'canceled') {
-          console.warn('[Assistant STT Error]', errType, msg);
-        }
-      };
-    }
-
-    startListening() {
-      this.stopSpeaking();
-      if (!this.stt || !this.stt.isSupported || !this.stt.isSupported()) {
-        this.showTypedFallbackNotice();
-        return;
-      }
-      this.stt.start(this.currentLang);
-    }
-
-    stopListening() {
-      if (this.stt && this.stt.stop) {
-        this.stt.stop();
-      }
-      this.isListening = false;
-      this.dom.micBtn.classList.remove('is-listening');
-      this.dom.statusRing.className = 'vh-header-ring';
-      this.dom.statusDot.className = 'vh-status-dot';
-      this.dom.statusText.textContent = 'Ready';
-      this.dom.micHint.textContent = 'Tap to Speak';
-      this.dom.interim.classList.remove('is-active');
-    }
-
-    cancelVoice() {
-      if (this.stt && this.stt.cancel) this.stt.cancel();
-      if (this.tts && this.tts.cancel) this.tts.cancel();
-      this.stopListening();
-      this.stopSpeaking();
-    }
-
-    showTypedFallbackNotice() {
-      if (this.dom.typedInput) {
-        this.dom.typedInput.focus();
-        this.dom.micSubhint.textContent = 'Please type below';
-      }
-    }
-
-    handleTypedInput() {
-      if (!this.dom.typedInput) return;
-      const text = this.dom.typedInput.value.trim();
-      if (!text) return;
-      this.dom.typedInput.value = '';
-      this.addMessage(text, 'user');
-      this.executeVoiceIntent(text, 1.0);
-    }
-
-    showTranscriptConfirmation(text, confidence) {
-      const card = document.createElement('div');
-      card.className = 'vh-confirm-card';
-      card.innerHTML = `
-        <div class="vh-confirm-header">
-          <i class="fa-solid fa-microphone"></i>
-          <span>Recognized speech (Review / Edit)</span>
-        </div>
-        <div class="vh-confirm-text">"${text}"</div>
-        <div class="vh-confirm-actions">
-          <button class="vh-confirm-btn primary vh-confirm-ok">
-            <i class="fa-solid fa-check"></i> Continue
-          </button>
-          <button class="vh-confirm-btn secondary vh-confirm-edit">
-            <i class="fa-solid fa-pen"></i> Edit
-          </button>
-          <button class="vh-confirm-btn secondary vh-confirm-retry">
-            <i class="fa-solid fa-rotate-right"></i> Retry
-          </button>
-        </div>
-      `;
-
-      const textEl = card.querySelector('.vh-confirm-text');
-      const editBtn = card.querySelector('.vh-confirm-edit');
-      const okBtn = card.querySelector('.vh-confirm-ok');
-      const retryBtn = card.querySelector('.vh-confirm-retry');
-
-      editBtn.addEventListener('click', () => {
-        const curText = textEl.textContent.replace(/^"|"$/g, '');
-        textEl.innerHTML = `<input type="text" class="vh-confirm-edit-input" value="${curText}" />`;
-        const input = textEl.querySelector('input');
-        input.focus();
-        editBtn.style.display = 'none';
-      });
-
-      retryBtn.addEventListener('click', () => {
-        card.remove();
-        this.startListening();
-      });
-
-      okBtn.addEventListener('click', () => {
-        const input = textEl.querySelector('input');
-        const finalText = input ? input.value.trim() : text;
-        card.remove();
-        this.executeVoiceIntent(finalText, confidence);
-      });
-
-      this.dom.messages.appendChild(card);
-      this.scrollToBottom();
-    }
-
-    async executeVoiceIntent(text, confidence = 1.0) {
+    /* ── General Intent API Bridge ────────────────────────────────────── */
+    async executeGeneralVoiceIntent(text, confidence = 1.0) {
       if (!text) return;
 
-      // Call Orchestration Engine API
+      this.isProcessing = true;
+      this.updateStatus('Thinking...', 'processing');
+
       let turn = null;
       if (window.VoiceHireVoice && window.VoiceHireVoice.VoiceIntentService && window.VoiceHireVoice.VoiceIntentService.orchestrateTurn) {
         turn = await window.VoiceHireVoice.VoiceIntentService.orchestrateTurn(
@@ -1568,22 +2436,12 @@
         );
       }
 
-      if (!turn) {
-        // Fallback to basic intent analyzer
-        if (window.VoiceHireVoice && window.VoiceHireVoice.VoiceIntentService) {
-          turn = await window.VoiceHireVoice.VoiceIntentService.processTranscript(
-            text,
-            this.currentLang,
-            confidence,
-            this.state
-          );
-        }
-      }
+      this.isProcessing = false;
+      this.updateStatus('Ready', 'ready');
 
       if (!turn) return;
 
-      // Handle speech and display
-      const displayMsg = turn.display_text || turn.speech_response || turn.clarification_prompt;
+      const displayMsg = turn.display_text || turn.speech_response;
       if (displayMsg) {
         this.addMessage(displayMsg, 'bot');
         this.lastInstruction = displayMsg;
@@ -1594,7 +2452,6 @@
         this.speak(speechMsg, this.currentLang);
       }
 
-      // Handle State Transition
       if (turn.current_state) {
         this.state = turn.current_state;
       }
@@ -1602,111 +2459,51 @@
       const action = turn.action;
       const args = turn.action_arguments || {};
 
-      // 1. Language Selection
       if (action === 'select_language' && args.language) {
         this.setLanguage(args.language, false);
       }
-
-      // 2. Role Selection
       if (action === 'select_role' && args.role) {
         this.selectedRole = args.role;
       }
-
-      // 3. Form Field Auto-Filling (Non-sensitive)
       if (action === 'set_form_field' && args.field_name && args.value) {
-        const fieldEl = document.querySelector(`input[name="${args.field_name}"], input[id="${args.field_name}"], select[name="${args.field_name}"]`);
-        if (fieldEl) {
-          fieldEl.value = args.value;
-          fieldEl.dispatchEvent(new Event('input', { bubbles: true }));
-          fieldEl.dispatchEvent(new Event('change', { bubbles: true }));
-        }
+        this.syncFormFieldDOM(args.field_name, args.value);
       }
 
-      // 4. Consequential Confirmation Request (Yes/No buttons)
-      if (turn.requires_confirmation) {
-        const confirmBox = document.createElement('div');
-        confirmBox.className = 'vh-choices';
-        confirmBox.style.marginTop = '8px';
-        confirmBox.innerHTML = `
-          <button class="vh-choice-btn" style="background:#10B981;color:#fff;" id="vh-btn-yes">
-            <i class="fa-solid fa-check"></i> हाँ, पक्का करें (Yes)
-          </button>
-          <button class="vh-choice-btn" style="background:#EF4444;color:#fff;" id="vh-btn-no">
-            <i class="fa-solid fa-xmark"></i> नहीं, रद्द करें (No)
-          </button>
-        `;
-        this.dom.messages.appendChild(confirmBox);
-        this.scrollToBottom();
-
-        const yesBtn = confirmBox.querySelector('#vh-btn-yes');
-        const noBtn = confirmBox.querySelector('#vh-btn-no');
-
-        yesBtn.addEventListener('click', () => {
-          confirmBox.remove();
-          this.executeVoiceIntent('हाँ ठीक है confirm', 1.0);
-        });
-
-        noBtn.addEventListener('click', () => {
-          confirmBox.remove();
-          this.executeVoiceIntent('नहीं cancel karo', 1.0);
-        });
-      }
-
-      // 5. Quick Replies Chips
-      if (turn.quick_replies && turn.quick_replies.length > 0 && !turn.requires_confirmation) {
-        const chipRow = document.createElement('div');
-        chipRow.style.display = 'flex';
-        chipRow.style.gap = '6px';
-        chipRow.style.flexWrap = 'wrap';
-        chipRow.style.marginTop = '6px';
-
-        turn.quick_replies.forEach(reply => {
-          const chip = document.createElement('button');
-          chip.className = 'vh-lang-card';
-          chip.style.padding = '5px 10px';
-          chip.style.fontSize = '0.78rem';
-          chip.style.borderRadius = '16px';
-          chip.style.cursor = 'pointer';
-          chip.textContent = reply;
-          chip.addEventListener('click', () => {
-            chipRow.remove();
-            this.addMessage(reply, 'user');
-            this.executeVoiceIntent(reply, 1.0);
-          });
-          chipRow.appendChild(chip);
-        });
-
-        this.dom.messages.appendChild(chipRow);
-        this.scrollToBottom();
-      }
-
-      // 6. Navigation
-      if (action === 'navigate' && args.route) {
-        setTimeout(() => {
-          window.location.href = args.route;
-        }, 800);
-      }
+      this.saveSession();
     }
 
-    /* ── Visual Updates & Controls ─────────────────────────────────────── */
+    /* ── UI Utilities ─────────────────────────────────────────────────── */
     addMessage(text, sender = 'bot') {
-      const bubble = document.createElement('div');
-      bubble.className = `vh-bubble ${sender}`;
-      bubble.textContent = text;
-      this.dom.messages.appendChild(bubble);
+      this.messagesHistory.push({ text, sender });
+      this.renderBubbleToDOM(text, sender);
       this.scrollToBottom();
     }
 
-    clearMessages() {
-      this.dom.messages.innerHTML = '';
+    renderBubbleToDOM(text, sender = 'bot') {
+      if (!this.dom.messages) return;
+      const bubble = document.createElement('div');
+      bubble.className = `vh-bubble ${sender}`;
+      bubble.innerHTML = text;
+      this.dom.messages.appendChild(bubble);
+    }
+
+    clearMessagesDOM() {
+      if (this.dom.messages) this.dom.messages.innerHTML = '';
     }
 
     scrollToBottom() {
-      this.dom.messages.scrollTop = this.dom.messages.scrollHeight;
+      if (this.dom.messages) {
+        this.dom.messages.scrollTop = this.dom.messages.scrollHeight;
+      }
     }
 
-    updateSpeakingIndicators(active) {
-      if (active) {
+    setState(newState) {
+      this.state = newState;
+      this.saveSession();
+    }
+
+    updateSpeakingIndicators(speaking) {
+      if (speaking) {
         this.dom.statusRing.className = 'vh-header-ring speaking';
         this.dom.statusDot.className = 'vh-status-dot speaking';
         this.dom.statusText.textContent = 'Speaking...';
@@ -1719,34 +2516,33 @@
       }
     }
 
-    updateStatus(label, type = 'ready') {
-      this.dom.statusText.textContent = label;
+    updateStatus(text, type = 'ready') {
+      if (!this.dom.statusText) return;
+      this.dom.statusText.textContent = text;
       this.dom.statusDot.className = `vh-status-dot ${type}`;
     }
 
-    setLanguage(code, speakNotice = true) {
-      if (!LANGUAGES[code]) code = 'hi';
+    setLanguage(code, announce = false) {
+      if (!LANGUAGES[code]) return;
       this.currentLang = code;
       localStorage.setItem('vh_lang', code);
 
-      // Highlight in drawer
-      this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(c => {
-        c.classList.toggle('selected', c.dataset.code === code);
-      });
+      // Set cookie for server sync
+      document.cookie = `voicehire_lang=${code}; path=/; max-age=2592000; SameSite=Lax`;
 
-      // Synchronize backend session language
-      fetch(`/set_lang/${code}`).catch(() => {});
-      if (window.VH) window.VH.lang = code;
-
-      if (speakNotice) {
-        const confText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
-        this.addMessage(confText, 'bot');
-        this.speak(confText, code).then(() => {
-          if (this.state === States.LANGUAGE_SELECT || this.state === States.GREETING) {
-            this.showRoleSelection();
-          }
+      // Update drawer cards
+      if (this.dom.langDrawer) {
+        this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(c => {
+          c.classList.toggle('selected', c.dataset.code === code);
         });
       }
+
+      if (announce) {
+        const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
+        this.addMessage(confirmText, 'bot');
+        this.speak(confirmText, code);
+      }
+      this.saveSession();
     }
 
     toggleLangDrawer() {
@@ -1758,6 +2554,7 @@
       localStorage.setItem('vh_muted', this.isMuted ? 'true' : 'false');
       if (this.isMuted) {
         this.stopSpeaking();
+        this.stopListening();
         this.dom.btnSound.classList.add('active');
         this.dom.btnSound.innerHTML = '<i class="fa-solid fa-volume-xmark"></i>';
         this.dom.btnSound.title = 'Unmute Voice';
@@ -1767,22 +2564,25 @@
         this.dom.btnSound.title = 'Mute Voice';
         this.speakCurrentInstruction();
       }
+      this.saveSession();
     }
 
-    toggleManualMode() {
-      this.isManualMode = !this.isManualMode;
-      localStorage.setItem('vh_manual_mode', this.isManualMode ? 'true' : 'false');
-      this.dom.btnManual.classList.toggle('active', this.isManualMode);
+    showAutoplayBlockedBanner() {
+      this.dom.autoplayBanner.classList.add('is-visible');
+      const text = DIALOGUES.autoplayBlockedMsg[this.currentLang] || DIALOGUES.autoplayBlockedMsg.hi;
+      const btnText = DIALOGUES.startVoiceBtn[this.currentLang] || DIALOGUES.startVoiceBtn.hi;
+      this.dom.autoplayText.textContent = text;
+      this.dom.startVoiceBtn.innerHTML = btnText;
+    }
 
-      if (this.isManualMode) {
-        this.stopSpeaking();
-        this.stopListening();
-        this.updateStatus('Manual Mode', 'ready');
-        this.addMessage('Manual Mode enabled. Voice prompts paused.', 'bot');
-      } else {
-        this.updateStatus('Ready', 'ready');
-        this.addMessage('Voice Assistant active.', 'bot');
-        this.speakCurrentInstruction();
+    showTypedFallbackNotice() {
+      if (this.dom.typedInput) {
+        if (typeof this.dom.typedInput.focus === 'function') {
+          this.dom.typedInput.focus();
+        }
+        if (this.dom.micSubhint) {
+          this.dom.micSubhint.textContent = 'Please type below';
+        }
       }
     }
 
@@ -1817,6 +2617,19 @@
     document.addEventListener('DOMContentLoaded', bootAssistant);
   } else {
     bootAssistant();
+  }
+
+  // Export class for Node.js automated testing
+  if (typeof module !== 'undefined' && module.exports) {
+    module.exports = {
+      VoiceHireAssistant: VoiceHireAssistant,
+      States: States,
+      LANGUAGES: LANGUAGES,
+      DIALOGUES: DIALOGUES,
+      TRADE_MAP: TRADE_MAP,
+      detectTradeFromText: detectTradeFromText,
+      extractDigits: extractDigits
+    };
   }
 
 })();

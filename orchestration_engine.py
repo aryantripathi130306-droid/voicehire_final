@@ -50,7 +50,11 @@ class ConversationState(str, Enum):
     COLLECTING_PROFILE_FIELDS = "collecting_permitted_profile_fields"
     AWAITING_USER_CONFIRMATION = "awaiting_user_confirmation"
     AUTHENTICATED = "authenticated"
+    CHECKING_PROFILE = "checking_profile"
     PROFILE_COMPLETION = "profile_completion"
+    AWAITING_PROFILE_CONFIRMATION = "awaiting_profile_confirmation"
+    PROFILE_COMPLETE = "profile_complete"
+    DASHBOARD_GUIDANCE = "dashboard_guidance"
     JOB_DISCOVERY = "job_discovery"
     BOOKING_GUIDANCE = "booking_guidance"
     MANUAL_TAKEOVER = "manual_takeover"
@@ -140,8 +144,10 @@ VALID_TRANSITIONS: Dict[ConversationState, Set[ConversationState]] = {
         ConversationState.RECOVERABLE_ERROR
     },
     ConversationState.COLLECTING_PROFILE_FIELDS: {
-        ConversationState.COLLECTING_PROFILE_FIELDS,  # Field progression (name -> trade -> location)
+        ConversationState.COLLECTING_PROFILE_FIELDS,  # Field progression (name -> trade -> location -> price -> exp)
         ConversationState.AWAITING_USER_CONFIRMATION,
+        ConversationState.AWAITING_PROFILE_CONFIRMATION,
+        ConversationState.PROFILE_COMPLETE,
         ConversationState.LOGIN_SIGNUP_SELECTION,
         ConversationState.MANUAL_TAKEOVER,
         ConversationState.RECOVERABLE_ERROR
@@ -156,17 +162,60 @@ VALID_TRANSITIONS: Dict[ConversationState, Set[ConversationState]] = {
         ConversationState.RECOVERABLE_ERROR
     },
     ConversationState.AUTHENTICATED: {
+        ConversationState.CHECKING_PROFILE,
         ConversationState.PROFILE_COMPLETION,
+        ConversationState.COLLECTING_PROFILE_FIELDS,
+        ConversationState.DASHBOARD_GUIDANCE,
         ConversationState.JOB_DISCOVERY,
         ConversationState.BOOKING_GUIDANCE,
         ConversationState.AWAITING_USER_CONFIRMATION,
         ConversationState.MANUAL_TAKEOVER,
         ConversationState.RECOVERABLE_ERROR
     },
+    ConversationState.CHECKING_PROFILE: {
+        ConversationState.AUTHENTICATED,
+        ConversationState.COLLECTING_PROFILE_FIELDS,
+        ConversationState.PROFILE_COMPLETION,
+        ConversationState.PROFILE_COMPLETE,
+        ConversationState.DASHBOARD_GUIDANCE,
+        ConversationState.JOB_DISCOVERY,
+        ConversationState.MANUAL_TAKEOVER,
+        ConversationState.RECOVERABLE_ERROR
+    },
     ConversationState.PROFILE_COMPLETION: {
         ConversationState.AUTHENTICATED,
+        ConversationState.CHECKING_PROFILE,
+        ConversationState.COLLECTING_PROFILE_FIELDS,
+        ConversationState.AWAITING_PROFILE_CONFIRMATION,
+        ConversationState.PROFILE_COMPLETE,
+        ConversationState.DASHBOARD_GUIDANCE,
         ConversationState.AWAITING_USER_CONFIRMATION,
         ConversationState.JOB_DISCOVERY,
+        ConversationState.MANUAL_TAKEOVER,
+        ConversationState.RECOVERABLE_ERROR
+    },
+    ConversationState.AWAITING_PROFILE_CONFIRMATION: {
+        ConversationState.PROFILE_COMPLETE,
+        ConversationState.COLLECTING_PROFILE_FIELDS,
+        ConversationState.PROFILE_COMPLETION,
+        ConversationState.DASHBOARD_GUIDANCE,
+        ConversationState.MANUAL_TAKEOVER,
+        ConversationState.RECOVERABLE_ERROR
+    },
+    ConversationState.PROFILE_COMPLETE: {
+        ConversationState.DASHBOARD_GUIDANCE,
+        ConversationState.JOB_DISCOVERY,
+        ConversationState.BOOKING_GUIDANCE,
+        ConversationState.AUTHENTICATED,
+        ConversationState.MANUAL_TAKEOVER,
+        ConversationState.RECOVERABLE_ERROR
+    },
+    ConversationState.DASHBOARD_GUIDANCE: {
+        ConversationState.JOB_DISCOVERY,
+        ConversationState.BOOKING_GUIDANCE,
+        ConversationState.PROFILE_COMPLETION,
+        ConversationState.COLLECTING_PROFILE_FIELDS,
+        ConversationState.AUTHENTICATED,
         ConversationState.MANUAL_TAKEOVER,
         ConversationState.RECOVERABLE_ERROR
     },
@@ -233,7 +282,7 @@ def contains_password_or_otp_request(text: str) -> bool:
         return False
     lower = text.lower()
     patterns = [
-        r'\b(my password is|mera password hai|password le lo|ye raha password)\b',
+        r'\b(my password|mera password|password le lo|ye raha password|password hai)\b',
         r'\b(otp hai|otp is|mera otp|ye raha otp|verification code)\b',
         r'\b(password\s*:\s*\S+|otp\s*:\s*\d+)\b'
     ]
