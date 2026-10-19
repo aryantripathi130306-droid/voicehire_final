@@ -11,7 +11,7 @@ import io
 import csv
 import math
 from io import StringIO
-from datetime import datetime, timedelta, date
+from datetime import datetime, timedelta, date, timezone
 from collections import defaultdict
 from werkzeug.utils import secure_filename
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -61,8 +61,19 @@ from backend_service import (
 load_dotenv()
 
 app = Flask(__name__)
-app.secret_key = os.environ.get('SECRET_KEY', 'super_secret_voicehire_key')
+app_env = os.environ.get('APP_ENV', os.environ.get('FLASK_ENV', 'development')).lower().strip()
+is_production = app_env in ('production', 'staging')
+
+secret_key = os.environ.get('SECRET_KEY', 'super_secret_voicehire_key')
+if is_production and (not secret_key or secret_key == 'super_secret_voicehire_key'):
+    raise RuntimeError("CRITICAL SECURITY ERROR: SECRET_KEY must be set to a cryptographically strong value in production/staging.")
+
+app.secret_key = secret_key
 app.config['MAX_CONTENT_LENGTH'] = 16 * 1024 * 1024  # 16 MB max upload
+app.config['SESSION_COOKIE_HTTPONLY'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = 'Lax'
+app.config['SESSION_COOKIE_SECURE'] = is_production
+app.config['PERMANENT_SESSION_LIFETIME'] = timedelta(days=7)
 CORS(app, resources={r"/api/*": {"origins": "*"}})
 
 UPLOAD_FOLDER = os.path.join('static', 'uploads')
@@ -79,15 +90,26 @@ ALLOWED_AUDIO_EXTENSIONS = {'mp3', 'wav', 'ogg', 'm4a', 'aac'}
 ALLOWED_VIDEO_EXTENSIONS = {'mp4', 'webm', 'ogg', 'mov'}
 ALLOWED_IMAGE_EXTENSIONS = {'jpg', 'jpeg', 'png'}
 
-# ---- SUPABASE CLIENT ----
+# ---- DATABASE CLIENT ----
 supabase_url = os.environ.get('SUPABASE_URL')
 supabase_key = os.environ.get('SUPABASE_KEY')
 
-if not supabase_url or not supabase_key:
-    raise RuntimeError("SUPABASE_URL and SUPABASE_KEY must be set in .env")
-
-from local_db_adapter import get_resilient_supabase_client
-supabase = get_resilient_supabase_client(supabase_url, supabase_key)
+from local_db_adapter import (
+    get_database_client,
+    DatabaseModeError,
+    DatabaseConnectionError,
+    DatabaseConfigurationError
+)
+try:
+    supabase, db_meta = get_database_client(
+        supabase_url=supabase_url,
+        supabase_key=supabase_key,
+        app_env=app_env
+    )
+    app.config['DB_META'] = db_meta
+except Exception as e:
+    print(f"[FATAL DATABASE INITIALIZATION ERROR] {e}")
+    raise e
 
 # ---- HELPERS ----
 def allowed_file(filename, allowed_set):
@@ -124,12 +146,21 @@ def try_select(table, columns, filters=None, in_filters=None):
 # ---- TRANSLATION & LOCALIZATION CONFIG ----
 @app.before_request
 def ensure_language_preference():
-    if 'lang' not in session:
-        cookie_lang = request.cookies.get('voicehire_lang')
-        if cookie_lang:
-            session['lang'] = get_verified_language(cookie_lang)
-        else:
-            session['lang'] = DEFAULT_LANGUAGE
+    cookie_lang = request.cookies.get('voicehire_lang')
+    if cookie_lang:
+        clean_cookie = get_verified_language(cookie_lang)
+        if session.get('lang') != clean_cookie:
+            session['lang'] = clean_cookie
+            if 'user_id' in session:
+                uid = session['user_id']
+                role = session.get('role', 'user')
+                try:
+                    tbl = 'workers' if role == 'worker' else 'users'
+                    supabase.table(tbl).update({'language_preference': clean_cookie}).eq('id', uid).execute()
+                except Exception:
+                    pass
+    elif 'lang' not in session:
+        session['lang'] = DEFAULT_LANGUAGE
 
 @app.context_processor
 def inject_translation():
@@ -4155,7 +4186,119 @@ def get_worker_stats():
         
     except Exception as e:
         import traceback; print(traceback.format_exc())
-        return jsonify({'error': 'Server error'}), 500
+
+# ─────────────────────────────────────────────────────────────────────────────
+# SYSTEM HEALTH CHECKS & ERROR HANDLERS (Phase 15 Hardening)
+# ─────────────────────────────────────────────────────────────────────────────
+
+@app.route('/healthz', methods=['GET'])
+def healthz_liveness():
+    """Liveness probe: returns HTTP 200 if process is running and responding."""
+    return jsonify({
+        "status": "ok",
+        "service": "VoiceHire",
+        "timestamp": datetime.now(timezone.utc).isoformat()
+    }), 200
+
+
+@app.route('/health/readiness', methods=['GET'])
+@app.route('/readiness', methods=['GET'])
+def health_readiness():
+    """
+    Readiness probe: validates database connectivity, active mode,
+    required table availability, and payment gateway configuration without disclosing secrets.
+    Returns 200 when fully ready, 503 if database or core storage is unhealthy.
+    """
+    meta = app.config.get('DB_META', {})
+    db_mode = meta.get('mode', 'unknown')
+
+    # 1. Database live ping
+    db_connected = False
+    db_error = None
+    try:
+        ping_res = supabase.table("users").select("id").limit(1).execute()
+        db_connected = ping_res is not None and hasattr(ping_res, 'data')
+    except Exception as e:
+        db_error = str(e)
+
+    # 2. Verify core tables
+    tables_status = {}
+    core_tables = ['users', 'workers', 'jobs', 'bookings', 'payments']
+    all_tables_ok = True
+    for tbl in core_tables:
+        try:
+            r = supabase.table(tbl).select("id").limit(1).execute()
+            tables_status[tbl] = "available" if (r is not None and hasattr(r, 'data')) else "unavailable"
+        except Exception:
+            tables_status[tbl] = "unavailable"
+            all_tables_ok = False
+
+    # 3. Payment gateway readiness
+    gw_configured, gw_reason = RazorpayGatewayService.is_gateway_configured()
+
+    is_ready = db_connected and all_tables_ok
+    status_code = 200 if is_ready else 503
+
+    return jsonify({
+        "status": "ready" if is_ready else "unhealthy",
+        "service": "VoiceHire",
+        "timestamp": datetime.now(timezone.utc).isoformat(),
+        "database": {
+            "mode": db_mode,
+            "connected": db_connected,
+            "error": db_error if not db_connected else None,
+            "core_tables": tables_status
+        },
+        "payment_gateway": {
+            "provider": "razorpay",
+            "test_mode": True,
+            "configured": gw_configured,
+            "status": gw_reason
+        }
+    }), status_code
+
+
+@app.errorhandler(400)
+def handle_bad_request(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Bad Request', 'message': str(getattr(e, 'description', 'Invalid request'))}), 400
+    return render_template('index.html'), 400
+
+
+@app.errorhandler(401)
+def handle_unauthorized(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Unauthorized', 'message': 'Authentication required'}), 401
+    return redirect(url_for('login_page'))
+
+
+@app.errorhandler(403)
+def handle_forbidden(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Forbidden', 'message': 'Permission denied'}), 403
+    return render_template('index.html'), 403
+
+
+@app.errorhandler(404)
+def handle_not_found(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Not Found', 'message': 'Requested resource does not exist'}), 404
+    return render_template('index.html'), 404
+
+
+@app.errorhandler(500)
+def handle_internal_error(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Internal Server Error', 'message': 'An unexpected server error occurred'}), 500
+    return render_template('index.html'), 500
+
+
+@app.errorhandler(503)
+def handle_service_unavailable(e):
+    if request.path.startswith('/api/'):
+        return jsonify({'error': 'Service Unavailable', 'message': 'Database or dependent service temporarily unavailable'}), 503
+    return render_template('index.html'), 503
+
 
 if __name__ == '__main__':
     print("Starting VoiceHire Server...")

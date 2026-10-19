@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Employer Sign Up — VoiceHire{% endblock %}
+{% block title %}{{ t('Employer Sign Up — VoiceHire') }}{% endblock %}
 
 {% block body %}
 <div class="auth-page">
@@ -10,13 +10,13 @@
         </a>
         <div class="auth-left-content">
             <div class="auth-ai-illus" style="font-size:3.5rem;">🏢</div>
-            <h2>Join as an Employer</h2>
-            <p>Find and hire verified local workers quickly. Post jobs, browse profiles, and manage bookings in one place.</p>
+            <h2>{{ t('Join as an Employer') }}</h2>
+            <p>{{ t('Find and hire verified local workers quickly. Post jobs, browse profiles, and manage bookings in one place.') }}</p>
             <div class="auth-feature-list">
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Free to post jobs</span></div>
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Browse voice profiles</span></div>
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Verified workers near you</span></div>
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>QR-based attendance tracking</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Free to post jobs') }}</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Browse voice profiles') }}</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Verified workers near you') }}</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('QR-based attendance tracking') }}</span></div>
             </div>
         </div>
     </div>
@@ -25,53 +25,53 @@
         <div class="auth-form-box">
             <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
                 <a href="{{ url_for('gateway') }}" class="back-link" style="margin:0;"><i class="fa-solid fa-arrow-left"></i></a>
-                <h1>Create Employer Account</h1>
+                <h1>{{ t('Create Employer Account') }}</h1>
             </div>
-            <p class="auth-subtitle">Fill in your details to get started and find workers.</p>
+            <p class="auth-subtitle">{{ t('Fill in your details to get started and find workers.') }}</p>
 
             <div class="auth-card">
                 <form id="user-signup-form">
                     <div class="form-group">
-                        <label class="form-label" for="name">Full Name <span class="required">*</span></label>
+                        <label class="form-label" for="name">{{ t('Full Name') }} <span class="required">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="fa-solid fa-user input-icon"></i>
-                            <input id="name" name="name" type="text" class="form-control" placeholder="Your full name" required>
+                            <input id="name" name="name" type="text" class="form-control" placeholder="{{ t('Your full name') }}" required>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="phone">Mobile Number <span class="required">*</span></label>
+                        <label class="form-label" for="phone">{{ t('Mobile Number') }} <span class="required">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="fa-solid fa-mobile-screen input-icon"></i>
-                            <input id="phone" name="phone" type="tel" class="form-control" placeholder="10-digit mobile number" maxlength="10" required>
+                            <input id="phone" name="phone" type="tel" class="form-control" placeholder="{{ t('Enter 10-digit mobile number') }}" maxlength="10" required>
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="password">Password <span class="required">*</span></label>
+                        <label class="form-label" for="password">{{ t('Password') }} <span class="required">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="fa-solid fa-lock input-icon"></i>
-                            <input id="password" name="password" type="password" class="form-control" placeholder="Min. 6 characters" required>
+                            <input id="password" name="password" type="password" class="form-control" placeholder="{{ t('Min. 6 characters') }}" required>
                             <span class="input-icon-right" onclick="togglePwd()"><i class="fa-regular fa-eye"></i></span>
                         </div>
-                        <p class="form-hint">Use at least 6 characters with a mix of letters and numbers.</p>
+                        <p class="form-hint">{{ t('Use at least 6 characters with a mix of letters and numbers.') }}</p>
                     </div>
 
                     <div class="form-group">
                         <label class="flex items-center gap-2 text-sm text-muted" style="cursor:pointer; margin-bottom:0;">
                             <input type="checkbox" id="agree" required>
-                            I agree to VoiceHire's
-                            <a href="#" class="text-primary font-medium">Terms of Service</a> and
-                            <a href="#" class="text-primary font-medium">Privacy Policy</a>
+                            {{ t("I agree to VoiceHire's") }}
+                            <a href="#" class="text-primary font-medium">{{ t('Terms of Service') }}</a> {{ t('and') }}
+                            <a href="#" class="text-primary font-medium">{{ t('Privacy Policy') }}</a>
                         </label>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-full btn-lg" id="submit-btn">
-                        Create Account <i class="fa-solid fa-arrow-right ml-2"></i>
+                        {{ t('Create Account') }} <i class="fa-solid fa-arrow-right ml-2"></i>
                     </button>
                 </form>
 
-                <div class="divider-text mt-4"><span>OR</span></div>
+                <div class="divider-text mt-4"><span>{{ t('OR') }}</span></div>
 
                 <button class="btn-google">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -80,14 +80,14 @@
                         <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
                         <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
                     </svg>
-                    Continue with Google
+                    {{ t('Continue with Google') }}
                 </button>
             </div>
 
             <div class="auth-footer">
-                Already have an account? <a href="{{ url_for('login_page', role='user') }}">Login</a>
+                {{ t('Already have an account?') }} <a href="{{ url_for('login_page', role='user') }}">{{ t('Login') }}</a>
                 &nbsp;·&nbsp;
-                <a href="{{ url_for('worker_signup_page') }}">Sign up as Worker</a>
+                <a href="{{ url_for('worker_signup_page') }}">{{ t('Sign Up as Worker') }}</a>
             </div>
         </div>
     </div>

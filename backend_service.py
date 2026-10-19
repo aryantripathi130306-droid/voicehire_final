@@ -416,6 +416,18 @@ class AuditLogger:
                   action: str, ip_address: Optional[str] = None,
                   status: str = 'success', metadata: Optional[Dict[str, Any]] = None) -> bool:
         try:
+            # Sensitive field scrubbing (Phase 15 Security Requirement)
+            clean_meta = {}
+            if metadata and isinstance(metadata, dict):
+                sensitive_keys = {'password', 'secret', 'token', 'otp', 'pin', 'cvv', 'card_number', 'card', 'key_secret', 'signature'}
+                for k, v in metadata.items():
+                    if any(s in str(k).lower() for s in sensitive_keys):
+                        clean_meta[k] = "[REDACTED]"
+                    else:
+                        clean_meta[k] = v
+            else:
+                clean_meta = metadata or {}
+
             record = {
                 "actor_id": str(actor_id) if actor_id else None,
                 "actor_role": str(actor_role) if actor_role else None,
@@ -425,7 +437,7 @@ class AuditLogger:
                 "action": str(action),
                 "ip_address": str(ip_address) if ip_address else None,
                 "status": str(status),
-                "metadata": metadata or {}
+                "metadata": clean_meta
             }
             supabase_client.table("audit_events").insert(record).execute()
             return True
@@ -1598,6 +1610,35 @@ class PaymentManager:
             booking_id = notes.get("booking_id")
             cls.handle_payment_failure(supabase_client, booking_id, order_id, err_code, err_desc)
             result = {"action": "payment_failed", "order_id": order_id}
+
+        elif event_type == "payment.authorized":
+            payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+            order_id = payment_entity.get("order_id")
+            payment_id = payment_entity.get("id")
+            if order_id:
+                supabase_client.table("payments").update({
+                    "payment_status": "authorized",
+                    "status": "authorized",
+                    "gateway_payment_id": payment_id,
+                    "updated_at": utc_now_iso()
+                }).eq("gateway_order_id", order_id).execute()
+            result = {"action": "payment_authorized", "order_id": order_id, "payment_id": payment_id}
+
+        elif event_type in ("refund.processed", "refund.created"):
+            refund_entity = payload.get("payload", {}).get("refund", {}).get("entity", {})
+            payment_id = refund_entity.get("payment_id")
+            if payment_id:
+                supabase_client.table("payments").update({
+                    "payment_status": "refunded",
+                    "status": "refunded",
+                    "updated_at": utc_now_iso()
+                }).eq("gateway_payment_id", payment_id).execute()
+            result = {"action": "refund_recorded", "payment_id": payment_id}
+
+        elif event_type == "payment.dispute.created":
+            payment_entity = payload.get("payload", {}).get("payment", {}).get("entity", {})
+            order_id = payment_entity.get("order_id")
+            result = {"action": "dispute_recorded", "order_id": order_id}
 
         # 5. Record webhook event for idempotency audit
         supabase_client.table("payment_webhooks").insert({

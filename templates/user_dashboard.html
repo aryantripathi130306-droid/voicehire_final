@@ -267,25 +267,25 @@
         </div>
         <nav class="sidebar-nav">
             <a href="{{ url_for('user_dashboard') }}" class="nav-item active">
-                <i class="fa-solid fa-house nav-icon"></i> Home
+                <i class="fa-solid fa-house nav-icon"></i> {{ t('Home') }}
             </a>
             <a href="#discover-workers" class="nav-item" onclick="document.getElementById('discover-workers')?.scrollIntoView({behavior:'smooth'}); return false;">
-                <i class="fa-solid fa-magnifying-glass nav-icon"></i> Find Workers
+                <i class="fa-solid fa-magnifying-glass nav-icon"></i> {{ t('Find Workers') }}
             </a>
             <a href="#posted-jobs" class="nav-item" onclick="document.getElementById('posted-jobs')?.scrollIntoView({behavior:'smooth'}); return false;">
-                <i class="fa-solid fa-bullhorn nav-icon"></i> My Job Requests
+                <i class="fa-solid fa-bullhorn nav-icon"></i> {{ t('My Job Requests') }}
                 <span class="nav-badge" id="active-offers-badge" style="display:none;">0</span>
             </a>
             <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
-                <i class="fa-solid fa-calendar-check nav-icon"></i> My Bookings
+                <i class="fa-solid fa-calendar-check nav-icon"></i> {{ t('My Bookings') }}
                 <span class="nav-badge" id="pending-count" style="display:none;"></span>
             </a>
-            <div class="nav-section-label">Account</div>
+            <div class="nav-section-label">{{ t('Account') }}</div>
             <a href="#stats" class="nav-item" onclick="document.querySelector('.stats-grid')?.scrollIntoView({behavior:'smooth'}); return false;">
-                <i class="fa-solid fa-wallet nav-icon"></i> Payments
+                <i class="fa-solid fa-wallet nav-icon"></i> {{ t('Payments') }}
             </a>
             <a href="#profile" class="nav-item" onclick="openUserProfileModal(); return false;">
-                <i class="fa-solid fa-user nav-icon"></i> Profile
+                <i class="fa-solid fa-user nav-icon"></i> {{ t('Profile') }}
             </a>
         </nav>
         <div class="sidebar-bottom">
@@ -293,11 +293,11 @@
                 <div class="sidebar-avatar" style="background:var(--success);">{{ user.name[0].upper() if user and user.name else 'U' }}</div>
                 <div class="sidebar-user-info">
                     <h4>{{ user.name if user else 'Customer' }}</h4>
-                    <p>Verified Employer</p>
+                    <p>{{ t('Verified Employer') }}</p>
                 </div>
             </div>
             <a href="{{ url_for('logout') }}" class="nav-item mt-2" style="color:#FDA4AF;">
-                <i class="fa-solid fa-right-from-bracket nav-icon"></i> Logout
+                <i class="fa-solid fa-right-from-bracket nav-icon"></i> {{ t('Logout') }}
             </a>
         </div>
     </aside>
@@ -313,12 +313,12 @@
                 </button>
                 <div class="dash-header-title">
                     <h1>Hello, {{ user.name.split()[0] if user and user.name else 'there' }}! 👋</h1>
-                    <p>Find, compare and book verified service professionals in your area.</p>
+                    <p>{{ t('Find, compare and book verified service professionals in your area.') }}</p>
                 </div>
             </div>
             <div class="dash-header-actions">
                 <button type="button" class="btn btn-primary btn-sm" onclick="openPostJobModal()">
-                    <i class="fa-solid fa-plus mr-1"></i> Post a Job
+                    <i class="fa-solid fa-plus mr-1"></i> {{ t('Post a Job') }}
                 </button>
                 <div class="notif-btn" onclick="showToast('No new notifications.', 'info')" title="Notifications">
                     <i class="fa-solid fa-bell" style="font-size:.9375rem;"></i>
@@ -334,13 +334,13 @@
                 <div class="cust-location-info">
                     <i class="fa-solid fa-location-dot"></i>
                     <div>
-                        <span>Searching near: <strong id="display-location-name">Delhi NCR</strong></span>
+                        <span>{{ t('Searching near:') }} <strong id="display-location-name">Delhi NCR</strong></span>
                         <span style="color:var(--muted); font-size:0.75rem;" id="location-source-label">(Detecting location...)</span>
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:8px;">
                     <button type="button" class="btn btn-secondary btn-sm" onclick="openLocalityModal()" style="padding:4px 10px; font-size:0.75rem;">
-                        <i class="fa-solid fa-pencil mr-1"></i> Change Locality
+                        <i class="fa-solid fa-pencil mr-1"></i> {{ t('Change Locality') }}
                     </button>
                 </div>
             </div>

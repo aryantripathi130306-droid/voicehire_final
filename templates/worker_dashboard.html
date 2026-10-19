@@ -374,28 +374,28 @@ input:checked + .slider:before {
 
         <nav class="sidebar-nav">
             <a href="{{ url_for('worker_dashboard') }}" class="nav-item active">
-                <i class="fa-solid fa-house nav-icon"></i> Home
+                <i class="fa-solid fa-house nav-icon"></i> {{ t('Home') }}
             </a>
             <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
-                <i class="fa-solid fa-briefcase nav-icon"></i> Find Jobs
+                <i class="fa-solid fa-briefcase nav-icon"></i> {{ t('Find Jobs') }}
             </a>
             <a href="{{ url_for('my_bookings_page') }}" class="nav-item">
-                <i class="fa-solid fa-clipboard-list nav-icon"></i> My Work
+                <i class="fa-solid fa-clipboard-list nav-icon"></i> {{ t('My Work') }}
                 <span class="nav-badge" id="pending-count" style="display:none;"></span>
             </a>
             <a href="{{ url_for('scan_page') }}" class="nav-item">
-                <i class="fa-solid fa-qrcode nav-icon"></i> Scan QR
+                <i class="fa-solid fa-qrcode nav-icon"></i> {{ t('Scan QR') }}
             </a>
 
-            <div class="nav-section-label">Account</div>
+            <div class="nav-section-label">{{ t('Account') }}</div>
             <a href="#wallet" class="nav-item" id="wallet-nav" onclick="document.querySelector('.stats-grid')?.scrollIntoView({behavior:'smooth'}); return false;">
-                <i class="fa-solid fa-wallet nav-icon"></i> Wallet
+                <i class="fa-solid fa-wallet nav-icon"></i> {{ t('Wallet') }}
             </a>
             <a href="#profile" class="nav-item" id="profile-nav" onclick="openProfileModal(); return false;">
-                <i class="fa-solid fa-user nav-icon"></i> Profile
+                <i class="fa-solid fa-user nav-icon"></i> {{ t('Profile') }}
             </a>
             <a href="/api/export-workers" class="nav-item" id="export-nav">
-                <i class="fa-solid fa-file-csv nav-icon"></i> Export Data
+                <i class="fa-solid fa-file-csv nav-icon"></i> {{ t('Export Data') }}
             </a>
         </nav>
 
@@ -408,7 +408,7 @@ input:checked + .slider:before {
                 </div>
             </div>
             <a href="{{ url_for('logout') }}" class="nav-item mt-2" style="color: #FDA4AF;">
-                <i class="fa-solid fa-right-from-bracket nav-icon"></i> Logout
+                <i class="fa-solid fa-right-from-bracket nav-icon"></i> {{ t('Logout') }}
             </a>
         </div>
     </aside>
@@ -427,7 +427,7 @@ input:checked + .slider:before {
                 </button>
                 <div class="dash-header-title">
                     <h1>Good {{ time_of_day }}, {{ worker.name.split()[0] if worker and worker.name else 'there' }}! 👋</h1>
-                    <p>Find nearby job requests, accept bookings, and manage your duty status.</p>
+                    <p>{{ t('Find nearby job requests, accept bookings, and manage your duty status.') }}</p>
                 </div>
             </div>
             <div class="dash-header-actions">
@@ -462,11 +462,11 @@ input:checked + .slider:before {
                                 <span id="worker-locality-text">{{ worker.location if worker and worker.location else 'Delhi NCR' }}</span>
                                 <span style="color:var(--border);">•</span>
                                 <span id="worker-radius-text">{{ worker.service_radius_km if worker and worker.service_radius_km else 15 }} km coverage</span>
-                                <button type="button" class="btn-locality-edit" onclick="openServiceAreaModal()" title="Change service locality">Change</button>
+                                <button type="button" class="btn-locality-edit" onclick="openServiceAreaModal()" title="Change service locality">{{ t('Change') }}</button>
                             </span>
                             <button type="button" class="btn-locality-edit" onclick="openPayoutModal()" style="background:white; border:1px solid var(--border); border-radius:var(--radius-full); padding:3px 10px; font-size:0.75rem; display:inline-flex; align-items:center; gap:5px; text-decoration:none;" title="Configure Payout Information">
                                 <i class="fa-solid fa-wallet" style="color:var(--primary);"></i>
-                                <span>Payout: <strong id="payout-badge-text">{{ worker.payout_status|capitalize if worker and worker.payout_status else 'Pending' }}</strong></span>
+                                <span>{{ t('Payout:') }} <strong id="payout-badge-text">{{ worker.payout_status|capitalize if worker and worker.payout_status else 'Pending' }}</strong></span>
                             </button>
                         </div>
                     </div>
@@ -474,14 +474,14 @@ input:checked + .slider:before {
 
                 <!-- Duty / Availability Toggle -->
                 <div class="availability-control">
-                    <span style="font-size:0.8125rem; font-weight:600; color:var(--dark);">Duty Status:</span>
+                    <span style="font-size:0.8125rem; font-weight:600; color:var(--dark);">{{ t('Duty Status:') }}</span>
                     <label class="switch" title="Toggle work availability">
                         <input type="checkbox" id="availability-toggle" {% if worker and worker.is_available %}checked{% endif %} onchange="toggleWorkerAvailability(this.checked)">
                         <span class="slider"></span>
                     </label>
                     <span id="availability-status-pill" class="status-pill {% if worker and worker.is_available %}online{% else %}offline{% endif %}">
                         <span class="pulse-dot"></span>
-                        <span id="availability-text">{% if worker and worker.is_available %}Available for Jobs{% else %}Busy / Off Duty{% endif %}</span>
+                        <span id="availability-text">{% if worker and worker.is_available %}{{ t('Available for Jobs') }}{% else %}{{ t('Busy / Off Duty') }}{% endif %}</span>
                     </span>
                 </div>
             </div>

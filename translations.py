@@ -4084,7 +4084,1112 @@ _EXTRA_UI_TRANSLATIONS = {
         "hi": "मुफ़्त साइन अप",
         "pa": "ਮੁਫ਼ਤ ਸਾਈਨ ਅੱਪ",
         "en": "Sign Up Free"
-    }
+    },
+    "Login — VoiceHire": {
+        "hi": "लॉगिन — VoiceHire",
+        "pa": "ਲੌਗਇਨ — VoiceHire",
+        "en": "Login — VoiceHire"
+    },
+    "Welcome Back!": {
+        "hi": "वापसी पर स्वागत है!",
+        "pa": "ਜੀ ਆਇਆਂ ਨੂੰ!",
+        "en": "Welcome Back!"
+    },
+    "Log in to continue your journey. Find work, manage bookings, and get paid — all in one place.": {
+        "hi": "अपनी यात्रा जारी रखने के लिए लॉगिन करें। काम खोजें, बुकिंग प्रबंधित करें और भुगतान प्राप्त करें — सब एक ही जगह।",
+        "pa": "ਆਪਣਾ ਸਫ਼ਰ ਜਾਰੀ ਰੱਖਣ ਲਈ ਲੌਗਇਨ ਕਰੋ। ਕੰਮ ਲੱਭੋ, ਬੁਕਿੰਗਾਂ ਸੰਭਾਲੋ ਅਤੇ ਭੁਗਤਾਨ ਪ੍ਰਾਪਤ ਕਰੋ — ਸਭ ਇੱਕੋ ਥਾਂ।",
+        "en": "Log in to continue your journey. Find work, manage bookings, and get paid — all in one place."
+    },
+    "Voice-based job search": {
+        "hi": "आवाज़ से नौकरी खोजें",
+        "pa": "ਆਵਾਜ਼ ਰਾਹੀਂ ਕੰਮ ਦੀ ਖੋਜ",
+        "en": "Voice-based job search"
+    },
+    "Local jobs in your area": {
+        "hi": "आपके इलाके में स्थानीय काम",
+        "pa": "ਤੁਹਾਡੇ ਇਲਾਕੇ ਵਿੱਚ ਸਥਾਨਕ ਕੰਮ",
+        "en": "Local jobs in your area"
+    },
+    "Works in 8 regional languages": {
+        "hi": "8 क्षेत्रीय भाषाओं में उपलब्ध",
+        "pa": "8 ਖੇਤਰੀ ਭਾਸ਼ਾਵਾਂ ਵਿੱਚ ਉਪਲਬਧ",
+        "en": "Works in 8 regional languages"
+    },
+    "Secure payments & QR check-in": {
+        "hi": "सुरक्षित भुगतान और क्यूआर चेक-इन",
+        "pa": "ਸੁਰੱਖਿਅਤ ਭੁਗਤਾਨ ਅਤੇ ਕਿਊਆਰ ਚੈੱਕ-ਇਨ",
+        "en": "Secure payments & QR check-in"
+    },
+    "Enter your details to access your account.": {
+        "hi": "अपने खाते तक पहुँचने के लिए अपना विवरण दर्ज करें।",
+        "pa": "ਆਪਣੇ ਖਾਤੇ ਵਿੱਚ ਦਾਖਲ ਹੋਣ ਲਈ ਆਪਣੇ ਵੇਰਵੇ ਦਰਜ ਕਰੋ।",
+        "en": "Enter your details to access your account."
+    },
+    "Employer": {
+        "hi": "नियोक्ता",
+        "pa": "ਮਾਲਕ",
+        "en": "Employer"
+    },
+    "I hire workers": {
+        "hi": "मैं कामगार रखता हूँ",
+        "pa": "ਮੈਂ ਕਾਮੇ ਰੱਖਦਾ ਹਾਂ",
+        "en": "I hire workers"
+    },
+    "Worker": {
+        "hi": "कारीगर / कामगार",
+        "pa": "ਕਾਮਾ / ਕਾਰੀਗਰ",
+        "en": "Worker"
+    },
+    "I find work": {
+        "hi": "मैं काम ढूँढता हूँ",
+        "pa": "ਮੈਂ ਕੰਮ ਲੱਭਦਾ ਹਾਂ",
+        "en": "I find work"
+    },
+    "Switch Role & Continue": {
+        "hi": "भूमिका बदलें और जारी रखें",
+        "pa": "ਭੂਮਿਕਾ ਬਦਲੋ ਅਤੇ ਜਾਰੀ ਰੱਖੋ",
+        "en": "Switch Role & Continue"
+    },
+    "Switch to Worker Login": {
+        "hi": "कामगार लॉगिन पर स्विच करें",
+        "pa": "ਕਾਮਾ ਲੌਗਇਨ ਤੇ ਸਵਿੱਚ ਕਰੋ",
+        "en": "Switch to Worker Login"
+    },
+    "Switch to Employer Login": {
+        "hi": "नियोक्ता लॉगिन पर स्विच करें",
+        "pa": "ਮਾਲਕ ਲੌਗਇਨ ਤੇ ਸਵਿੱਚ ਕਰੋ",
+        "en": "Switch to Employer Login"
+    },
+    "For your security, repeated incorrect attempts are temporarily blocked.": {
+        "hi": "आपकी सुरक्षा के लिए, बार-बार गलत प्रयासों पर अस्थायी रोक लगाई गई है।",
+        "pa": "ਤੁਹਾਡੀ ਸੁਰੱਖਿਆ ਲਈ, ਵਾਰ-ਵਾਰ ਗਲਤ ਕੋਸ਼ਿਸ਼ਾਂ ਨੂੰ ਅਸਥਾਈ ਤੌਰ 'ਤੇ ਰੋਕਿਆ ਗਿਆ ਹੈ।",
+        "en": "For your security, repeated incorrect attempts are temporarily blocked."
+    },
+    "Mobile Number": {
+        "hi": "मोबाइल नंबर",
+        "pa": "ਮੋਬਾਈਲ ਨੰਬਰ",
+        "en": "Mobile Number"
+    },
+    "Enter 10-digit mobile number": {
+        "hi": "10 अंकों का मोबाइल नंबर दर्ज करें",
+        "pa": "10 ਅੰਕਾਂ ਦਾ ਮੋਬਾਈਲ ਨੰਬਰ ਦਰਜ ਕਰੋ",
+        "en": "Enter 10-digit mobile number"
+    },
+    "Enter your password": {
+        "hi": "अपना पासवर्ड दर्ज करें",
+        "pa": "ਆਪਣਾ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ",
+        "en": "Enter your password"
+    },
+    "Remember me": {
+        "hi": "मुझे याद रखें",
+        "pa": "ਮੈਨੂੰ ਯਾਦ ਰੱਖੋ",
+        "en": "Remember me"
+    },
+    "Forgot Password?": {
+        "hi": "पासवर्ड भूल गए?",
+        "pa": "ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ?",
+        "en": "Forgot Password?"
+    },
+    "OR": {
+        "hi": "या",
+        "pa": "ਜਾਂ",
+        "en": "OR"
+    },
+    "Continue with Google": {
+        "hi": "गूगल के साथ जारी रखें",
+        "pa": "ਗੂਗਲ ਨਾਲ ਜਾਰੀ ਰੱਖੋ",
+        "en": "Continue with Google"
+    },
+    "Don't have an account?": {
+        "hi": "खाता नहीं है?",
+        "pa": "ਕੀ ਖਾਤਾ ਨਹੀਂ ਹੈ?",
+        "en": "Don't have an account?"
+    },
+    "Sign Up as Worker": {
+        "hi": "कामगार के रूप में साइन अप करें",
+        "pa": "ਕਾਮੇ ਵਜੋਂ ਸਾਈਨ ਅੱਪ ਕਰੋ",
+        "en": "Sign Up as Worker"
+    },
+    "Sign Up as Employer": {
+        "hi": "नियोक्ता के रूप में साइन अप करें",
+        "pa": "ਮਾਲਕ ਵਜੋਂ ਸਾਈਨ ਅੱਪ ਕਰੋ",
+        "en": "Sign Up as Employer"
+    },
+    "Please fill all fields": {
+        "hi": "कृपया सभी फ़ील्ड भरें",
+        "pa": "ਕਿਰਪਾ ਕਰਕੇ ਸਾਰੇ ਖਾਨੇ ਭਰੋ",
+        "en": "Please fill all fields"
+    },
+    "Logging in...": {
+        "hi": "लॉगिन हो रहा है...",
+        "pa": "ਲੌਗਇਨ ਹੋ ਰਿਹਾ ਹੈ...",
+        "en": "Logging in..."
+    },
+    "Get Started — VoiceHire": {
+        "hi": "शुरू करें — VoiceHire",
+        "pa": "ਸ਼ੁਰੂ ਕਰੋ — VoiceHire",
+        "en": "Get Started — VoiceHire"
+    },
+    "What are you looking for?": {
+        "hi": "आप क्या तलाश रहे हैं?",
+        "pa": "ਤੁਸੀਂ ਕੀ ਲੱਭ ਰਹੇ ਹੋ?",
+        "en": "What are you looking for?"
+    },
+    "Choose your role to get started with VoiceHire.": {
+        "hi": "VoiceHire शुरू करने के लिए अपनी भूमिका चुनें।",
+        "pa": "VoiceHire ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਆਪਣੀ ਭੂਮਿਕਾ ਚੁਣੋ।",
+        "en": "Choose your role to get started with VoiceHire."
+    },
+    "I am a Worker": {
+        "hi": "मैं कामगार हूँ",
+        "pa": "ਮੈਂ ਕਾਮਾ ਹਾਂ",
+        "en": "I am a Worker"
+    },
+    "Find local jobs nearby": {
+        "hi": "आस-पास स्थानीय काम खोजें",
+        "pa": "ਨੇੜੇ ਸਥਾਨਕ ਕੰਮ ਲੱਭੋ",
+        "en": "Find local jobs nearby"
+    },
+    "Sign Up as Worker →": {
+        "hi": "कामगार के रूप में साइन अप करें →",
+        "pa": "ਕਾਮੇ ਵਜੋਂ ਸਾਈਨ ਅੱਪ ਕਰੋ →",
+        "en": "Sign Up as Worker →"
+    },
+    "I am an Employer": {
+        "hi": "मैं नियोक्ता हूँ",
+        "pa": "ਮੈਂ ਮਾਲਕ ਹਾਂ",
+        "en": "I am an Employer"
+    },
+    "Hire verified workers": {
+        "hi": "सत्यापित कामगार रखें",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਕਾਮੇ ਰੱਖੋ",
+        "en": "Hire verified workers"
+    },
+    "Sign Up as Employer →": {
+        "hi": "नियोक्ता के रूप में साइन अप करें →",
+        "pa": "ਮਾਲਕ ਵਜੋਂ ਸਾਈਨ ਅੱਪ ਕਰੋ →",
+        "en": "Sign Up as Employer →"
+    },
+    "Worker Login": {
+        "hi": "कामगार लॉगिन",
+        "pa": "ਕਾਮਾ ਲੌਗਇਨ",
+        "en": "Worker Login"
+    },
+    "Employer Login": {
+        "hi": "नियोक्ता लॉगिन",
+        "pa": "ਮਾਲਕ ਲੌਗਇਨ",
+        "en": "Employer Login"
+    },
+    "Back to Home": {
+        "hi": "होम पर वापस जाएं",
+        "pa": "ਮੁੱਖ ਪੰਨੇ 'ਤੇ ਵਾਪਸ ਜਾਓ",
+        "en": "Back to Home"
+    },
+    "Employer Sign Up — VoiceHire": {
+        "hi": "नियोक्ता साइन अप — VoiceHire",
+        "pa": "ਮਾਲਕ ਸਾਈਨ ਅੱਪ — VoiceHire",
+        "en": "Employer Sign Up — VoiceHire"
+    },
+    "Join as an Employer": {
+        "hi": "नियोक्ता के रूप में जुड़ें",
+        "pa": "ਮਾਲਕ ਵਜੋਂ ਸ਼ਾਮਲ ਹੋਵੋ",
+        "en": "Join as an Employer"
+    },
+    "Find and hire verified local workers quickly. Post jobs, browse profiles, and manage bookings in one place.": {
+        "hi": "सत्यापित स्थानीय कामगारों को तुरंत खोजें और काम पर रखें। नौकरियां पोस्ट करें, प्रोफाइल देखें और बुकिंग संभालें।",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਸਥਾਨਕ ਕਾਮਿਆਂ ਨੂੰ ਜਲਦੀ ਲੱਭੋ ਅਤੇ ਕੰਮ 'ਤੇ ਰੱਖੋ। ਕੰਮ ਪੋਸਟ ਕਰੋ, ਪ੍ਰੋਫਾਈਲਾਂ ਦੇਖੋ ਅਤੇ ਬੁਕਿੰਗਾਂ ਸੰਭਾਲੋ।",
+        "en": "Find and hire verified local workers quickly. Post jobs, browse profiles, and manage bookings in one place."
+    },
+    "Free to post jobs": {
+        "hi": "नौकरी पोस्ट करना मुफ़्त है",
+        "pa": "ਕੰਮ ਪੋਸਟ ਕਰਨਾ ਮੁਫ਼ਤ ਹੈ",
+        "en": "Free to post jobs"
+    },
+    "Browse voice profiles": {
+        "hi": "आवाज़ प्रोफाइल सुनें",
+        "pa": "ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲਾਂ ਸੁਣੋ",
+        "en": "Browse voice profiles"
+    },
+    "Verified workers near you": {
+        "hi": "आपके नज़दीक सत्यापित कामगार",
+        "pa": "ਤੁਹਾਡੇ ਨੇੜੇ ਪ੍ਰਮਾਣਿਤ ਕਾਮੇ",
+        "en": "Verified workers near you"
+    },
+    "QR-based attendance tracking": {
+        "hi": "क्यूआर आधारित उपस्थिति ट्रैकिंग",
+        "pa": "ਕਿਊਆਰ ਅਧਾਰਤ ਹਾਜ਼ਰੀ ਟਰੈਕਿੰਗ",
+        "en": "QR-based attendance tracking"
+    },
+    "Create Employer Account": {
+        "hi": "नियोक्ता खाता बनाएं",
+        "pa": "ਮਾਲਕ ਖਾਤਾ ਬਣਾਓ",
+        "en": "Create Employer Account"
+    },
+    "Fill in your details to get started and find workers.": {
+        "hi": "शुरू करने और कामगार खोजने के लिए अपना विवरण भरें।",
+        "pa": "ਸ਼ੁਰੂ ਕਰਨ ਅਤੇ ਕਾਮੇ ਲੱਭਣ ਲਈ ਆਪਣੇ ਵੇਰਵੇ ਭਰੋ।",
+        "en": "Fill in your details to get started and find workers."
+    },
+    "Your full name": {
+        "hi": "आपका पूरा नाम",
+        "pa": "ਤੁਹਾਡਾ ਪੂਰਾ ਨਾਮ",
+        "en": "Your full name"
+    },
+    "Min. 6 characters": {
+        "hi": "कम से कम 6 अक्षर",
+        "pa": "ਘੱਟੋ-ਘੱਟ 6 ਅੱਖਰ",
+        "en": "Min. 6 characters"
+    },
+    "Use at least 6 characters with a mix of letters and numbers.": {
+        "hi": "कम से कम 6 अक्षरों का उपयोग करें जिसमें अक्षर और संख्याएँ शामिल हों।",
+        "pa": "ਘੱਟੋ-ਘੱਟ 6 ਅੱਖਰਾਂ ਦੀ ਵਰਤੋਂ ਕਰੋ ਜਿਸ ਵਿੱਚ ਅੱਖਰ ਅਤੇ ਅੰਕ ਦੋਵੇਂ ਹੋਣ।",
+        "en": "Use at least 6 characters with a mix of letters and numbers."
+    },
+    "I agree to VoiceHire's": {
+        "hi": "मैं VoiceHire की",
+        "pa": "ਮੈਂ VoiceHire ਦੀਆਂ",
+        "en": "I agree to VoiceHire's"
+    },
+    "Terms of Service": {
+        "hi": "सेवा की शर्तें",
+        "pa": "ਸੇਵਾ ਦੀਆਂ ਸ਼ਰਤਾਂ",
+        "en": "Terms of Service"
+    },
+    "Privacy Policy": {
+        "hi": "गोपनीयता नीति",
+        "pa": "ਗੋਪਨੀਯਤਾ ਨੀਤੀ",
+        "en": "Privacy Policy"
+    },
+    "Create Account": {
+        "hi": "खाता बनाएं",
+        "pa": "ਖਾਤਾ ਬਣਾਓ",
+        "en": "Create Account"
+    },
+    "Worker Sign Up — VoiceHire": {
+        "hi": "कामगार साइन अप — VoiceHire",
+        "pa": "ਕਾਮਾ ਸਾਈਨ ਅੱਪ — VoiceHire",
+        "en": "Worker Sign Up — VoiceHire"
+    },
+    "Join as a Worker": {
+        "hi": "कामगार के रूप में जुड़ें",
+        "pa": "ਕਾਮੇ ਵਜੋਂ ਸ਼ਾਮਲ ਹੋਵੋ",
+        "en": "Join as a Worker"
+    },
+    "Create your profile with just your voice. No complicated forms. Get hired locally.": {
+        "hi": "सिर्फ अपनी आवाज़ से अपनी प्रोफाइल बनाएं। कोई मुश्किल फॉर्म नहीं। अपने इलाके में काम पाएं।",
+        "pa": "ਸਿਰਫ਼ ਆਪਣੀ ਆਵਾਜ਼ ਨਾਲ ਆਪਣੀ ਪ੍ਰੋਫਾਈਲ ਬਣਾਓ। ਕੋਈ ਔਖੇ ਫ਼ਾਰਮ ਨਹੀਂ। ਆਪਣੇ ਇਲਾਕੇ ਵਿੱਚ ਕੰਮ ਪ੍ਰਾਪਤ ਕਰੋ।",
+        "en": "Create your profile with just your voice. No complicated forms. Get hired locally."
+    },
+    "Free to sign up": {
+        "hi": "साइन अप बिल्कुल मुफ़्त",
+        "pa": "ਸਾਈਨ ਅੱਪ ਬਿਲਕੁਲ ਮੁਫ਼ਤ",
+        "en": "Free to sign up"
+    },
+    "Voice profile — no typing needed": {
+        "hi": "आवाज़ प्रोफाइल — टाइप करने की ज़रूरत नहीं",
+        "pa": "ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ — ਟਾਈਪ ਕਰਨ ਦੀ ਲੋੜ ਨਹੀਂ",
+        "en": "Voice profile — no typing needed"
+    },
+    "Secure payments": {
+        "hi": "सुरक्षित भुगतान",
+        "pa": "ਸੁਰੱਖਿਅਤ ਭੁਗਤਾਨ",
+        "en": "Secure payments"
+    },
+    "Create Worker Account": {
+        "hi": "कामगार खाता बनाएं",
+        "pa": "ਕਾਮਾ ਖਾਤਾ ਬਣਾਓ",
+        "en": "Create Worker Account"
+    },
+    "Fill in your details to get started. Takes less than 2 minutes.": {
+        "hi": "शुरू करने के लिए अपना विवरण भरें। 2 मिनट से भी कम समय लगता है।",
+        "pa": "ਸ਼ੁਰੂ ਕਰਨ ਲਈ ਆਪਣੇ ਵੇਰਵੇ ਭਰੋ। 2 ਮਿੰਟਾਂ ਤੋਂ ਵੀ ਘੱਟ ਸਮਾਂ ਲੱਗਦਾ ਹੈ।",
+        "en": "Fill in your details to get started. Takes less than 2 minutes."
+    },
+    "Basic Info": {
+        "hi": "बुनियादी जानकारी",
+        "pa": "ਮੁੱਢਲੀ ਜਾਣਕਾਰੀ",
+        "en": "Basic Info"
+    },
+    "Skills & Work": {
+        "hi": "कौशल और काम",
+        "pa": "ਹੁਨਰ ਅਤੇ ਕੰਮ",
+        "en": "Skills & Work"
+    },
+    "Voice Profile": {
+        "hi": "आवाज़ प्रोफाइल",
+        "pa": "ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ",
+        "en": "Voice Profile"
+    },
+    "Done": {
+        "hi": "संपन्न",
+        "pa": "ਪੂਰਾ ਹੋ ਗਿਆ",
+        "en": "Done"
+    },
+    "Basic Information": {
+        "hi": "बुनियादी जानकारी",
+        "pa": "ਮੁੱਢਲੀ ਜਾਣਕਾਰੀ",
+        "en": "Basic Information"
+    },
+    "Fill by voice": {
+        "hi": "बोलकर भरें",
+        "pa": "ਬੋਲ ਕੇ ਭਰੋ",
+        "en": "Fill by voice"
+    },
+    "10-digit number": {
+        "hi": "10 अंकों का नंबर",
+        "pa": "10 ਅੰਕਾਂ ਦਾ ਨੰਬਰ",
+        "en": "10-digit number"
+    },
+    "Preferred Language": {
+        "hi": "पसंदीदा भाषा",
+        "pa": "ਪਸੰਦੀਦਾ ਭਾਸ਼ਾ",
+        "en": "Preferred Language"
+    },
+    "Continue": {
+        "hi": "जारी रखें",
+        "pa": "ਜਾਰੀ ਰੱਖੋ",
+        "en": "Continue"
+    },
+    "Your Skills & Work": {
+        "hi": "आपका कौशल और काम",
+        "pa": "ਤੁਹਾਡਾ ਹੁਨਰ ਅਤੇ ਕੰਮ",
+        "en": "Your Skills & Work"
+    },
+    "Work Type / Skill": {
+        "hi": "काम का प्रकार / कौशल",
+        "pa": "ਕੰਮ ਦੀ ਕਿਸਮ / ਹੁਨਰ",
+        "en": "Work Type / Skill"
+    },
+    "Select your primary skill": {
+        "hi": "अपना मुख्य हुनर चुनें",
+        "pa": "ਆਪਣਾ ਮੁੱਖ ਹੁਨਰ ਚੁਣੋ",
+        "en": "Select your primary skill"
+    },
+    "Electrician": {
+        "hi": "इलेक्ट्रीशियन (बिजली मिस्त्री)",
+        "pa": "ਇਲੈਕਟ੍ਰੀਸ਼ੀਅਨ (ਬਿਜਲੀ ਮਿਸਤਰੀ)",
+        "en": "Electrician"
+    },
+    "Plumber": {
+        "hi": "प्लंबर (नलसाज)",
+        "pa": "ਪਲੰਬਰ (ਨਲਕਾ ਮਿਸਤਰੀ)",
+        "en": "Plumber"
+    },
+    "Construction Helper": {
+        "hi": "निर्माण सहायक / बेलदार",
+        "pa": "ਉਸਾਰੀ ਸਹਾਇਕ / ਮਜ਼ਦੂਰ",
+        "en": "Construction Helper"
+    },
+    "Delivery Assistant": {
+        "hi": "डिलीवरी सहायक",
+        "pa": "ਡਿਲੀਵਰੀ ਸਹਾਇਕ",
+        "en": "Delivery Assistant"
+    },
+    "Driver": {
+        "hi": "ड्राइवर",
+        "pa": "ਡਰਾਈਵਰ",
+        "en": "Driver"
+    },
+    "House Help / Maid": {
+        "hi": "घरेलू सहायिका / कामवाली",
+        "pa": "ਘਰੇਲੂ ਸਹਾਇਕ / ਕੰਮ ਵਾਲੀ",
+        "en": "House Help / Maid"
+    },
+    "Security Guard": {
+        "hi": "सुरक्षा गार्ड",
+        "pa": "ਸੁਰੱਖਿਆ ਗਾਰਡ",
+        "en": "Security Guard"
+    },
+    "Event Support": {
+        "hi": "इवेंट सपोर्ट",
+        "pa": "ਈਵੈਂਟ ਸਹਾਇਕ",
+        "en": "Event Support"
+    },
+    "Painter": {
+        "hi": "पेंटर (रंगसाज)",
+        "pa": "ਪੇਂਟਰ (ਰੰਗਸਾਜ਼)",
+        "en": "Painter"
+    },
+    "Carpenter": {
+        "hi": "बढ़ई (कारपेंटर)",
+        "pa": "ਤਰਖਾਣ (ਕਾਰਪੇਂਟਰ)",
+        "en": "Carpenter"
+    },
+    "Gardener": {
+        "hi": "माली",
+        "pa": "ਮਾਲੀ",
+        "en": "Gardener"
+    },
+    "Tailor": {
+        "hi": "दर्जी",
+        "pa": "ਦਰਜ਼ੀ",
+        "en": "Tailor"
+    },
+    "Cobbler": {
+        "hi": "मोची",
+        "pa": "ਮੋਚੀ",
+        "en": "Cobbler"
+    },
+    "Cook / Helper": {
+        "hi": "रसोइया / कुक",
+        "pa": "ਰਸੋਈਆ / ਕੁੱਕ",
+        "en": "Cook / Helper"
+    },
+    "Other": {
+        "hi": "अन्य",
+        "pa": "ਹੋਰ",
+        "en": "Other"
+    },
+    "City / Area": {
+        "hi": "शहर / इलाका",
+        "pa": "ਸ਼ਹਿਰ / ਇਲਾਕਾ",
+        "en": "City / Area"
+    },
+    "Rate (₹/day)": {
+        "hi": "दर (₹/दिन)",
+        "pa": "ਰੇਟ (₹/ਦਿਨ)",
+        "en": "Rate (₹/day)"
+    },
+    "Short Bio": {
+        "hi": "संक्षिप्त परिचय",
+        "pa": "ਸੰਖੇਪ ਜਾਣਕਾਰੀ",
+        "en": "Short Bio"
+    },
+    "(Optional)": {
+        "hi": "(वैकल्पिक)",
+        "pa": "(ਵਿਕਲਪਿਕ)",
+        "en": "(Optional)"
+    },
+    "Tell employers about your experience...": {
+        "hi": "नियोक्ताओं को अपने अनुभव के बारे में बताएं...",
+        "pa": "ਮਾਲਕਾਂ ਨੂੰ ਆਪਣੇ ਤਜਰਬੇ ਬਾਰੇ ਦੱਸੋ...",
+        "en": "Tell employers about your experience..."
+    },
+    "Record a short introduction. Employers can listen before hiring you.": {
+        "hi": "एक छोटा परिचय रिकॉर्ड करें। काम पर रखने से पहले नियोक्ता इसे सुन सकते हैं।",
+        "pa": "ਇੱਕ ਛੋਟੀ ਜਾਣ-ਪਛਾਣ ਰਿਕਾਰਡ ਕਰੋ। ਕੰਮ 'ਤੇ ਰੱਖਣ ਤੋਂ ਪਹਿਲਾਂ ਮਾਲਕ ਇਸਨੂੰ ਸੁਣ ਸਕਦੇ ਹਨ।",
+        "en": "Record a short introduction. Employers can listen before hiring you."
+    },
+    "Tap to Record": {
+        "hi": "रिकॉर्ड करने के लिए टैप करें",
+        "pa": "ਰਿਕਾਰਡ ਕਰਨ ਲਈ ਟੈਪ ਕਰੋ",
+        "en": "Tap to Record"
+    },
+    "Speak clearly for 10–20 seconds": {
+        "hi": "10-20 सेकंड तक स्पष्ट बोलें",
+        "pa": "10-20 ਸਕਿੰਟ ਸਾਫ਼-ਸਾਫ਼ ਬੋਲੋ",
+        "en": "Speak clearly for 10–20 seconds"
+    },
+    "Profile Picture": {
+        "hi": "प्रोफाइल फोटो",
+        "pa": "ਪ੍ਰੋਫਾਈਲ ਫੋਟੋ",
+        "en": "Profile Picture"
+    },
+    "Upload photo": {
+        "hi": "फोटो अपलोड करें",
+        "pa": "ਫੋਟੋ ਅੱਪਲੋਡ ਕਰੋ",
+        "en": "Upload photo"
+    },
+    "ID Proof": {
+        "hi": "पहचान पत्र (आईडी)",
+        "pa": "ਪਛਾਣ ਪੱਤਰ (ਆਈਡੀ)",
+        "en": "ID Proof"
+    },
+    "Aadhaar / PAN": {
+        "hi": "आधार / पैन कार्ड",
+        "pa": "ਆਧਾਰ / ਪੈਨ ਕਾਰਡ",
+        "en": "Aadhaar / PAN"
+    },
+    "Skip voice profile for now": {
+        "hi": "अभी के लिए आवाज़ प्रोफाइल छोड़ें",
+        "pa": "ਫਿਲਹਾਲ ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ ਛੱਡੋ",
+        "en": "Skip voice profile for now"
+    },
+    "Empowering Informal Workers": {
+        "hi": "कामगारों का सशक्तिकरण",
+        "pa": "ਕਾਮਿਆਂ ਦਾ ਸਸ਼ਕਤੀਕਰਨ",
+        "en": "Empowering Informal Workers"
+    },
+    "Your Voice Can Work For You.": {
+        "hi": "आपकी आवाज़ आपके काम आ सकती है।",
+        "pa": "ਤੁਹਾਡੀ ਆਵਾਜ਼ ਤੁਹਾਡੇ ਕੰਮ ਆ ਸਕਦੀ ਹੈ।",
+        "en": "Your Voice Can Work For You."
+    },
+    "VoiceHire helps workers discover nearby job opportunities, create voice-based profiles, manage work and get paid — without complicated forms or English.": {
+        "hi": "VoiceHire कामगारों को आस-पास काम खोजने, आवाज़ आधारित प्रोफाइल बनाने और भुगतान पाने में मदद करता है — बिना किसी फॉर्म या अंग्रेजी के।",
+        "pa": "VoiceHire ਕਾਮਿਆਂ ਨੂੰ ਨੇੜੇ ਕੰਮ ਲੱਭਣ, ਆਵਾਜ਼ ਆਧਾਰਿਤ ਪ੍ਰੋਫਾਈਲ ਬਣਾਉਣ ਅਤੇ ਭੁਗਤਾਨ ਪ੍ਰਾਪਤ ਕਰਨ ਵਿੱਚ ਮਦਦ ਕਰਦਾ ਹੈ — ਬਿਨਾਂ ਫ਼ਾਰਮ ਜਾਂ ਅੰਗਰੇਜ਼ੀ ਦੇ।",
+        "en": "VoiceHire helps workers discover nearby job opportunities, create voice-based profiles, manage work and get paid — without complicated forms or English."
+    },
+    "Get Started": {
+        "hi": "शुरू करें",
+        "pa": "ਸ਼ੁਰੂ ਕਰੋ",
+        "en": "Get Started"
+    },
+    "Voice Based Access": {
+        "hi": "आवाज़ आधारित पहुंच",
+        "pa": "ਆਵਾਜ਼ ਅਧਾਰਤ ਪਹੁੰਚ",
+        "en": "Voice Based Access"
+    },
+    "Speak in your language": {
+        "hi": "अपनी भाषा में बोलें",
+        "pa": "ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਬੋਲੋ",
+        "en": "Speak in your language"
+    },
+    "Local Opportunities": {
+        "hi": "स्थानीय अवसर",
+        "pa": "ਸਥਾਨਕ ਮੌਕੇ",
+        "en": "Local Opportunities"
+    },
+    "Jobs near your area": {
+        "hi": "आपके इलाके के पास काम",
+        "pa": "ਤੁਹਾਡੇ ਇਲਾਕੇ ਦੇ ਨੇੜੇ ਕੰਮ",
+        "en": "Jobs near your area"
+    },
+    "Simple & Easy": {
+        "hi": "सरल और आसान",
+        "pa": "ਸਧਾਰਨ ਅਤੇ ਆਸਾਨ",
+        "en": "Simple & Easy"
+    },
+    "No forms, no typing": {
+        "hi": "न फॉर्म, न टाइपिंग",
+        "pa": "ਨਾ ਫ਼ਾਰਮ, ਨਾ ਟਾਈਪਿੰਗ",
+        "en": "No forms, no typing"
+    },
+    "Simple Process": {
+        "hi": "सरल प्रक्रिया",
+        "pa": "ਸਧਾਰਨ ਪ੍ਰਕਿਰਿਆ",
+        "en": "Simple Process"
+    },
+    "Get hired in 4 easy steps": {
+        "hi": "4 आसान चरणों में काम पाएं",
+        "pa": "4 ਆਸਾਨ ਕਦਮਾਂ ਵਿੱਚ ਕੰਮ ਪ੍ਰਾਪਤ ਕਰੋ",
+        "en": "Get hired in 4 easy steps"
+    },
+    "No complicated forms. No English required. Just your voice and skills.": {
+        "hi": "कोई कठिन फॉर्म नहीं। कोई अंग्रेजी जरूरी नहीं। बस आपकी आवाज़ और हुनर।",
+        "pa": "ਕੋਈ ਔਖੇ ਫ਼ਾਰਮ ਨਹੀਂ। ਕੋਈ ਅੰਗਰੇਜ਼ੀ ਦੀ ਲੋੜ ਨਹੀਂ। ਸਿਰਫ਼ ਤੁਹਾਡੀ ਆਵਾਜ਼ ਅਤੇ ਹੁਨਰ।",
+        "en": "No complicated forms. No English required. Just your voice and skills."
+    },
+    "Choose Language": {
+        "hi": "भाषा चुनें",
+        "pa": "ਭਾਸ਼ਾ ਚੁਣੋ",
+        "en": "Choose Language"
+    },
+    "Select your preferred regional language from the dropdown above.": {
+        "hi": "ऊपर दिए गए ड्रॉपडाउन से अपनी पसंदीदा भाषा चुनें।",
+        "pa": "ਉੱਪਰ ਦਿੱਤੇ ਡ੍ਰੌਪਡਾਉਨ ਤੋਂ ਆਪਣੀ ਪਸੰਦੀਦਾ ਭਾਸ਼ਾ ਚੁਣੋ।",
+        "en": "Select your preferred regional language from the dropdown above."
+    },
+    "Record a short voice intro about your skills. No typing needed.": {
+        "hi": "अपने हुनर का छोटा आवाज़ परिचय रिकॉर्ड करें। टाइपिंग की कोई ज़रूरत नहीं।",
+        "pa": "ਆਪਣੇ ਹੁਨਰ ਦੀ ਛੋਟੀ ਆਵਾਜ਼ ਜਾਣ-ਪਛਾਣ ਰਿਕਾਰਡ ਕਰੋ। ਟਾਈਪਿੰਗ ਦੀ ਲੋੜ ਨਹੀਂ।",
+        "en": "Record a short voice intro about your skills. No typing needed."
+    },
+    "Browse nearby opportunities that match your skills and location.": {
+        "hi": "अपने हुनर और इलाके से मेल खाते आस-पास के काम देखें।",
+        "pa": "ਆਪਣੇ ਹੁਨਰ ਅਤੇ ਇਲਾਕੇ ਨਾਲ ਮੇਲ ਖਾਂਦੇ ਨੇੜਲੇ ਕੰਮ ਦੇਖੋ।",
+        "en": "Browse nearby opportunities that match your skills and location."
+    },
+    "Get Work & Paid": {
+        "hi": "काम और भुगतान पाएं",
+        "pa": "ਕੰਮ ਅਤੇ ਭੁਗਤਾਨ ਪ੍ਰਾਪਤ ਕਰੋ",
+        "en": "Get Work & Paid"
+    },
+    "Complete jobs, receive secure digital payments and build reputation.": {
+        "hi": "काम पूरा करें, सुरक्षित डिजिटल भुगतान पाएं और पहचान बनाएं।",
+        "pa": "ਕੰਮ ਪੂਰਾ ਕਰੋ, ਸੁਰੱਖਿਅਤ ਡਿਜੀਟਲ ਭੁਗਤਾਨ ਲਓ ਅਤੇ ਨਾਮ ਕਮਾਓ।",
+        "en": "Complete jobs, receive secure digital payments and build reputation."
+    },
+    "Features": {
+        "hi": "विशेषताएं",
+        "pa": "ਵਿਸ਼ੇਸ਼ਤਾਵਾਂ",
+        "en": "Features"
+    },
+    "Built for Bharat's Workforce": {
+        "hi": "भारत के कामगारों के लिए निर्मित",
+        "pa": "ਭਾਰਤ ਦੇ ਕਾਮਿਆਂ ਲਈ ਬਣਾਇਆ ਗਿਆ",
+        "en": "Built for Bharat's Workforce"
+    },
+    "Everything needed to connect workers and employers seamlessly.": {
+        "hi": "कामगारों और नियोक्ताओं को आसानी से जोड़ने के लिए सब कुछ।",
+        "pa": "ਕਾਮਿਆਂ ਅਤੇ ਮਾਲਕਾਂ ਨੂੰ ਆਸਾਨੀ ਨਾਲ ਜੋੜਨ ਲਈ ਹਰ ਲੋੜੀਂਦੀ ਚੀਜ਼।",
+        "en": "Everything needed to connect workers and employers seamlessly."
+    },
+    "Voice Search": {
+        "hi": "आवाज़ से खोज",
+        "pa": "ਆਵਾਜ਼ ਨਾਲ ਖੋਜ",
+        "en": "Voice Search"
+    },
+    "Search jobs or post requirements using just your voice.": {
+        "hi": "सिर्फ अपनी आवाज़ का उपयोग करके काम खोजें या जरूरत पोस्ट करें।",
+        "pa": "ਸਿਰਫ਼ ਆਪਣੀ ਆਵਾਜ਼ ਦੀ ਵਰਤੋਂ ਕਰਕੇ ਕੰਮ ਲੱਭੋ ਜਾਂ ਲੋੜਾਂ ਪੋਸਟ ਕਰੋ।",
+        "en": "Search jobs or post requirements using just your voice."
+    },
+    "Local Match": {
+        "hi": "स्थानीय मिलान",
+        "pa": "ਸਥਾਨਕ ਮੇਲ",
+        "en": "Local Match"
+    },
+    "Find work or workers within your neighbourhood.": {
+        "hi": "अपने पड़ोस में काम या कामगार खोजें।",
+        "pa": "ਆਪਣੇ ਆਲੇ-ਦੁਆਲੇ ਕੰਮ ਜਾਂ ਕਾਮੇ ਲੱਭੋ।",
+        "en": "Find work or workers within your neighbourhood."
+    },
+    "Secure Pay": {
+        "hi": "सुरक्षित भुगतान",
+        "pa": "ਸੁਰੱਖਿਅਤ ਭੁਗਤਾਨ",
+        "en": "Secure Pay"
+    },
+    "Cashless, guaranteed payments with escrow protection.": {
+        "hi": "एस्क्रो सुरक्षा के साथ कैशलेस, गारंटीकृत भुगतान।",
+        "pa": "ਐਸਕਰੋ ਸੁਰੱਖਿਆ ਨਾਲ ਕੈਸ਼ਲੈੱਸ, ਗਾਰੰਟੀਸ਼ੁਦਾ ਭੁਗਤਾਨ।",
+        "en": "Cashless, guaranteed payments with escrow protection."
+    },
+    "Direct Connect": {
+        "hi": "सीधा संपर्क",
+        "pa": "ਸਿੱਧਾ ਸੰਪਰਕ",
+        "en": "Direct Connect"
+    },
+    "Call or message workers directly. No middlemen.": {
+        "hi": "कामगारों को सीधे कॉल या संदेश भेजें। कोई बिचौलिया नहीं।",
+        "pa": "ਕਾਮਿਆਂ ਨੂੰ ਸਿੱਧਾ ਫ਼ੋਨ ਜਾਂ ਸੁਨੇਹਾ ਭੇਜੋ। ਕੋਈ ਵਿਚੋਲਾ ਨਹੀਂ।",
+        "en": "Call or message workers directly. No middlemen."
+    },
+    "Instant Booking": {
+        "hi": "तुरंत बुकिंग",
+        "pa": "ਤੁਰੰਤ ਬੁਕਿੰਗ",
+        "en": "Instant Booking"
+    },
+    "Book same-day or schedule for upcoming dates.": {
+        "hi": "उसी दिन के लिए बुक करें या आने वाली तारीखों के लिए शेड्यूल करें।",
+        "pa": "ਉਸੇ ਦਿਨ ਲਈ ਬੁੱਕ ਕਰੋ ਜਾਂ ਆਉਣ ਵਾਲੀਆਂ ਤਾਰੀਖਾਂ ਲਈ ਸਮਾਂ ਤੈਅ ਕਰੋ।",
+        "en": "Book same-day or schedule for upcoming dates."
+    },
+    "Verified Profiles": {
+        "hi": "सत्यापित प्रोफाइल",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਪ੍ਰੋਫਾਈਲ",
+        "en": "Verified Profiles"
+    },
+    "Background-checked workers with real reviews.": {
+        "hi": "असली समीक्षाओं के साथ सत्यापित कामगार।",
+        "pa": "ਅਸਲ ਸਮੀਖਿਆਵਾਂ ਨਾਲ ਪ੍ਰਮਾਣਿਤ ਕਾਮੇ।",
+        "en": "Background-checked workers with real reviews."
+    },
+    "Worker Benefits": {
+        "hi": "कामगारों के लाभ",
+        "pa": "ਕਾਮਿਆਂ ਦੇ ਲਾਭ",
+        "en": "Worker Benefits"
+    },
+    "Why Workers Love VoiceHire": {
+        "hi": "कामगार VoiceHire को क्यों पसंद करते हैं",
+        "pa": "ਕਾਮੇ VoiceHire ਨੂੰ ਕਿਉਂ ਪਸੰਦ ਕਰਦੇ ਹਨ",
+        "en": "Why Workers Love VoiceHire"
+    },
+    "No English required": {
+        "hi": "अंग्रेजी की कोई आवश्यकता नहीं",
+        "pa": "ਅੰਗਰੇਜ਼ੀ ਦੀ ਕੋਈ ਲੋੜ ਨਹੀਂ",
+        "en": "No English required"
+    },
+    "Speak in Hindi, Punjabi, Bengali, or your mother tongue": {
+        "hi": "हिंदी, पंजाबी, बंगाली या अपनी मातृभाषा में बोलें",
+        "pa": "ਹਿੰਦੀ, ਪੰਜਾਬੀ, ਬੰਗਾਲੀ ਜਾਂ ਆਪਣੀ ਮਾਂ-ਬੋਲੀ ਵਿੱਚ ਬੋਲੋ",
+        "en": "Speak in Hindi, Punjabi, Bengali, or your mother tongue"
+    },
+    "Direct earnings": {
+        "hi": "सीधी कमाई",
+        "pa": "ਸਿੱਧੀ ਕਮਾਈ",
+        "en": "Direct earnings"
+    },
+    "Get paid directly to your UPI or bank account": {
+        "hi": "सीधे अपने यूपीआई या बैंक खाते में भुगतान प्राप्त करें",
+        "pa": "ਸਿੱਧਾ ਆਪਣੇ ਯੂਪੀਆਈ ਜਾਂ ਬੈਂਕ ਖਾਤੇ ਵਿੱਚ ਭੁਗਤਾਨ ਪ੍ਰਾਪਤ ਕਰੋ",
+        "en": "Get paid directly to your UPI or bank account"
+    },
+    "Build a reputation": {
+        "hi": "पहचान और साख बनाएं",
+        "pa": "ਨਾਮ ਅਤੇ ਸ਼ੋਹਰਤ ਬਣਾਓ",
+        "en": "Build a reputation"
+    },
+    "Earn ratings and reviews to get more work": {
+        "hi": "ज़्यादा काम पाने के लिए रेटिंग और समीक्षाएं अर्जित करें",
+        "pa": "ਵੱਧ ਕੰਮ ਪਾਉਣ ਲਈ ਰੇਟਿੰਗ ਅਤੇ ਸਮੀਖਿਆਵਾਂ ਕਮਾਓ",
+        "en": "Earn ratings and reviews to get more work"
+    },
+    "Daily job alerts": {
+        "hi": "दैनिक नौकरी अलर्ट",
+        "pa": "ਰੋਜ਼ਾਨਾ ਕੰਮ ਅਲਰਟ",
+        "en": "Daily job alerts"
+    },
+    "Get notified about new jobs in your local area": {
+        "hi": "अपने इलाके में नए काम की सूचना प्राप्त करें",
+        "pa": "ਆਪਣੇ ਇਲਾਕੇ ਵਿੱਚ ਨਵੇਂ ਕੰਮਾਂ ਬਾਰੇ ਸੂਚਨਾ ਪ੍ਰਾਪਤ ਕਰੋ",
+        "en": "Get notified about new jobs in your local area"
+    },
+    "Employer Benefits": {
+        "hi": "नियोक्ताओं के लाभ",
+        "pa": "ਮਾਲਕਾਂ ਦੇ ਲਾਭ",
+        "en": "Employer Benefits"
+    },
+    "Why Employers Trust VoiceHire": {
+        "hi": "नियोक्ता VoiceHire पर भरोसा क्यों करते हैं",
+        "pa": "ਮਾਲਕ VoiceHire 'ਤੇ ਭਰੋਸਾ ਕਿਉਂ ਕਰਦੇ ਹਨ",
+        "en": "Why Employers Trust VoiceHire"
+    },
+    "Verified workers": {
+        "hi": "सत्यापित कामगार",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਕਾਮੇ",
+        "en": "Verified workers"
+    },
+    "All workers are verified and community reviewed": {
+        "hi": "सभी कामगार सत्यापित हैं और समुदाय द्वारा समीक्षित हैं",
+        "pa": "ਸਾਰੇ ਕਾਮੇ ਪ੍ਰਮਾਣਿਤ ਹਨ ਅਤੇ ਭਾਈਚਾਰੇ ਦੁਆਰਾ ਸਮੀਖਿਆ ਕੀਤੇ ਗਏ ਹਨ",
+        "en": "All workers are verified and community reviewed"
+    },
+    "Transparent pricing": {
+        "hi": "पारदर्शी मूल्य निर्धारण",
+        "pa": "ਸਪਸ਼ਟ ਰੇਟ",
+        "en": "Transparent pricing"
+    },
+    "Fair rates, no hidden fees or middlemen commissions": {
+        "hi": "उचित दरें, कोई छुपा शुल्क या बिचौलिया कमीशन नहीं",
+        "pa": "ਵਾਜਬ ਰੇਟ, ਕੋਈ ਲੁਕਵੇਂ ਖਰਚੇ ਜਾਂ ਵਿਚੋਲੇ ਦਾ ਕਮਿਸ਼ਨ ਨਹੀਂ",
+        "en": "Fair rates, no hidden fees or middlemen commissions"
+    },
+    "Fast response": {
+        "hi": "त्वरित प्रतिक्रिया",
+        "pa": "ਤੇਜ਼ ਜਵਾਬ",
+        "en": "Fast response"
+    },
+    "Workers usually respond within 15 minutes": {
+        "hi": "कामगार आमतौर पर 15 मिनट के भीतर जवाब देते हैं",
+        "pa": "ਕਾਮੇ ਆਮ ਤੌਰ 'ਤੇ 15 ਮਿੰਟਾਂ ਦੇ ਅੰਦਰ ਜਵਾਬ ਦਿੰਦੇ ਹਨ",
+        "en": "Workers usually respond within 15 minutes"
+    },
+    "Job guarantee": {
+        "hi": "काम की गारंटी",
+        "pa": "ਕੰਮ ਦੀ ਗਾਰੰਟੀ",
+        "en": "Job guarantee"
+    },
+    "Not satisfied? We will find a replacement or refund": {
+        "hi": "संतुष्ट नहीं हैं? हम दूसरा कामगार देंगे या पैसे वापस करेंगे",
+        "pa": "ਸੰਤੁਸ਼ਟ ਨਹੀਂ ਹੋ? ਅਸੀਂ ਦੂਜਾ ਕਾਮਾ ਲੱਭਾਂਗੇ ਜਾਂ ਪੈਸੇ ਵਾਪਸ ਕਰਾਂਗੇ",
+        "en": "Not satisfied? We will find a replacement or refund"
+    },
+    "About VoiceHire": {
+        "hi": "VoiceHire के बारे में",
+        "pa": "VoiceHire ਬਾਰੇ",
+        "en": "About VoiceHire"
+    },
+    "Bridging the Digital Divide": {
+        "hi": "डिजिटल खाई को पाटना",
+        "pa": "ਡਿਜੀਟਲ ਦੂਰੀ ਨੂੰ ਮਿਟਾਉਣਾ",
+        "en": "Bridging the Digital Divide"
+    },
+    "VoiceHire was created with a simple mission: ensure that language and literacy are never barriers to earning a livelihood in India. By putting voice at the centre of the experience, we enable millions of skilled informal workers to access digital opportunities with dignity.": {
+        "hi": "VoiceHire एक सरल मिशन के साथ बनाया गया था: यह सुनिश्चित करना कि भारत में आजीविका कमाने में भाषा और साक्षरता कभी बाधा न बने। आवाज़ को मुख्य बनाकर, हम लाखों कुशल कामगारों को सम्मान के साथ डिजिटल अवसरों तक पहुंचने में सक्षम बनाते हैं।",
+        "pa": "VoiceHire ਇੱਕ ਸਧਾਰਨ ਮਿਸ਼ਨ ਨਾਲ ਬਣਾਇਆ ਗਿਆ ਸੀ: ਇਹ ਯਕੀਨੀ ਬਣਾਉਣਾ ਕਿ ਭਾਰਤ ਵਿੱਚ ਰੋਜ਼ੀ-ਰੋਟੀ ਕਮਾਉਣ ਵਿੱਚ ਭਾਸ਼ਾ ਅਤੇ ਪੜ੍ਹਾਈ ਕਦੇ ਵੀ ਰੁਕਾਵਟ ਨਾ ਬਣਨ। ਆਵਾਜ਼ ਨੂੰ ਮੁੱਖ ਰੱਖ ਕੇ, ਅਸੀਂ ਲੱਖਾਂ ਹੁਨਰਮੰਦ ਕਾਮਿਆਂ ਨੂੰ ਸਨਮਾਨ ਨਾਲ ਡਿਜੀਟਲ ਮੌਕਿਆਂ ਤੱਕ ਪਹੁੰਚਣ ਦੇ ਯੋਗ ਬਣਾਉਂਦੇ ਹਾਂ।",
+        "en": "VoiceHire was created with a simple mission: ensure that language and literacy are never barriers to earning a livelihood in India. By putting voice at the centre of the experience, we enable millions of skilled informal workers to access digital opportunities with dignity."
+    },
+    "Join VoiceHire Today": {
+        "hi": "आज ही VoiceHire से जुड़ें",
+        "pa": "ਅੱਜ ਹੀ VoiceHire ਨਾਲ ਜੁੜੋ",
+        "en": "Join VoiceHire Today"
+    },
+    "Start finding work or hire skilled workers in your area — using just your voice.": {
+        "hi": "सिर्फ अपनी आवाज़ से काम ढूंढना शुरू करें या कुशल कामगार रखें।",
+        "pa": "ਸਿਰਫ਼ ਆਪਣੀ ਆਵਾਜ਼ ਦੀ ਵਰਤੋਂ ਕਰਕੇ ਕੰਮ ਲੱਭਣਾ ਸ਼ੁਰੂ ਕਰੋ ਜਾਂ ਹੁਨਰਮੰਦ ਕਾਮੇ ਰੱਖੋ।",
+        "en": "Start finding work or hire skilled workers in your area — using just your voice."
+    },
+    "Hire a Worker": {
+        "hi": "कामगार रखें",
+        "pa": "ਕਾਮਾ ਰੱਖੋ",
+        "en": "Hire a Worker"
+    },
+    "Quick Links": {
+        "hi": "त्वरित लिंक",
+        "pa": "ਤੇਜ਼ ਲਿੰਕ",
+        "en": "Quick Links"
+    },
+    "Language": {
+        "hi": "भाषा",
+        "pa": "ਭਾਸ਼ਾ",
+        "en": "Language"
+    },
+    "Contact": {
+        "hi": "संपर्क करें",
+        "pa": "ਸੰਪਰਕ ਕਰੋ",
+        "en": "Contact"
+    },
+    "Need help? Call our toll-free helpline": {
+        "hi": "मदद चाहिए? हमारी टोल-फ्री हेल्पलाइन पर कॉल करें",
+        "pa": "ਮਦਦ ਚਾਹੀਦੀ ਹੈ? ਸਾਡੀ ਟੋਲ-ਫ੍ਰੀ ਹੈਲਪਲਾਈਨ 'ਤੇ ਕਾਲ ਕਰੋ",
+        "en": "Need help? Call our toll-free helpline"
+    },
+    "All rights reserved.": {
+        "hi": "सर्वाधिकार सुरक्षित।",
+        "pa": "ਸਾਰੇ ਹੱਕ ਰਾਖਵੇਂ ਹਨ।",
+        "en": "All rights reserved."
+    },
+    "Worker Dashboard — VoiceHire": {
+        "hi": "कामगार डैशबोर्ड — VoiceHire",
+        "pa": "ਕਾਮਾ ਡੈਸ਼ਬੋਰਡ — VoiceHire",
+        "en": "Worker Dashboard — VoiceHire"
+    },
+    "Employer Dashboard — VoiceHire": {
+        "hi": "नियोक्ता डैशबोर्ड — VoiceHire",
+        "pa": "ਮਾਲਕ ਡੈਸ਼ਬੋਰਡ — VoiceHire",
+        "en": "Employer Dashboard — VoiceHire"
+    },
+    "Duty Status:": {
+        "hi": "ड्यूटी स्थिति:",
+        "pa": "ਡਿਊਟੀ ਸਥਿਤੀ:",
+        "en": "Duty Status:"
+    },
+    "Available for Jobs": {
+        "hi": "काम के लिए उपलब्ध",
+        "pa": "ਕੰਮ ਲਈ ਉਪਲਬਧ",
+        "en": "Available for Jobs"
+    },
+    "Busy / Off Duty": {
+        "hi": "व्यस्त / ड्यूटी बंद",
+        "pa": "ਰੁਝੇਵੇਂ ਵਿੱਚ / ਆਫ਼ ਡਿਊਟੀ",
+        "en": "Busy / Off Duty"
+    },
+    "Location Access Disabled:": {
+        "hi": "स्थान की अनुमति बंद है:",
+        "pa": "ਟਿਕਾਣਾ ਪਹੁੰਚ ਬੰਦ ਹੈ:",
+        "en": "Location Access Disabled:"
+    },
+    "Complete your voice profile": {
+        "hi": "अपनी आवाज़ प्रोफाइल पूरी करें",
+        "pa": "ਆਪਣੀ ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ ਪੂਰੀ ਕਰੋ",
+        "en": "Complete your voice profile"
+    },
+    "Add your voice bio and documents to get priority matching and customer trust.": {
+        "hi": "प्राथमिकता से काम और ग्राहकों का विश्वास पाने के लिए अपनी आवाज़ और दस्तावेज़ जोड़ें।",
+        "pa": "ਪਹਿਲ ਦੇ ਅਧਾਰ ਤੇ ਕੰਮ ਅਤੇ ਗਾਹਕਾਂ ਦਾ ਭਰੋਸਾ ਪ੍ਰਾਪਤ ਕਰਨ ਲਈ ਆਪਣੀ ਆਵਾਜ਼ ਅਤੇ ਦਸਤਾਵੇਜ਼ ਸ਼ਾਮਲ ਕਰੋ।",
+        "en": "Add your voice bio and documents to get priority matching and customer trust."
+    },
+    "Profile completeness": {
+        "hi": "प्रोफाइल पूर्णता",
+        "pa": "ਪ੍ਰੋਫਾਈਲ ਪੂਰਨਤਾ",
+        "en": "Profile completeness"
+    },
+    "Setup Now": {
+        "hi": "अभी सेट करें",
+        "pa": "ਹੁਣੇ ਸੈੱਟ ਕਰੋ",
+        "en": "Setup Now"
+    },
+    "Jobs Completed": {
+        "hi": "पूरे किए गए काम",
+        "pa": "ਪੂਰੇ ਕੀਤੇ ਗਏ ਕੰਮ",
+        "en": "Jobs Completed"
+    },
+    "Today's Earnings": {
+        "hi": "आज की कमाई",
+        "pa": "ਅੱਜ ਦੀ ਕਮਾਈ",
+        "en": "Today's Earnings"
+    },
+    "Verified History": {
+        "hi": "सत्यापित इतिहास",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਇਤਿਹਾਸ",
+        "en": "Verified History"
+    },
+    "Direct Payouts": {
+        "hi": "सीधा भुगतान",
+        "pa": "ਸਿੱਧਾ ਭੁਗਤਾਨ",
+        "en": "Direct Payouts"
+    },
+    "Home": {
+        "hi": "घर",
+        "pa": "ਘਰ",
+        "en": "Home"
+    },
+    "Scan QR": {
+        "hi": "क्यूआर स्कैन करें",
+        "pa": "ਕਿਊਆਰ ਸਕੈਨ ਕਰੋ",
+        "en": "Scan QR"
+    },
+    "Account": {
+        "hi": "खाता",
+        "pa": "ਖਾਤਾ",
+        "en": "Account"
+    },
+    "Profile": {
+        "hi": "प्रोफाइल",
+        "pa": "ਪ੍ਰੋਫਾਈਲ",
+        "en": "Profile"
+    },
+    "Export Data": {
+        "hi": "डेटा निर्यात करें",
+        "pa": "ਡਾਟਾ ਨਿਰਯਾਤ ਕਰੋ",
+        "en": "Export Data"
+    },
+    "Logout": {
+        "hi": "लॉगआउट",
+        "pa": "ਲਾਗਆਉਟ",
+        "en": "Logout"
+    },
+    "Change": {
+        "hi": "बदलें",
+        "pa": "ਬਦਲੋ",
+        "en": "Change"
+    },
+    "Payout:": {
+        "hi": "भुगतान:",
+        "pa": "ਭੁਗਤਾਨ:",
+        "en": "Payout:"
+    },
+    "Pending": {
+        "hi": "लंबित",
+        "pa": "ਬਕਾਇਆ",
+        "en": "Pending"
+    },
+    "Update Locality": {
+        "hi": "इलाका अपडेट करें",
+        "pa": "ਇਲਾਕਾ ਅੱਪਡੇਟ ਕਰੋ",
+        "en": "Update Locality"
+    },
+    "Active Now": {
+        "hi": "अभी सक्रिय",
+        "pa": "ਹੁਣੇ ਸਰਗਰਮ",
+        "en": "Active Now"
+    },
+    "Rating": {
+        "hi": "रेटिंग",
+        "pa": "ਰੇਟਿੰਗ",
+        "en": "Rating"
+    },
+    "Total Earnings": {
+        "hi": "कुल कमाई",
+        "pa": "ਕੁੱਲ ਕਮਾਈ",
+        "en": "Total Earnings"
+    },
+    "Wallet Balance": {
+        "hi": "वॉलेट बैलेंस",
+        "pa": "ਵਾਲਿਟ ਬੈਲੰਸ",
+        "en": "Wallet Balance"
+    },
+    "Recent Activity": {
+        "hi": "हाल की गतिविधि",
+        "pa": "ਤਾਜ਼ਾ ਗਤੀਵਿਧੀ",
+        "en": "Recent Activity"
+    },
+    "Job Requests": {
+        "hi": "नौकरी अनुरोध",
+        "pa": "ਕੰਮ ਦੀਆਂ ਬੇਨਤੀਆਂ",
+        "en": "Job Requests"
+    },
+    "Accept": {
+        "hi": "स्वीकार करें",
+        "pa": "ਸਵੀਕਾਰ ਕਰੋ",
+        "en": "Accept"
+    },
+    "Reject": {
+        "hi": "अस्वीकार करें",
+        "pa": "ਅਸਵੀਕਾਰ ਕਰੋ",
+        "en": "Reject"
+    },
+    "View Details": {
+        "hi": "विवरण देखें",
+        "pa": "ਵੇਰਵੇ ਦੇਖੋ",
+        "en": "View Details"
+    },
+    "No active bookings": {
+        "hi": "कोई सक्रिय बुकिंग नहीं",
+        "pa": "ਕੋਈ ਸਰਗਰਮ ਬੁਕਿੰਗ ਨਹੀਂ",
+        "en": "No active bookings"
+    },
+    "Search Workers": {
+        "hi": "कामगार खोजें",
+        "pa": "ਕਾਮੇ ਲੱਭੋ",
+        "en": "Search Workers"
+    },
+    "Post a Job": {
+        "hi": "काम पोस्ट करें",
+        "pa": "ਕੰਮ ਪੋਸਟ ਕਰੋ",
+        "en": "Post a Job"
+    },
+    "Post New Job": {
+        "hi": "नया काम पोस्ट करें",
+        "pa": "ਨਵਾਂ ਕੰਮ ਪੋਸਟ ਕਰੋ",
+        "en": "Post New Job"
+    },
+    "Book Worker": {
+        "hi": "कामगार बुक करें",
+        "pa": "ਕਾਮਾ ਬੁੱਕ ਕਰੋ",
+        "en": "Book Worker"
+    },
+    "Active Bookings": {
+        "hi": "सक्रिय बुकिंग",
+        "pa": "ਸਰਗਰਮ ਬੁਕਿੰਗਾਂ",
+        "en": "Active Bookings"
+    },
+    "Completed Bookings": {
+        "hi": "पूर्ण बुकिंग",
+        "pa": "ਪੂਰੀਆਂ ਹੋਈਆਂ ਬੁਕਿੰਗਾਂ",
+        "en": "Completed Bookings"
+    },
+    "Booking History": {
+        "hi": "बुकिंग इतिहास",
+        "pa": "ਬੁਕਿੰਗ ਇਤਿਹਾਸ",
+        "en": "Booking History"
+    },
+    "My Job Requests": {
+        "hi": "मेरे कार्य अनुरोध",
+        "pa": "ਮੇਰੀਆਂ ਨੌਕਰੀਆਂ ਦੀਆਂ ਬੇਨਤੀਆਂ",
+        "en": "My Job Requests"
+    },
+    "Payments": {
+        "hi": "भुगतान",
+        "pa": "ਭੁਗਤਾਨ",
+        "en": "Payments"
+    },
+    "Searching near:": {
+        "hi": "निकट खोज रहे हैं:",
+        "pa": "ਨੇੜੇ ਖੋਜ ਰਹੇ ਹਾਂ:",
+        "en": "Searching near:"
+    },
+    "Change Locality": {
+        "hi": "इलाका बदलें",
+        "pa": "ਇਲਾਕਾ ਬਦਲੋ",
+        "en": "Change Locality"
+    },
+    "Verified Employer": {
+        "hi": "सत्यापित नियोक्ता",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਮਾਲਕ",
+        "en": "Verified Employer"
+    },
+    "Find, compare and book verified service professionals in your area.": {
+        "hi": "अपने क्षेत्र में सत्यापित सेवा पेशेवरों को खोजें, तुलना करें और बुक करें।",
+        "pa": "ਆਪਣੇ ਖੇਤਰ ਵਿੱਚ ਪ੍ਰਮਾਣਿਤ ਸੇਵਾ ਪੇਸ਼ੇਵਰਾਂ ਨੂੰ ਲੱਭੋ, ਤੁਲਨਾ ਕਰੋ ਅਤੇ ਬੁੱਕ ਕਰੋ।",
+        "en": "Find, compare and book verified service professionals in your area."
+    },
+    "Find nearby job requests, accept bookings, and manage your duty status.": {
+        "hi": "आस-पास के कार्य अनुरोध खोजें, बुकिंग स्वीकार करें, और अपनी ड्यूटी स्थिति प्रबंधित करें।",
+        "pa": "ਨੇੜਲੀਆਂ ਨੌਕਰੀਆਂ ਦੀਆਂ ਬੇਨਤੀਆਂ ਲੱਭੋ, ਬੁਕਿੰਗਾਂ ਸਵੀਕਾਰ ਕਰੋ, ਅਤੇ ਆਪਣੀ ਡਿਊਟੀ ਸਥਿਤੀ ਦਾ ਪ੍ਰਬੰਧਨ ਕਰੋ।",
+        "en": "Find nearby job requests, accept bookings, and manage your duty status."
+    },
+    "VoiceHire AI Assistant": {
+        "hi": "VoiceHire AI सहायक",
+        "pa": "VoiceHire AI ਸਹਾਇਕ",
+        "en": "VoiceHire AI Assistant"
+    },
+    "Namaste!": {
+        "hi": "नमस्ते!",
+        "pa": "ਸਤਿ ਸ਼੍ਰੀ ਅਕਾਲ!",
+        "en": "Namaste!"
+    },
+    "and": {
+        "hi": "और",
+        "pa": "ਅਤੇ",
+        "en": "and"
+    },
+    "I am your VoiceHire voice assistant. I can help you find local work or book skilled workers.": {
+        "hi": "मैं आपका VoiceHire आवाज़ सहायक हूँ। मैं आपको स्थानीय काम खोजने या कुशल कामगारों को बुक करने में मदद कर सकता हूँ।",
+        "pa": "ਮੈਂ ਤੁਹਾਡਾ VoiceHire ਆਵਾਜ਼ ਸਹਾਇਕ ਹਾਂ। ਮੈਂ ਸਥਾਨਕ ਕੰਮ ਲੱਭਣ ਜਾਂ ਹੁਨਰਮੰਦ ਕਾਮਿਆਂ ਨੂੰ ਬੁੱਕ ਕਰਨ ਵਿੱਚ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
+        "en": "I am your VoiceHire voice assistant. I can help you find local work or book skilled workers."
+    },
 }
 for _k, _t_map in _EXTRA_UI_TRANSLATIONS.items():
     for _l in TRANSLATIONS:

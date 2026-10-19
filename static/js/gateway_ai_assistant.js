@@ -2530,6 +2530,24 @@
       // Set cookie for server sync
       document.cookie = `voicehire_lang=${code}; path=/; max-age=2592000; SameSite=Lax`;
 
+      // Synchronize with server session & database via AJAX
+      try {
+        fetch('/set_lang/' + encodeURIComponent(code), {
+          headers: { 'Accept': 'application/json' }
+        }).catch(() => {});
+      } catch (e) {}
+
+      // Synchronize global window.VH
+      if (window.VH) {
+        window.VH.lang = code;
+      }
+
+      // Update navbar language label if present
+      const langLabel = document.getElementById('current-lang-label');
+      if (langLabel) {
+        langLabel.textContent = (code || 'hi').toUpperCase();
+      }
+
       // Update drawer cards
       if (this.dom.langDrawer) {
         this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(c => {
@@ -2537,12 +2555,65 @@
         });
       }
 
+      // Live-translate current page elements without reload
+      this.liveTranslatePage(code);
+
       if (announce) {
         const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
         this.addMessage(confirmText, 'bot');
         this.speak(confirmText, code);
       }
       this.saveSession();
+    }
+
+    liveTranslatePage(code) {
+      if (!code || typeof document === 'undefined' || typeof window === 'undefined' || !window.location || !window.location.origin) return;
+      const url = window.location.origin + '/api/translations?lang=' + encodeURIComponent(code);
+      fetch(url)
+        .then(res => res.json())
+        .then(data => {
+          if (!data || !data.translations) return;
+          const tr = data.translations;
+
+          // 1. Elements with data-i18n
+          document.querySelectorAll('[data-i18n]').forEach(el => {
+            const k = el.getAttribute('data-i18n');
+            if (tr[k]) {
+              if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = tr[k];
+              else el.textContent = tr[k];
+            }
+          });
+
+          // 2. Headings, labels, buttons, links, paragraphs (skip assistant widget)
+          const candidates = document.querySelectorAll('h1, h2, h3, h4, h5, p, span, a, label, button, .section-label, .hero-badge, .nav-item, .stat-label, .step-card p, .trust-item p, .feature-card p');
+          candidates.forEach(el => {
+            if (el.closest('#vh-assistant-root')) return;
+            if (el.children.length === 0) {
+              if (!el.getAttribute('data-i18n-src')) {
+                const initialText = el.textContent.trim();
+                if (initialText) el.setAttribute('data-i18n-src', initialText);
+              }
+              const srcKey = el.getAttribute('data-i18n-src');
+              if (srcKey && tr[srcKey]) {
+                el.textContent = tr[srcKey];
+              }
+            }
+          });
+
+          // 3. Inputs with placeholders
+          document.querySelectorAll('input[placeholder], textarea[placeholder]').forEach(el => {
+            if (el.closest('#vh-assistant-root')) return;
+            if (!el.getAttribute('data-i18n-p-src')) {
+              const p = el.getAttribute('placeholder');
+              if (p) el.setAttribute('data-i18n-p-src', p.trim());
+            }
+            const pKey = el.getAttribute('data-i18n-p-src');
+            if (pKey && tr[pKey]) {
+              el.setAttribute('placeholder', tr[pKey]);
+            }
+          });
+        })
+        .catch(e => console.warn('[VoiceHire Live Translate Error]', e));
     }
 
     toggleLangDrawer() {

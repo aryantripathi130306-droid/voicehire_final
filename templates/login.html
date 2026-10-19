@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Login — VoiceHire{% endblock %}
+{% block title %}{{ t('Login — VoiceHire') }}{% endblock %}
 {% block body_class %}{% endblock %}
 
 {% block body %}
@@ -14,24 +14,24 @@
             <div class="auth-ai-illus">
                 <i class="fa-solid fa-robot"></i>
             </div>
-            <h2>Welcome Back!</h2>
-            <p>Log in to continue your journey. Find work, manage bookings, and get paid — all in one place.</p>
+            <h2>{{ t('Welcome Back!') }}</h2>
+            <p>{{ t('Log in to continue your journey. Find work, manage bookings, and get paid — all in one place.') }}</p>
             <div class="auth-feature-list">
                 <div class="auth-feature-item">
                     <i class="fa-solid fa-check-circle"></i>
-                    <span>Voice-based job search</span>
+                    <span>{{ t('Voice-based job search') }}</span>
                 </div>
                 <div class="auth-feature-item">
                     <i class="fa-solid fa-check-circle"></i>
-                    <span>Local jobs in your area</span>
+                    <span>{{ t('Local jobs in your area') }}</span>
                 </div>
                 <div class="auth-feature-item">
                     <i class="fa-solid fa-check-circle"></i>
-                    <span>Works in 8 regional languages</span>
+                    <span>{{ t('Works in 8 regional languages') }}</span>
                 </div>
                 <div class="auth-feature-item">
                     <i class="fa-solid fa-check-circle"></i>
-                    <span>Secure payments & QR check-in</span>
+                    <span>{{ t('Secure payments & QR check-in') }}</span>
                 </div>
             </div>
         </div>
@@ -40,21 +40,21 @@
     <!-- RIGHT PANEL -->
     <div class="auth-right">
         <div class="auth-form-box">
-            <h1>Login</h1>
-            <p class="auth-subtitle">Enter your details to access your account.</p>
+            <h1>{{ t('Login') }}</h1>
+            <p class="auth-subtitle">{{ t('Enter your details to access your account.') }}</p>
 
             <div class="auth-card">
                 <!-- Role selector -->
                 <div class="role-cards" id="role-select-row">
                     <div class="role-card {% if role == 'user' %}selected{% endif %}" id="card-user" onclick="setRole('user')">
                         <div class="role-icon"><i class="fa-solid fa-user-tie"></i></div>
-                        <h4>Employer</h4>
-                        <p>I hire workers</p>
+                        <h4>{{ t('Employer') }}</h4>
+                        <p>{{ t('I hire workers') }}</p>
                     </div>
                     <div class="role-card {% if role == 'worker' %}selected{% endif %}" id="card-worker" onclick="setRole('worker')">
                         <div class="role-icon"><i class="fa-solid fa-hard-hat"></i></div>
-                        <h4>Worker</h4>
-                        <p>I find work</p>
+                        <h4>{{ t('Worker') }}</h4>
+                        <p>{{ t('I find work') }}</p>
                     </div>
                 </div>
 
@@ -64,7 +64,7 @@
                         <i class="fa-solid fa-triangle-exclamation" style="color:#D97706; margin-top:3px; font-size:1.1rem;"></i>
                         <div>
                             <div id="mismatch-text" style="font-size:0.875rem; color:#92400E; font-weight:500; line-height:1.4;"></div>
-                            <button type="button" id="mismatch-switch-btn" class="btn btn-sm btn-primary" style="margin-top:8px;">Switch Role & Continue</button>
+                            <button type="button" id="mismatch-switch-btn" class="btn btn-sm btn-primary" style="margin-top:8px;">{{ t('Switch Role & Continue') }}</button>
                         </div>
                     </div>
                 </div>
@@ -75,7 +75,7 @@
                         <i class="fa-solid fa-lock" style="color:#DC2626; margin-top:3px; font-size:1.1rem;"></i>
                         <div>
                             <div id="lockout-text" style="font-size:0.875rem; color:#991B1B; font-weight:500; line-height:1.4;"></div>
-                            <div style="font-size:0.75rem; color:#7F1D1D; margin-top:4px;">For your security, repeated incorrect attempts are temporarily blocked.</div>
+                            <div style="font-size:0.75rem; color:#7F1D1D; margin-top:4px;">{{ t('For your security, repeated incorrect attempts are temporarily blocked.') }}</div>
                         </div>
                     </div>
                 </div>
@@ -84,18 +84,18 @@
                     <input type="hidden" id="login-role" value="{{ role }}">
 
                     <div class="form-group">
-                        <label class="form-label" for="phone">Mobile Number <span class="required">*</span></label>
+                        <label class="form-label" for="phone">{{ t('Mobile Number') }} <span class="required">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="fa-solid fa-mobile-screen input-icon"></i>
-                            <input type="tel" id="phone" name="phone" class="form-control" placeholder="Enter 10-digit mobile number" maxlength="10" required autocomplete="tel">
+                            <input type="tel" id="phone" name="phone" class="form-control" placeholder="{{ t('Enter 10-digit mobile number') }}" maxlength="10" required autocomplete="tel">
                         </div>
                     </div>
 
                     <div class="form-group">
-                        <label class="form-label" for="password">Password <span class="required">*</span></label>
+                        <label class="form-label" for="password">{{ t('Password') }} <span class="required">*</span></label>
                         <div class="input-icon-wrap">
                             <i class="fa-solid fa-lock input-icon"></i>
-                            <input type="password" id="password" name="password" class="form-control" placeholder="Enter your password" required autocomplete="current-password">
+                            <input type="password" id="password" name="password" class="form-control" placeholder="{{ t('Enter your password') }}" required autocomplete="current-password">
                             <span class="input-icon-right" onclick="togglePwd('password', this)" role="button" tabindex="0" aria-label="Toggle password visibility">
                                 <i class="fa-regular fa-eye"></i>
                             </span>
@@ -104,17 +104,17 @@
 
                     <div class="flex justify-between items-center mb-4">
                         <label class="flex items-center gap-2 text-sm text-muted" style="cursor:pointer;">
-                            <input type="checkbox" id="remember"> Remember me
+                            <input type="checkbox" id="remember"> {{ t('Remember me') }}
                         </label>
-                        <a href="{{ url_for('forgot_password_page', role=role) }}" id="forgot-pwd-link" class="text-sm text-primary font-medium">Forgot Password?</a>
+                        <a href="{{ url_for('forgot_password_page', role=role) }}" id="forgot-pwd-link" class="text-sm text-primary font-medium">{{ t('Forgot Password?') }}</a>
                     </div>
 
                     <button type="submit" class="btn btn-primary btn-full btn-lg" id="login-btn">
-                        <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> Login
+                        <i class="fa-solid fa-arrow-right-to-bracket mr-2"></i> {{ t('Login') }}
                     </button>
                 </form>
 
-                <div class="divider-text mt-4"><span>OR</span></div>
+                <div class="divider-text mt-4"><span>{{ t('OR') }}</span></div>
 
                 <button class="btn-google">
                     <svg width="18" height="18" viewBox="0 0 18 18" fill="none">
@@ -123,14 +123,14 @@
                         <path d="M3.964 10.71A5.41 5.41 0 0 1 3.682 9c0-.593.102-1.17.282-1.71V4.958H.957A8.996 8.996 0 0 0 0 9c0 1.452.348 2.827.957 4.042l3.007-2.332Z" fill="#FBBC05"/>
                         <path d="M9 3.58c1.321 0 2.508.454 3.44 1.345l2.582-2.58C13.463.891 11.426 0 9 0A8.997 8.997 0 0 0 .957 4.958L3.964 7.29C4.672 5.163 6.656 3.58 9 3.58Z" fill="#EA4335"/>
                     </svg>
-                    Continue with Google
+                    {{ t('Continue with Google') }}
                 </button>
             </div>
 
             <div class="auth-footer">
-                Don't have an account?
-                <a href="{{ url_for('worker_signup_page') }}">Sign Up as Worker</a> ·
-                <a href="{{ url_for('user_signup_page') }}">Sign Up as Employer</a>
+                {{ t("Don't have an account?") }}
+                <a href="{{ url_for('worker_signup_page') }}">{{ t('Sign Up as Worker') }}</a> ·
+                <a href="{{ url_for('user_signup_page') }}">{{ t('Sign Up as Employer') }}</a>
             </div>
         </div>
     </div>

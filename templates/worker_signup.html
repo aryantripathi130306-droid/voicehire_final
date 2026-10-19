@@ -1,5 +1,5 @@
 {% extends 'base.html' %}
-{% block title %}Worker Sign Up — VoiceHire{% endblock %}
+{% block title %}{{ t('Worker Sign Up — VoiceHire') }}{% endblock %}
 
 {% block body %}
 <div class="auth-page">
@@ -11,13 +11,13 @@
         </a>
         <div class="auth-left-content">
             <div class="auth-ai-illus"><i class="fa-solid fa-hard-hat"></i></div>
-            <h2>Join as a Worker</h2>
-            <p>Create your profile with just your voice. No complicated forms. Get hired locally.</p>
+            <h2>{{ t('Join as a Worker') }}</h2>
+            <p>{{ t('Create your profile with just your voice. No complicated forms. Get hired locally.') }}</p>
             <div class="auth-feature-list">
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Free to sign up</span></div>
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Find local jobs nearby</span></div>
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Voice profile — no typing needed</span></div>
-                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>Secure payments</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Free to sign up') }}</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Find local jobs nearby') }}</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Voice profile — no typing needed') }}</span></div>
+                <div class="auth-feature-item"><i class="fa-solid fa-check-circle"></i><span>{{ t('Secure payments') }}</span></div>
             </div>
         </div>
     </div>
@@ -31,9 +31,9 @@
                 <a href="{{ url_for('gateway') }}" class="back-link" style="margin:0;">
                     <i class="fa-solid fa-arrow-left"></i>
                 </a>
-                <h1>Create Worker Account</h1>
+                <h1>{{ t('Create Worker Account') }}</h1>
             </div>
-            <p class="auth-subtitle" style="margin-bottom:24px;">Fill in your details to get started. Takes less than 2 minutes.</p>
+            <p class="auth-subtitle" style="margin-bottom:24px;">{{ t('Fill in your details to get started. Takes less than 2 minutes.') }}</p>
 
             <!-- Step Indicators -->
             <div class="step-progress mb-3" id="step-progress">
@@ -54,10 +54,10 @@
                 </div>
             </div>
             <div class="step-progress-labels mb-6">
-                <span class="active">Basic Info</span>
-                <span>Skills & Work</span>
-                <span>Voice Profile</span>
-                <span>Done</span>
+                <span class="active">{{ t('Basic Info') }}</span>
+                <span>{{ t('Skills & Work') }}</span>
+                <span>{{ t('Voice Profile') }}</span>
+                <span>{{ t('Done') }}</span>
             </div>
 
             <form id="worker-signup-form" enctype="multipart/form-data">
@@ -65,14 +65,14 @@
                 <!-- STEP 1: Basic Info -->
                 <div id="step-1">
                     <div class="auth-card">
-                        <h3 class="mb-4"><i class="fa-solid fa-user-circle mr-2 text-primary"></i>Basic Information</h3>
+                        <h3 class="mb-4"><i class="fa-solid fa-user-circle mr-2 text-primary"></i>{{ t('Basic Information') }}</h3>
 
                         <div class="form-group">
-                            <label class="form-label" for="name">Full Name <span class="required">*</span></label>
+                            <label class="form-label" for="name">{{ t('Full Name') }} <span class="required">*</span></label>
                             <div class="input-icon-wrap">
                                 <i class="fa-solid fa-user input-icon"></i>
-                                <input id="name" name="name" type="text" class="form-control" placeholder="Your full name" required>
-                                <span class="input-icon-right" id="voice-name-btn" title="Fill by voice" style="cursor:pointer;">
+                                <input id="name" name="name" type="text" class="form-control" placeholder="{{ t('Your full name') }}" required>
+                                <span class="input-icon-right" id="voice-name-btn" title="{{ t('Fill by voice') }}" style="cursor:pointer;">
                                     <i class="fa-solid fa-microphone" style="color:var(--primary);"></i>
                                 </span>
                             </div>
@@ -80,27 +80,28 @@
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label" for="phone">Mobile Number <span class="required">*</span></label>
+                                <label class="form-label" for="phone">{{ t('Mobile Number') }} <span class="required">*</span></label>
                                 <div class="input-icon-wrap">
                                     <i class="fa-solid fa-phone input-icon"></i>
-                                    <input id="phone" name="phone" type="tel" class="form-control" placeholder="10-digit number" maxlength="10" required>
+                                    <input id="phone" name="phone" type="tel" class="form-control" placeholder="{{ t('10-digit number') }}" maxlength="10" required>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="password">Password <span class="required">*</span></label>
+                                <label class="form-label" for="password">{{ t('Password') }} <span class="required">*</span></label>
                                 <div class="input-icon-wrap">
                                     <i class="fa-solid fa-lock input-icon"></i>
-                                    <input id="password" name="password" type="password" class="form-control" placeholder="Min. 6 characters" required autocomplete="new-password">
+                                    <input id="password" name="password" type="password" class="form-control" placeholder="{{ t('Min. 6 characters') }}" required autocomplete="new-password">
                                     <span class="input-icon-right" onclick="togglePwd(this)" role="button" tabindex="0" aria-label="Toggle password visibility"><i class="fa-regular fa-eye"></i></span>
                                 </div>
                             </div>
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="preferred_lang">Preferred Language</label>
+                            <label class="form-label" for="preferred_lang">{{ t('Preferred Language') }}</label>
                             <div class="select-wrap">
                                 <select id="preferred_lang" name="preferred_lang" class="form-control">
                                     <option value="hi">हिंदी — Hindi</option>
+                                    <option value="pa">ਪੰਜਾਬੀ — Punjabi</option>
                                     <option value="en" selected>English</option>
                                     <option value="mr">मराठी — Marathi</option>
                                     <option value="bn">বাংলা — Bengali</option>
@@ -113,7 +114,7 @@
                         </div>
 
                         <button type="button" class="btn btn-primary btn-full" onclick="nextStep(2)">
-                            Continue <i class="fa-solid fa-arrow-right ml-2"></i>
+                            {{ t('Continue') }} <i class="fa-solid fa-arrow-right ml-2"></i>
                         </button>
                     </div>
                 </div>
@@ -121,42 +122,42 @@
                 <!-- STEP 2: Skills & Work -->
                 <div id="step-2" style="display:none;">
                     <div class="auth-card">
-                        <h3 class="mb-4"><i class="fa-solid fa-tools mr-2 text-primary"></i>Your Skills & Work</h3>
+                        <h3 class="mb-4"><i class="fa-solid fa-tools mr-2 text-primary"></i>{{ t('Your Skills & Work') }}</h3>
 
                         <div class="form-group">
-                            <label class="form-label" for="work">Work Type / Skill <span class="required">*</span></label>
+                            <label class="form-label" for="work">{{ t('Work Type / Skill') }} <span class="required">*</span></label>
                             <div class="select-wrap">
                                 <select id="work" name="work" class="form-control" required>
-                                    <option value="">Select your primary skill</option>
-                                    <option>Electrician</option>
-                                    <option>Plumber</option>
-                                    <option>Construction Helper</option>
-                                    <option>Delivery Assistant</option>
-                                    <option>Driver</option>
-                                    <option>House Help / Maid</option>
-                                    <option>Security Guard</option>
-                                    <option>Event Support</option>
-                                    <option>Painter</option>
-                                    <option>Carpenter</option>
-                                    <option>Gardener</option>
-                                    <option>Tailor</option>
-                                    <option>Cobbler</option>
-                                    <option>Cook / Helper</option>
-                                    <option>Other</option>
+                                    <option value="">{{ t('Select your primary skill') }}</option>
+                                    <option value="Electrician">{{ t('Electrician') }}</option>
+                                    <option value="Plumber">{{ t('Plumber') }}</option>
+                                    <option value="Construction Helper">{{ t('Construction Helper') }}</option>
+                                    <option value="Delivery Assistant">{{ t('Delivery Assistant') }}</option>
+                                    <option value="Driver">{{ t('Driver') }}</option>
+                                    <option value="House Help / Maid">{{ t('House Help / Maid') }}</option>
+                                    <option value="Security Guard">{{ t('Security Guard') }}</option>
+                                    <option value="Event Support">{{ t('Event Support') }}</option>
+                                    <option value="Painter">{{ t('Painter') }}</option>
+                                    <option value="Carpenter">{{ t('Carpenter') }}</option>
+                                    <option value="Gardener">{{ t('Gardener') }}</option>
+                                    <option value="Tailor">{{ t('Tailor') }}</option>
+                                    <option value="Cobbler">{{ t('Cobbler') }}</option>
+                                    <option value="Cook / Helper">{{ t('Cook / Helper') }}</option>
+                                    <option value="Other">{{ t('Other') }}</option>
                                 </select>
                             </div>
                         </div>
 
                         <div class="form-row">
                             <div class="form-group">
-                                <label class="form-label" for="location">City / Area <span class="required">*</span></label>
+                                <label class="form-label" for="location">{{ t('City / Area') }} <span class="required">*</span></label>
                                 <div class="input-icon-wrap">
                                     <i class="fa-solid fa-location-dot input-icon"></i>
                                     <input id="location" name="location" type="text" class="form-control" placeholder="e.g. Noida Sector 62" required>
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label" for="price">Rate (₹/day)</label>
+                                <label class="form-label" for="price">{{ t('Rate (₹/day)') }}</label>
                                 <div class="input-icon-wrap">
                                     <i class="fa-solid fa-rupee-sign input-icon"></i>
                                     <input id="price" name="price" type="number" class="form-control" placeholder="e.g. 400" min="0">
@@ -165,16 +166,16 @@
                         </div>
 
                         <div class="form-group">
-                            <label class="form-label" for="bio">Short Bio <span class="text-sm font-medium" style="font-weight:400; color:var(--muted);">(Optional)</span></label>
-                            <textarea id="bio" name="bio" class="form-control" rows="3" placeholder="Tell employers about your experience..."></textarea>
+                            <label class="form-label" for="bio">{{ t('Short Bio') }} <span class="text-sm font-medium" style="font-weight:400; color:var(--muted);">{{ t('(Optional)') }}</span></label>
+                            <textarea id="bio" name="bio" class="form-control" rows="3" placeholder="{{ t('Tell employers about your experience...') }}"></textarea>
                         </div>
 
                         <div style="display:flex; gap:10px;">
                             <button type="button" class="btn btn-ghost" onclick="nextStep(1)" style="flex:0 0 auto;">
-                                <i class="fa-solid fa-arrow-left mr-1"></i> Back
+                                <i class="fa-solid fa-arrow-left mr-1"></i> {{ t('Back') }}
                             </button>
                             <button type="button" class="btn btn-primary btn-full" onclick="nextStep(3)">
-                                Continue <i class="fa-solid fa-arrow-right ml-2"></i>
+                                {{ t('Continue') }} <i class="fa-solid fa-arrow-right ml-2"></i>
                             </button>
                         </div>
                     </div>
@@ -183,8 +184,8 @@
                 <!-- STEP 3: Voice Profile + Files -->
                 <div id="step-3" style="display:none;">
                     <div class="auth-card">
-                        <h3 class="mb-1"><i class="fa-solid fa-microphone mr-2 text-primary"></i>Voice Profile</h3>
-                        <p class="text-sm mb-4">Record a short introduction. Employers can listen before hiring you.</p>
+                        <h3 class="mb-1"><i class="fa-solid fa-microphone mr-2 text-primary"></i>{{ t('Voice Profile') }}</h3>
+                        <p class="text-sm mb-4">{{ t('Record a short introduction. Employers can listen before hiring you.') }}</p>
 
                         <!-- Mic Recorder -->
                         <div class="mic-card" id="mic-card-box">
@@ -197,33 +198,34 @@
                                 <div class="bar"></div><div class="bar"></div>
                             </div>
                             <div class="timer-display" id="rec-timer" style="display:none;">0:00</div>
-                            <p id="mic-label" class="font-semibold" style="color:var(--dark); margin-bottom:4px;">Tap to Record</p>
-                            <p class="text-sm">Speak clearly for 10–20 seconds</p>
+                            <p id="mic-label" class="font-semibold" style="color:var(--dark); margin-bottom:4px;">{{ t('Tap to Record') }}</p>
+                            <p class="text-sm">{{ t('Speak clearly for 10–20 seconds') }}</p>
                         </div>
 
                         <!-- Language selector -->
                         <div class="lang-chips mb-4">
                             <span class="lang-chip active" onclick="setLang(this)">हिंदी</span>
+                            <span class="lang-chip" onclick="setLang(this)">ਪੰਜਾਬੀ</span>
                             <span class="lang-chip" onclick="setLang(this)">English</span>
                             <span class="lang-chip" onclick="setLang(this)">मराठी</span>
-                            <span class="lang-chip" onclick="setLang(this)">Other</span>
+                            <span class="lang-chip" onclick="setLang(this)">{{ t('Other') }}</span>
                         </div>
 
                         <!-- File uploads -->
                         <div class="form-row mb-4">
                             <div class="form-group">
-                                <label class="form-label">Profile Picture</label>
+                                <label class="form-label">{{ t('Profile Picture') }}</label>
                                 <div class="upload-box" onclick="document.getElementById('profile_pic').click()">
                                     <i class="fa-solid fa-camera"></i>
-                                    <p>Upload photo</p>
+                                    <p>{{ t('Upload photo') }}</p>
                                     <input type="file" id="profile_pic" name="profile_pic" accept="image/*">
                                 </div>
                             </div>
                             <div class="form-group">
-                                <label class="form-label">ID Proof</label>
+                                <label class="form-label">{{ t('ID Proof') }}</label>
                                 <div class="upload-box" onclick="document.getElementById('id_proof').click()">
                                     <i class="fa-solid fa-id-card"></i>
-                                    <p>Aadhaar / PAN</p>
+                                    <p>{{ t('Aadhaar / PAN') }}</p>
                                     <input type="file" id="id_proof" name="id_proof" accept="image/*">
                                 </div>
                             </div>
@@ -235,15 +237,15 @@
 
                         <div style="display:flex; gap:10px;">
                             <button type="button" class="btn btn-ghost" onclick="nextStep(2)" style="flex:0 0 auto;">
-                                <i class="fa-solid fa-arrow-left mr-1"></i> Back
+                                <i class="fa-solid fa-arrow-left mr-1"></i> {{ t('Back') }}
                             </button>
                             <button type="submit" class="btn btn-primary btn-full" id="submit-btn">
-                                Create Account <i class="fa-solid fa-check-circle ml-2"></i>
+                                {{ t('Create Account') }} <i class="fa-solid fa-check-circle ml-2"></i>
                             </button>
                         </div>
                         <div class="text-center mt-3">
                             <button type="submit" class="btn-ghost" style="font-size:.8125rem; color:var(--muted); background:none; border:none; cursor:pointer;">
-                                Skip voice profile for now
+                                {{ t('Skip voice profile for now') }}
                             </button>
                         </div>
                     </div>
@@ -252,7 +254,7 @@
             </form>
 
             <div class="auth-footer">
-                Already have an account? <a href="{{ url_for('login_page', role='worker') }}">Login</a>
+                {{ t('Already have an account?') }} <a href="{{ url_for('login_page', role='worker') }}">{{ t('Login') }}</a>
             </div>
         </div>
     </div>

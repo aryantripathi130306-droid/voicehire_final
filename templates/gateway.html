@@ -16,10 +16,10 @@
         </a>
 
         <nav class="pub-nav">
-            <a href="#how-it-works">How It Works</a>
-            <a href="#for-workers">For Workers</a>
-            <a href="#for-employers">For Employers</a>
-            <a href="#about">About</a>
+            <a href="#how-it-works">{{ t('How It Works') }}</a>
+            <a href="#for-workers">{{ t('For Workers') }}</a>
+            <a href="#for-employers">{{ t('For Employers') }}</a>
+            <a href="#about">{{ t('About VoiceHire') }}</a>
         </nav>
 
         <div class="pub-nav-actions">
@@ -87,24 +87,23 @@
         <!-- Left Content -->
         <div class="hero-left fade-in">
             <div class="hero-badge">
-                <i class="fa-solid fa-bolt"></i> Empowering Informal Workers
+                <i class="fa-solid fa-bolt"></i> {{ t('Empowering Informal Workers') }}
             </div>
 
             <h1 class="hero-heading">
-                Your Voice Can<br>
-                <span class="text-primary">Work For You.</span>
+                {{ t('Your Voice Can Work For You.') }}
             </h1>
 
             <p class="hero-desc">
-                VoiceHire helps workers discover nearby job opportunities, create voice-based profiles, manage work and get paid — without complicated forms or English.
+                {{ t('VoiceHire helps workers discover nearby job opportunities, create voice-based profiles, manage work and get paid — without complicated forms or English.') }}
             </p>
 
             <div class="hero-actions">
                 <a href="{{ url_for('signup') }}" class="btn btn-primary btn-lg" id="hero-get-started">
-                    Get Started <i class="fa-solid fa-arrow-right ml-2"></i>
+                    {{ t('Get Started') }} <i class="fa-solid fa-arrow-right ml-2"></i>
                 </a>
                 <a href="#how-it-works" class="btn btn-ghost btn-lg">
-                    <i class="fa-solid fa-play mr-2"></i> How It Works
+                    <i class="fa-solid fa-play mr-2"></i> {{ t('How It Works') }}
                 </a>
             </div>
 
@@ -113,22 +112,22 @@
                 <div class="trust-item">
                     <div class="trust-icon"><i class="fa-solid fa-microphone"></i></div>
                     <div>
-                        <h4>Voice Based Access</h4>
-                        <p>Speak in your language</p>
+                        <h4>{{ t('Voice Based Access') }}</h4>
+                        <p>{{ t('Speak in your language') }}</p>
                     </div>
                 </div>
                 <div class="trust-item">
                     <div class="trust-icon"><i class="fa-solid fa-location-dot"></i></div>
                     <div>
-                        <h4>Local Opportunities</h4>
-                        <p>Jobs near your area</p>
+                        <h4>{{ t('Local Opportunities') }}</h4>
+                        <p>{{ t('Jobs near your area') }}</p>
                     </div>
                 </div>
                 <div class="trust-item">
                     <div class="trust-icon"><i class="fa-solid fa-star"></i></div>
                     <div>
-                        <h4>Simple & Easy</h4>
-                        <p>No forms, no typing</p>
+                        <h4>{{ t('Simple & Easy') }}</h4>
+                        <p>{{ t('No forms, no typing') }}</p>
                     </div>
                 </div>
             </div>
@@ -142,27 +141,26 @@
                     <div class="ai-pulse"></div>
                 </div>
                 <div style="text-align:center; margin-bottom:16px;">
-                    <div style="font-size:.875rem; font-weight:700; color:var(--dark);">VoiceHire AI Assistant</div>
+                    <div style="font-size:.875rem; font-weight:700; color:var(--dark);">{{ t('VoiceHire AI Assistant') }}</div>
                     <div style="font-size:.75rem; color:var(--success); display:flex; align-items:center; justify-content:center; gap:4px; margin-top:2px;">
-                        <i class="fa-solid fa-circle" style="font-size:.5rem;"></i> Online · Bolna shuru karein!
+                        <i class="fa-solid fa-circle" style="font-size:.5rem;"></i> {{ t('Online · Voice Ready') }}
                     </div>
                 </div>
                 <div class="ai-bubble" id="hero-bubble" style="font-size:.9rem; line-height:1.6;">
-                    🎙️ <strong>Namaste!</strong> Main aapka AI sahayak hoon.<br>
-                    <span style="color:#6B7280;font-size:.8rem;">Page khulte hi bolna shuru hoga. Neeche ka button bhi dabayen.</span>
+                    🎙️ <strong>{{ t('Namaste!') }}</strong> {{ t('I am your VoiceHire voice assistant. I can help you find local work or book skilled workers.') }}
                 </div>
                 <div class="ai-quick-btns">
                     <button class="ai-quick-btn" onclick="event.stopPropagation(); document.getElementById('vhb-fab') && document.getElementById('vhb-fab').click()" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;border:none;cursor:pointer;">
-                        <i class="fa-solid fa-microphone mr-1"></i>AI se baat karein
+                        <i class="fa-solid fa-microphone mr-1"></i>{{ t('Voice Based Access') }}
                     </button>
                     <a href="{{ url_for('worker_signup_page') }}" class="ai-quick-btn">
-                        <i class="fa-solid fa-user-plus mr-1"></i>Worker Signup
+                        <i class="fa-solid fa-user-plus mr-1"></i>{{ t('Sign Up as Worker') }}
                     </a>
                     <a href="{{ url_for('login_page', role='worker') }}" class="ai-quick-btn">
-                        <i class="fa-solid fa-right-to-bracket mr-1"></i>Login
+                        <i class="fa-solid fa-right-to-bracket mr-1"></i>{{ t('Login') }}
                     </a>
                     <a href="#how-it-works" class="ai-quick-btn">
-                        <i class="fa-solid fa-circle-info mr-1"></i>How It Works
+                        <i class="fa-solid fa-circle-info mr-1"></i>{{ t('How It Works') }}
                     </a>
                 </div>
             </div>
@@ -174,34 +172,34 @@
 <!-- ── HOW IT WORKS ── -->
 <section class="how-section" id="how-it-works">
     <div class="container text-center">
-        <div class="section-label">Simple Process</div>
-        <h2 class="section-title">Get hired in 4 easy steps</h2>
-        <p class="section-desc">No complicated forms. No English required. Just your voice and skills.</p>
+        <div class="section-label">{{ t('Simple Process') }}</div>
+        <h2 class="section-title">{{ t('Get hired in 4 easy steps') }}</h2>
+        <p class="section-desc">{{ t('No complicated forms. No English required. Just your voice and skills.') }}</p>
 
         <div class="steps-grid">
             <div class="step-card">
                 <div class="step-num">1</div>
                 <div class="step-icon"><i class="fa-solid fa-globe"></i></div>
-                <h3>Choose Language</h3>
-                <p>Select your preferred regional language from the dropdown above.</p>
+                <h3>{{ t('Choose Language') }}</h3>
+                <p>{{ t('Select your preferred regional language from the dropdown above.') }}</p>
             </div>
             <div class="step-card">
                 <div class="step-num">2</div>
                 <div class="step-icon"><i class="fa-solid fa-microphone"></i></div>
-                <h3>Voice Profile</h3>
-                <p>Record a short voice intro about your skills. No typing needed.</p>
+                <h3>{{ t('Voice Profile') }}</h3>
+                <p>{{ t('Record a short voice intro about your skills. No typing needed.') }}</p>
             </div>
             <div class="step-card">
                 <div class="step-num">3</div>
                 <div class="step-icon"><i class="fa-solid fa-briefcase"></i></div>
-                <h3>Find Jobs</h3>
-                <p>Browse nearby opportunities that match your skills and location.</p>
+                <h3>{{ t('Find Jobs') }}</h3>
+                <p>{{ t('Browse nearby opportunities that match your skills and location.') }}</p>
             </div>
             <div class="step-card">
                 <div class="step-num">4</div>
                 <div class="step-icon"><i class="fa-solid fa-wallet"></i></div>
-                <h3>Get Paid</h3>
-                <p>Complete work, confirm via QR scan, and receive payment securely.</p>
+                <h3>{{ t('Get Work & Paid') }}</h3>
+                <p>{{ t('Complete jobs, receive secure digital payments and build reputation.') }}</p>
             </div>
         </div>
     </div>

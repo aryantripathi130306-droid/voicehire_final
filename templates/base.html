@@ -44,40 +44,6 @@
 </div>
 {% endblock %}
 
-<!-- AI Assistant Widget (shown on authenticated pages) -->
-{% if session.get('user_id') %}
-<div class="ai-widget" id="ai-widget">
-    <button class="ai-toggle-btn" id="ai-toggle-btn" title="{{ t('VoiceHire Assistant') }}" aria-label="{{ t('VoiceHire Assistant') }}">
-        <i class="fa-solid fa-robot"></i>
-    </button>
-    <div class="ai-panel" id="ai-panel">
-        <div class="ai-panel-header">
-            <div class="ai-panel-avatar"><i class="fa-solid fa-robot"></i></div>
-            <div>
-                <div class="ai-panel-title">{{ t('VoiceHire Assistant') }}</div>
-                <div class="ai-panel-status">● {{ t('Online · Voice Ready') }}</div>
-            </div>
-            <button class="ai-close" id="ai-close" aria-label="{{ t('Close') }}"><i class="fa-solid fa-xmark"></i></button>
-        </div>
-        <div class="ai-messages" id="ai-messages">
-            <div class="ai-msg bot">
-                <div class="ai-msg-bubble">{{ t('Hello! I am your VoiceHire assistant. How can I help you today?') }}</div>
-            </div>
-        </div>
-        <div class="ai-suggestions">
-            <span class="ai-sug" data-msg="{{ t('Find Jobs') }}">{{ t('Find Jobs') }}</span>
-            <span class="ai-sug" data-msg="{{ t('My Bookings') }}">{{ t('My Bookings') }}</span>
-            <span class="ai-sug" data-msg="{{ t('Wallet') }}">{{ t('Wallet') }}</span>
-            <span class="ai-sug" data-msg="{{ t('Voice Profile') }}">{{ t('Voice Profile') }}</span>
-        </div>
-        <div class="ai-input-row">
-            <input class="ai-input" id="ai-input" type="text" placeholder="{{ t('Type a message or tap mic...') }}" aria-label="{{ t('Type a message...') }}">
-            <button class="ai-mic-btn" id="ai-mic-btn" title="{{ t('Tap to Speak') }}" aria-label="{{ t('Tap to Speak') }}"><i class="fa-solid fa-microphone"></i></button>
-            <button class="ai-send-btn" id="ai-send-btn" aria-label="{{ t('Send') }}"><i class="fa-solid fa-paper-plane"></i></button>
-        </div>
-    </div>
-</div>
-{% endif %}
 
 <!-- Hidden AI translation prompts -->
 <div id="ai-prompts" style="display:none;">
@@ -154,8 +120,6 @@
 <script src="{{ url_for('static', filename='js/voice_services.js') }}"></script>
 <!-- Load unified AI assistant -->
 <script src="{{ url_for('static', filename='js/gateway_ai_assistant.js') }}"></script>
-<!-- Old bot only runs on signup/login/dashboard (gateway guard inside) -->
-<script src="{{ url_for('static', filename='js/voice_guide_bot.js') }}"></script>
 <script>
     // Toast utility
     function showToast(msg, type = 'info') {
@@ -167,141 +131,6 @@
         t.innerHTML = `<div class="toast-icon"><i class="fa-solid ${icons[type]||icons.info}"></i></div><p>${msg}</p><button class="toast-close" onclick="this.parentElement.remove()"><i class="fa-solid fa-xmark"></i></button>`;
         c.appendChild(t);
         setTimeout(() => t.remove(), 4000);
-    }
-
-    // AI Widget
-    const aiToggle = document.getElementById('ai-toggle-btn');
-    const aiPanel = document.getElementById('ai-panel');
-    const aiClose = document.getElementById('ai-close');
-    if (aiToggle) {
-        aiToggle.addEventListener('click', () => aiPanel.classList.toggle('open'));
-        aiClose && aiClose.addEventListener('click', () => aiPanel.classList.remove('open'));
-    }
-    document.querySelectorAll('.ai-sug').forEach(el => {
-        el.addEventListener('click', () => {
-            const msg = el.dataset.msg;
-            addAiMsg(msg, 'user');
-            setTimeout(() => addAiMsg(getAiReply(msg), 'bot'), 700);
-        });
-    });
-    const aiSend = document.getElementById('ai-send-btn');
-    const aiInput = document.getElementById('ai-input');
-    if (aiSend) {
-        aiSend.addEventListener('click', () => {
-            const v = aiInput.value.trim();
-            if (!v) return;
-            addAiMsg(v, 'user');
-            aiInput.value = '';
-            setTimeout(() => addAiMsg(getAiReply(v), 'bot'), 600);
-        });
-        aiInput && aiInput.addEventListener('keydown', e => { if (e.key === 'Enter') aiSend.click(); });
-    }
-
-    // Push-to-talk mic button for assistant (manual tap only, no auto-restart)
-    const aiMic = document.getElementById('ai-mic-btn');
-    if (aiMic) {
-        let assistantRecognition = null;
-        aiMic.addEventListener('click', function() {
-            const SpeechRec = window.SpeechRecognition || window.webkitSpeechRecognition;
-            if (!SpeechRec) {
-                showToast(window.VH.lang === 'pa' ? 'ਇਸ ਬ੍ਰਾਊਜ਼ਰ ਵਿੱਚ ਬੋਲਣ ਦੀ ਸਹੂਲਤ ਨਹੀਂ ਹੈ।' : (window.VH.lang === 'en' ? 'Speech recognition not supported in this browser.' : 'इस ब्राउज़र में स्पीच सपोर्ट नहीं है।'), 'warning');
-                return;
-            }
-            if (assistantRecognition) {
-                assistantRecognition.stop();
-                assistantRecognition = null;
-                aiMic.classList.remove('recording');
-                return;
-            }
-            assistantRecognition = new SpeechRec();
-            const langMap = { hi: 'hi-IN', pa: 'pa-IN', en: 'en-IN' };
-            assistantRecognition.lang = langMap[window.VH.lang] || 'hi-IN';
-            assistantRecognition.continuous = false;
-            assistantRecognition.interimResults = false;
-            aiMic.classList.add('recording');
-
-            assistantRecognition.onresult = function(e) {
-                const text = e.results[0][0].transcript;
-                aiMic.classList.remove('recording');
-                assistantRecognition = null;
-                if (aiInput) aiInput.value = text;
-                addAiMsg(text, 'user');
-                setTimeout(() => addAiMsg(getAiReply(text), 'bot'), 600);
-            };
-            assistantRecognition.onerror = function() {
-                aiMic.classList.remove('recording');
-                assistantRecognition = null;
-                showToast(window.VH.lang === 'pa' ? 'ਸਮਝ ਨਹੀਂ ਆਇਆ, ਦੁਬਾਰਾ ਕੋਸ਼ਿਸ਼ ਕਰੋ।' : (window.VH.lang === 'en' ? 'Could not recognize speech, please try typing.' : 'आवाज़ समझ नहीं आई, कृपया टाइप करें।'), 'info');
-            };
-            assistantRecognition.onend = function() {
-                aiMic.classList.remove('recording');
-                assistantRecognition = null;
-            };
-            assistantRecognition.start();
-        });
-    }
-
-    function addAiMsg(text, who) {
-        const msgs = document.getElementById('ai-messages');
-        if (!msgs) return;
-        const d = document.createElement('div');
-        d.className = `ai-msg ${who}`;
-        d.innerHTML = `<div class="ai-msg-bubble">${text}</div>`;
-        msgs.appendChild(d);
-        msgs.scrollTop = msgs.scrollHeight;
-    }
-    function getAiReply(msg) {
-        if (typeof window.customAiReply === 'function') {
-            const custom = window.customAiReply(msg);
-            if (custom) return custom;
-        }
-        const m = (msg || '').toLowerCase();
-        const lang = window.VH.lang || 'hi';
-        
-        if (lang === 'pa') {
-            if (m.includes('job') || m.includes('kaam') || m.includes('ਕੰਮ') || m.includes('ਨੌਕਰੀ')) {
-                return 'ਬਿਲਕੁਲ! ਤੁਹਾਡੇ ਇਲਾਕੇ ਵਿੱਚ ਕੰਮ ਲੱਭਣ ਲਈ <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">ਇੱਥੇ ਕਲਿੱਕ ਕਰੋ</a>।';
-            }
-            if (m.includes('wallet') || m.includes('payment') || m.includes('ਪੈਸੇ') || m.includes('ਕਮਾਈ')) {
-                return 'ਤੁਸੀਂ ਵਾਲਿਟ ਭਾਗ ਵਿੱਚ ਆਪਣੀ ਕੁੱਲ ਕਮਾਈ ਅਤੇ ਨਿਕਾਸੀ ਦੇਖ ਸਕਦੇ ਹੋ।';
-            }
-            if (m.includes('profile') || m.includes('voice') || m.includes('ਆਵਾਜ਼')) {
-                return 'ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ ਬਣਾਉਣਾ ਬਹੁਤ ਆਸਾਨ ਹੈ। ਮਾਈਕ੍ਰੋਫ਼ੋਨ ਆਈਕਨ \'ਤੇ ਟੈਪ ਕਰੋ ਅਤੇ ਬੋਲੋ!';
-            }
-            if (m.includes('booking') || m.includes('order') || m.includes('ਬੁਕਿੰਗ')) {
-                return 'ਤੁਹਾਡੀਆਂ ਸਾਰੀਆਂ ਬੁਕਿੰਗਾਂ "ਮੇਰਾ ਕੰਮ" (My Work) ਭਾਗ ਵਿੱਚ ਦਿਖਾਈ ਦੇਣਗੀਆਂ।';
-            }
-            return 'ਮੈਂ ਸਮਝ ਗਿਆ। ਕੀ ਤੁਹਾਨੂੰ ਕਿਸੇ ਹੋਰ ਮਦਦ ਦੀ ਲੋੜ ਹੈ? ਸਾਡੀ ਸਹਾਇਤਾ ਟੀਮ ਹਮੇਸ਼ਾ ਤਿਆਰ ਹੈ।';
-        } else if (lang === 'en') {
-            if (m.includes('job') || m.includes('work') || m.includes('hire')) {
-                return 'Sure! To find jobs near your location, <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">click here</a>.';
-            }
-            if (m.includes('wallet') || m.includes('payment') || m.includes('earning')) {
-                return 'You can track all your earnings and payout history in the Wallet section.';
-            }
-            if (m.includes('profile') || m.includes('voice')) {
-                return 'Creating a voice profile is simple. Tap the microphone button and speak clearly!';
-            }
-            if (m.includes('booking') || m.includes('order')) {
-                return 'All your active bookings can be tracked from the Bookings page.';
-            }
-            return 'Got it! Need help with something else? You can reach our support team anytime.';
-        } else {
-            // Hindi / Hinglish default
-            if (m.includes('job') || m.includes('kaam') || m.includes('काम') || m.includes('नौकरी')) {
-                return 'बिल्कुल! अपने इलाके में काम ढूँढने के लिए <a href="/dashboard/worker" style="color:var(--primary);font-weight:600">यहाँ क्लिक करें</a>।';
-            }
-            if (m.includes('wallet') || m.includes('payment') || m.includes('पैसे') || m.includes('कमाई')) {
-                return 'वॉलेट सेक्शन में आप अपनी कुल कमाई और भुगतान इतिहास देख सकते हैं।';
-            }
-            if (m.includes('profile') || m.includes('voice') || m.includes('आवाज़')) {
-                return 'वॉइस प्रोफाइल बनाना बहुत आसान है। माइक्रोफ़ोन आइकन पर टैप करें और बोलें!';
-            }
-            if (m.includes('booking') || m.includes('ऑर्डर') || m.includes('बुकिंग')) {
-                return 'आपकी सभी बुकिंग "माई बुकिंग्स" सेक्शन में मिलेंगी।';
-            }
-            return 'मैं समझ गया। कोई और मदद चाहिए? आप कभी भी सपोर्ट टीम से संपर्क कर सकते हैं।';
-        }
     }
 </script>
 {% block extra_scripts %}{% endblock %}
