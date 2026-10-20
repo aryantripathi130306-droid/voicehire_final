@@ -377,6 +377,22 @@ GENERAL_FAQ_TOPICS = {
             'en': "The assistant cannot manufacture or confirm bookings directly. All bookings and status changes must be executed authoritatively via the backend and verified on-site via secure QR tokens.",
             'pa': "ਸਹਾਇਕ ਸਿੱਧਾ ਬੁਕਿੰਗ ਨਹੀਂ ਬਣਾ ਸਕਦਾ। ਸਾਰੀਆਂ ਬੁਕਿੰਗਾਂ ਸਿਸਟਮ ਦੁਆਰਾ ਅਧਿਕਾਰਤ ਹੁੰਦੀਆਂ ਹਨ।"
         }
+    },
+    'login_guidance': {
+        'keywords': ['login kaise', 'how to login', 'help to login', 'login me madad', 'password bhool gaya', 'forgot password', 'signin kaise', 'login process', 'khata kholo'],
+        'answers': {
+            'hi': "लॉगिन करने के लिए लॉगिन पेज पर जाएँ और अपना पंजीकृत मोबाइल नंबर या ईमेल और पासवर्ड दर्ज करें। यदि पासवर्ड भूल गए हैं, तो 'Forgot Password' से नया पासवर्ड बना सकते हैं।",
+            'en': "To log in, go to the Login page and enter your registered phone number or email and password. If you forgot your password, tap 'Forgot Password' to reset it.",
+            'pa': "ਲੌਗਇਨ ਕਰਨ ਲਈ ਲੌਗਇਨ ਪੇਜ 'ਤੇ ਜਾਓ ਅਤੇ ਆਪਣਾ ਮੋਬਾਈਲ ਜਾਂ ਈਮੇਲ ਅਤੇ ਪਾਸਵਰਡ ਦਰਜ ਕਰੋ।"
+        }
+    },
+    'how_to_use_platform': {
+        'keywords': ['kaise use', 'how to use', 'guide me', 'website kaise chalaye', 'guide karo', 'kaise kaam kare', 'kaise shuru', 'use kaise'],
+        'answers': {
+            'hi': "VoiceHire का उपयोग बहुत सरल है: 1. बोलकर काम ढूँढें या कारीगर खोजें। 2. कार्यस्थल पर सुरक्षित QR कोड स्कैन करके कार्य शुरू करें। 3. कार्य पूरा होने पर बिना किसी कमीशन के सीधा भुगतान करें।",
+            'en': "Using VoiceHire is very easy: 1. Search for work or hire workers entirely by voice. 2. Verify on-site with secure QR check-in. 3. Pay directly with zero commissions upon completion.",
+            'pa': "VoiceHire ਦੀ ਵਰਤੋਂ ਬਹੁਤ ਆਸਾਨ ਹੈ: ਆਵਾਜ਼ ਨਾਲ ਕੰਮ ਲੱਭੋ, QR ਨਾਲ ਸ਼ੁਰੂ ਕਰੋ ਅਤੇ ਬਿਨਾਂ ਕਮਿਸ਼ਨ ਸਿੱਧਾ ਭੁਗਤਾਨ ਕਰੋ।"
+        }
     }
 }
 

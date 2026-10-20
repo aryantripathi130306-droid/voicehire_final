@@ -238,11 +238,17 @@ INTENT_LEXICON = {
     ],
     'action_login': [
         'login', 'log in', 'pehle se', 'purana', 'sign in', 'signin', 'account hai',
-        'already', 'purani id', 'khata hai', 'dakhil', 'open account', 'open my account', 'mera account'
+        'already', 'purani id', 'khata hai', 'dakhil', 'open account', 'open my account', 'mera account',
+        'help me login', 'help to login', 'login me madad', 'login karna', 'login kaise', 'how to login',
+        'want to login', 'apna account', 'login karwao'
     ],
     'action_register': [
         'register', 'registration', 'create', 'new', 'naya', 'profile', 'sign up',
         'signup', 'khata banana', 'naya account', 'shuru'
+    ],
+    'platform_guide': [
+        'kaise use', 'how to use', 'guide me', 'website kaise', 'kaise chalaye', 'guide karo',
+        'how it works', 'kaise kaam karta', 'kya hai'
     ],
     'cancel': [
         'cancel', 'stop', 'ruko', 'band', 'hatao', 'nahi chahiye', 'chhoro', 'rehndo',

@@ -107,6 +107,104 @@
       or: "ବହୁତ ଭଲ! ଏବେ ଆମେ ଓଡ଼ିଆରେ କଥାବାର୍ତ୍ତା କରିବା।",
       ur: "بہت اچھا! اب ہم اردو میں بات کریں گے۔"
     },
+    googleAssistantWelcome: {
+      hi: "नमस्ते! अब हम हिंदी में बात करेंगे। आप VoiceHire पर क्या करना चाहते हैं? जैसे: 'लॉग इन करना है', 'नया खाता बनाना है', 'मुझे काम चाहिए', या 'कारीगर ढूँढना है'। आप बस बोलकर बताइए!",
+      pa: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਹੁਣ ਅਸੀਂ ਪੰਜਾਬੀ ਵਿੱਚ ਗੱਲ ਕਰਾਂਗੇ। ਤੁਸੀਂ VoiceHire 'ਤੇ ਕੀ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ? ਜਿਵੇਂ: 'ਲੌਗਇਨ ਕਰਨਾ ਹੈ', 'ਨਵਾਂ ਖਾਤਾ ਬਣਾਉਣਾ ਹੈ', ਜਾਂ 'ਕੰਮ ਲੱਭਣਾ ਹੈ'। ਬੱਸ ਬੋਲ ਕੇ ਦੱਸੋ!",
+      en: "Hello! We are now speaking in English. What would you like to do on VoiceHire? For example: 'log in', 'create an account', 'find work', or 'hire a worker'. Just speak to me!",
+      bn: "নমস্কার! এখন আমরা বাংলায় কথা বলব। আপনি VoiceHire-এ কী করতে চান? যেমন: 'লগ ইন', 'নতুন অ্যাকাউন্ট', বা 'কাজ খোঁজা'। শুধু বলুন!",
+      mr: "नमस्कार! आता आपण मराठीत बोलूया. तुम्हाला VoiceHire वर काय करायचे आहे? जसे: 'लॉग इन करा', 'नवीन खाते तयार करा', किंवा 'काम हवे आहे'. फक्त बोलून सांगा!",
+      ta: "வணக்கம்! இப்போது தமிழில் பேசுவோம். VoiceHire-ல் நீங்கள் என்ன செய்ய விரும்புகிறீர்கள்? உள்நுழைவு, புதிய கணக்கு அல்லது வேலை தேட? பேசுங்கள்!",
+      te: "నమస్కారం! ఇప్పుడు మనం తెలుగులో మాట్లాడదాం. VoiceHireలో మీరు ఏమి చేయాలనుకుంటున్నారు? లాగిన్, కొత్త ఖాతా లేదా పని వెతకడం? మాట్లాడండి!",
+      gu: "નમસ્તે! હવે આપણે ગુજરાતીમાં વાત કરીશું. તમે VoiceHire પર શું કરવા માંગો છો? જેમ કે: 'લૉગ ઇન કરવું', 'નવું ખાતું બનાવવું', અથવા 'કામ શોધવું'. ફક્ત બોલો!",
+      kn: "ನಮಸ್ಕಾರ! ಈಗ ನಾವು ಕನ್ನಡದಲ್ಲಿ ಮಾತನಾಡೋಣ. VoiceHire ನಲ್ಲಿ మీరు ఏమి చేయాలనుకుంటున్నారు? ಲಾಗಿನ್, ಹೊಸ ಖಾತೆ, ಅಥವಾ ಕೆಲಸ ಹುಡುಕುವುದು? ಮಾತನಾಡಿ!",
+      ml: "നമസ്കാരം! ഇനി മലയാളത്തിൽ സംസാരിക്കാം. VoiceHire-ൽ നിങ്ങൾക്ക് എന്ത് സഹായമാണ് വേണ്ടത്? ലോഗിൻ, പുതിയ അക്കൗണ്ട്, അല്ലെങ്കിൽ ജോലി കണ്ടെത്തൽ? പറയൂ!",
+      or: "ନମସ୍କାର! ଏବେ ଆମେ ଓଡ଼ିଆରେ କଥାବାର୍ତ୍ତା କରିବା। ଆପଣ VoiceHire ରେ କଣ କରିବାକୁ ଚାହାଁନ୍ତି? ଲଗ୍ ଇନ୍, ନୂଆ ଖାତା କିମ୍ବା କାମ ଖୋଜିବା? କୁହନ୍ତୁ!",
+      ur: "سلام! اب ہم اردو میں بات کریں گے۔ آپ VoiceHire پر کیا کرنا چاہتے ہیں؟ جیسے: لاگ ان، نیا اکاؤنٹ بنانا، یا کام تلاش کرنا؟ بس بول کر بتائیے!"
+    },
+    loginVoiceGuidance: {
+      hi: "जी हाँ! मैं आपको सीधे लॉगिन पेज पर ले जा रहा हूँ। वहाँ आप अपना मोबाइल नंबर या ईमेल डालकर सुरक्षित तरीके से पासवर्ड दर्ज करें। चलिए लॉगिन पेज खोलते हैं।",
+      pa: "ਹਾਂ ਜੀ! ਮੈਂ ਤੁਹਾਨੂੰ ਸਿੱਧਾ ਲੌਗਇਨ ਪੇਜ 'ਤੇ ਲੈ ਕੇ ਜਾ ਰਿਹਾ ਹਾਂ। ਉੱਥੇ ਤੁਸੀਂ ਆਪਣਾ ਮੋਬਾਈਲ ਜਾਂ ਈਮੇਲ ਪਾ ਕੇ ਲੌਗਇਨ ਕਰ ਸਕਦੇ ਹੋ।",
+      en: "Certainly! Taking you directly to the Login page now. You can enter your registered mobile number or email and enter your password safely.",
+      bn: "অবশ্যই! আপনাকে সরাসরি লগইন পেজে নিয়ে যাচ্ছি। সেখানে মোবাইল বা ইমেইল দিয়ে লগইন করুন।",
+      mr: "नक्कीच! मी तुम्हाला थेट लॉगिन पेजवर घेऊन जात आहे. तिथे मोबाईल नंबर किंवा ईमेल टाकून लॉगिन करा.",
+      ta: "நிச்சயமாக! உங்களை உள்நுழைவு பக்கத்திற்கு அழைத்துச் செல்கிறேன். உங்கள் விவரங்களை உள்ளிட்டு உள்நுழையவும்.",
+      te: "ఖచ్చితంగా! మిమ్మల్ని లాగిన్ పేజీకి తీసుకువెళుతున్నాను. అక్కడ మీ వివరాలతో లాగిన్ అవ్వండి.",
+      gu: "ચોક્કસ! હું તમને સીધા લૉગિન પેજ પર લઈ જઈ રહ્યો છું. ત્યાં તમારો નંબર અથવા ઈમેલ દાખલ કરીને લૉગિન કરો.",
+      kn: "ಖಂಡಿತ! ನಿಮ್ಮನ್ನು ಲಾಗಿನ್ ಪುಟಕ್ಕೆ ಕರೆದೊಯ್ಯುತ್ತಿದ್ದೇನೆ. ಅಲ್ಲಿ ನಿಮ್ಮ ವಿವರಗಳೊಂದಿಗೆ ಲಾಗಿನ್ ಆಗಿ.",
+      ml: "തീർച്ചയായും! നിങ്ങളെ ലോഗിൻ പേജിലേക്ക് കൊണ്ടുപോകുന്നു. അവിടെ നിങ്ങളുടെ വിവരങ്ങൾ നൽകി ലോഗിൻ ചെയ്യുക.",
+      or: "ନିଶ୍ଚୟ! ମୁଁ ଆପଣଙ୍କୁ ସିଧାସଳଖ ଲଗ୍ ଇନ୍ ପୃଷ୍ଠାକୁ ନେଇ ଯାଉଛି।",
+      ur: "ضرور! میں آپ کو لاگ ان صفحے پر لے جا رہا ہوں۔ وہاں موبائل یا ای میل درج کر کے لاگ ان کریں۔"
+    },
+    howPlatformWorks: {
+      hi: "VoiceHire भारत का पहला AI वॉयस प्लेटफ़ॉर्म है! 1. आप बिना टाइप किए, सीधे बोलकर काम ढूँढ सकते हैं या लोकल कारीगर बुक कर सकते हैं। 2. जब कामगार आता है तो सुरक्षित QR कोड स्कैन होता है। 3. काम पूरा होने पर आप सीधे नकद या UPI से भुगतान करते हैं। यहाँ कोई कमीशन नहीं कटता!",
+      pa: "VoiceHire ਭਾਰਤ ਦਾ ਪਹਿਲਾ AI ਆਵਾਜ਼ ਪਲੇਟਫਾਰਮ ਹੈ! ਇੱਥੇ ਤੁਸੀਂ ਬੋਲ ਕੇ ਕੰਮ ਲੱਭ ਸਕਦੇ ਹੋ ਜਾਂ ਕਾਰੀਗਰ ਬੁੱਕ ਕਰ ਸਕਦੇ ਹੋ। QR ਕੋਡ ਸਕੈਨ ਨਾਲ ਕੰਮ ਸ਼ੁਰੂ ਹੁੰਦਾ ਹੈ ਅਤੇ ਸਿੱਧਾ ਭੁਗਤਾਨ ਹੁੰਦਾ ਹੈ!",
+      en: "VoiceHire is India's first AI voice platform! 1. Find jobs or hire verified local pros entirely by voice. 2. When the pro arrives, verify check-in with a secure QR code. 3. Pay directly with zero commissions upon job completion!",
+      bn: "VoiceHire ভারতের প্রথম AI ভয়েস প্ল্যাটফর্ম! কথা বলে কাজ খুঁজুন বা কর্মী বুক করুন। QR স্ক্যান দিয়ে কাজ শুরু হয় এবং সরাসরি পেমেন্ট হয়।",
+      mr: "VoiceHire हे भारतातील पहिले AI व्हॉईस प्लॅटफॉर्म आहे! बोलून काम शोधा किंवा कामगार बुक करा. सुरक्षित QR कोड आणि थेट पेमेंटची सोय आहे.",
+      ta: "VoiceHire இந்தியாவின் முதல் AI குரல் தளம்! குரல் மூலம் வேலை தேடுங்கள் அல்லது தொழிலாளர்களை பதிவு செய்யுங்கள். பூஜ்ஜிய கமிஷன்!",
+      te: "VoiceHire భారతదేశపు మొట్టమొదటి AI వాయిస్ ప్లాట్‌ఫామ్! మాట్లాడి పని వెతకండి లేదా వర్కర్లను బుక్ చేయండి. జీరో కమిషన్!",
+      gu: "VoiceHire ભારતનું પહેલું AI વૉઇસ પ્લેટફોર્મ છે! બોલીને કામ શોધો અથવા કારીગર બુક કરો. સીધું પેમેન્ટ અને કોઈ કમિશન નહીં!",
+      kn: "VoiceHire ಭಾರತದ ಮೊದಲ AI ಧ್ವನಿ ವೇದಿಕೆ! ಧ್ವನಿ ಮೂಲಕ ಕೆಲಸ ಹುಡುಕಿ ಅಥವಾ ಕೆಲಸಗಾರರನ್ನು ಬುಕ್ ಮಾಡಿ. ಯಾವುದೇ ಕಮಿಷನ್ ಇಲ್ಲ!",
+      ml: "VoiceHire ഇന്ത്യയിലെ ആദ്യത്തെ AI വോയ്‌സ് പ്ലാറ്റ്‌ഫോമാണ്! സംസാരിച്ച് ജോലി കണ്ടെത്തൂ അല്ലെങ്കിൽ തൊഴിലാളികളെ ബുക്ക് ചെയ്യൂ.",
+      or: "VoiceHire ଭାରତର ପ୍ରଥମ AI ଭଏସ୍ ପ୍ଲାଟଫର୍ମ! କହିକି କାମ ଖୋଜନ୍ତୁ କିମ୍ବା କାରିଗର ବୁକ୍ କରନ୍ତୁ।",
+      ur: "VoiceHire بھارت کا پہلا AI وائس پلیٹ فارم ہے! بول کر کام تلاش کریں یا ورکر بک کریں۔ صفر کمیشن اور براہ راست ادائیگی!"
+    },
+    aiAssistantIdentity: {
+      hi: "नमस्ते! मैं VoiceHire का AI वॉयस असिस्टेंट हूँ, ठीक Google Assistant की तरह। आप मुझसे बोलकर लॉगिन कर सकते हैं, खाता बना सकते हैं, काम ढूँढ सकते हैं या कारीगर बुक कर सकते हैं। बताइए, मैं आपकी क्या सेवा करूँ?",
+      pa: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! ਮੈਂ VoiceHire ਦਾ AI ਆਵਾਜ਼ ਸਹਾਇਕ ਹਾਂ, Google Assistant ਵਾਂਗ। ਤੁਸੀਂ ਮੈਨੂੰ ਬੋਲ ਕੇ ਲੌਗਇਨ, ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਜਾਂ ਕੰਮ ਲੱਭਣ ਲਈ ਕਹਿ ਸਕਦੇ ਹੋ।",
+      en: "Hello! I am your VoiceHire AI Assistant, just like Google Assistant. You can speak to me naturally to log in, register, find jobs, or hire workers. How can I help you?",
+      bn: "নমস্কার! আমি VoiceHire-এর AI ভয়েস সহকারী, ঠিক Google Assistant-এর মতো। আপনি কথা বলে লগইন, রেজিস্টার বা কাজ খুঁজতে পারেন।",
+      mr: "नमस्कार! मी VoiceHire चा AI व्हॉईस असिस्टंट आहे. तुम्ही बोलून लॉगिन, नोंदणी किंवा काम शोधू शकता. सांगा, मी काय मदत करू?",
+      ta: "வணக்கம்! நான் VoiceHire-ன் AI குரல் உதவியாளர். குரல் மூலம் உள்நுழைய, பதிவு செய்ய அல்லது வேலை தேடலாம். நான் என்ன உதவ வேண்டும்?",
+      te: "నమస్కారం! నేను VoiceHire AI వాయిస్ అసిస్టెంట్‌ని. లాగిన్, రిజిస్ట్రేషన్ లేదా పని వెతకడానికి మాట్లాడండి. నేను మీకు ఎలా సహాయపడగలను?",
+      gu: "નમસ્તે! હું VoiceHire નો AI વૉઇસ આસિસ્ટન્ટ છું. તમે બોલીને લૉગિન, રજીસ્ટ્રેશન કે કામ શોધી શકો છો. કહો, હું શું મદદ કરું?",
+      kn: "ನಮಸ್ಕಾರ! ನಾನು VoiceHire AI ಧ್ವನಿ ಸಹಾಯಕ. ಮಾತನಾಡಿ ಲಾಗಿನ್, ನೋಂದಣಿ ಅಥವಾ ಕೆಲಸ ಹುಡುಕಬಹುದು. ನಾನು ಹೇಗೆ ಸಹಾಯ ಮಾಡಲಿ?",
+      ml: "നമസ്കാരം! ഞാൻ VoiceHire-ന്റെ AI വോയ്‌സ് അസിസ്റ്റന്റാണ്. സംസാരിച്ച് ലോഗಿൻ ചെയ്യാനും ജോലി കണ്ടെത്താനും സഹായിക്കാം.",
+      or: "ନମସ୍କାର! ମୁଁ VoiceHire ର AI ଭଏସ୍ ଆସିଷ୍ଟାଣ୍ଟ। ଆପଣ କହିକି ଲଗ୍ ଇନ୍, ପଞ୍ଜୀକରଣ କିମ୍ବା କାମ ଖୋଜିପାରିବେ।",
+      ur: "سلام! میں VoiceHire کا AI آواز معاون ہوں۔ آپ مجھ سے بول کر لاگ ان، رجسٹریشن، یا کام تلاش کر سکتے ہیں۔ بتائیے میں کیا مدد کروں؟"
+    },
+    workerSignupGuidance: {
+      hi: "शानदार! चलिए आपका मुफ़्त वर्कर खाता बनाते हैं। मैं आपको वर्कर रजिस्ट्रेशन पेज पर ले चल रहा हूँ।",
+      pa: "ਬਹੁਤ ਵਧੀਆ! ਚਲੋ ਤੁਹਾਡਾ ਮੁਫ਼ਤ ਵਰਕਰ ਖਾਤਾ ਬਣਾਉਂਦੇ ਹਾਂ। ਤੁਹਾਨੂੰ ਰਜਿਸਟ੍ਰੇਸ਼ਨ ਪੇਜ 'ਤੇ ਲਿਜਾਇਆ ਜਾ ਰਿਹਾ ਹੈ।",
+      en: "Awesome! Let's set up your free Worker profile. Taking you to the worker registration page now.",
+      bn: "দারুণ! চলুন আপনার কর্মী অ্যাকাউন্ট তৈরি করি। রেজিস্ট্রেশন পেজে নিয়ে যাচ্ছি।",
+      mr: "छान! चला तुमचे कामगार खाते तयार करूया. तुम्हाला नोंदणी पृष्ठावर घेऊन जात आहे.",
+      ta: "அற்புதம்! தொழிலாளர் கணக்கை உருவாக்குவோம். பதிவு பக்கத்திற்கு அழைத்துச் செல்கிறேன்.",
+      te: "అద్భుతం! మీ వర్కర్ ఖాతాను సృష్టిద్దాం. రిజిస్ట్రేషన్ పేజీకి తీసుకువెళుతున్నాను.",
+      gu: "સરસ! ચાલો તમારું વર્કર ખાતું બનાવીએ. રજીસ્ટ્રેશન પેજ પર લઈ જઈ રહ્યો છું.",
+      kn: "ಉತ್ತಮ! ನಿಮ್ಮ ವರ್ಕರ್ ಖಾತೆಯನ್ನು ರಚಿಸೋಣ. ನೋಂದಣಿ ಪುಟಕ್ಕೆ ಕರೆದೊಯ್ಯುತ್ತಿದ್ದೇನೆ.",
+      ml: "വളരെ നല്ലത്! തൊഴിലാളി അക്കൗണ്ട് ഉണ്ടാക്കാം. രജിസ്ട്രേഷൻ പേജിലേക്ക് പോകുന്നു.",
+      or: "ବହୁତ ଭଲ! ଚାଲନ୍ତୁ ଆପଣଙ୍କ ଶ୍ରମିକ ଖାତା ତିଆରି କରିବା।",
+      ur: "شاندار! چلیے آپ کا ورکر اکاؤنٹ بناتے ہیں۔ رجسٹریشن صفحے پر لے جا رہا ہوں۔"
+    },
+    customerBookingGuidance: {
+      hi: "जी ज़रूर! VoiceHire पर हज़ारों वेरिफ़ाइड प्लंबर, इलेक्ट्रीशियन और कारीगर उपलब्ध हैं। आइए मैं आपको कारीगरों की सूची दिखाता हूँ।",
+      pa: "ਹਾਂ ਜੀ! VoiceHire 'ਤੇ ਹਜ਼ਾਰਾਂ ਪ੍ਰਮਾਣਿਤ ਕਾਰੀਗਰ ਉਪਲਬਧ ਹਨ। ਆਓ ਮੈਂ ਤੁਹਾਨੂੰ ਕਾਰੀਗਰਾਂ ਦੀ ਸੂਚੀ ਦਿਖਾਉਂਦਾ ਹਾਂ।",
+      en: "Certainly! VoiceHire has thousands of verified plumbers, electricians, and helpers. Taking you to the workers directory.",
+      bn: "অবশ্যই! VoiceHire-এ যাচাইকৃত কারিগররা আছেন। কর্মীদের তালিকায় নিয়ে যাচ্ছি।",
+      mr: "नक्कीच! VoiceHire वर हजारो पडताळणी केलेले कामगार उपलब्ध आहेत. कामगारांची यादी दाखवतो.",
+      ta: "நிச்சயமாக! VoiceHire-ல் சரிபார்க்கப்பட்ட தொழிலாளர்கள் உள்ளனர். தொழிலாளர் பட்டியலைக் காட்டுகிறேன்.",
+      te: "ఖచ్చితంగా! VoiceHireలో వేలాది మంది వెరిఫైడ్ వర్కర్లు ఉన్నారు. వర్కర్ల లిస్ట్‌ని చూపిస్తాను.",
+      gu: "ચોક્કસ! VoiceHire પર હજારો વેરિફાઇડ કારીગરો ઉપલબ્ધ છે. કારીગરોની યાદી બતાવું છું.",
+      kn: "ಖಂಡಿತ! VoiceHire ನಲ್ಲಿ ಪರಿಶೀಲಿಸಿದ ಕೆಲಸಗಾರರಿದ್ದಾರೆ. ಕೆಲಸಗಾರರ ಪಟ್ಟಿಯನ್ನು ತೋರಿಸುತ್ತೇನೆ.",
+      ml: "തീർച്ചയായും! VoiceHire-ൽ പരിശോധിച്ചുറപ്പിച്ച തൊഴിലാളികളുണ്ട്. ലിസ്റ്റിലേക്ക് കൊണ്ടുപോകുന്നു.",
+      or: "ନିଶ୍ଚୟ! VoiceHire ରେ ଯାଞ୍ଚ ହୋଇଥିବା କାରିଗରମାନେ ଅଛନ୍ତି।",
+      ur: "ضرور! VoiceHire پر ہزاروں تصدیق شدہ ورکرز موجود ہیں۔ ورکرز کی فہرست دکھاتا ہوں۔"
+    },
+    forgotPasswordGuidance: {
+      hi: "यदि आप पासवर्ड भूल गए हैं, तो चिंता न करें। लॉगिन पेज पर 'Forgot Password' से नया पासवर्ड बना सकते हैं। चलिए लॉगिन पेज पर चलते हैं।",
+      pa: "ਜੇ ਤੁਸੀਂ ਪਾਸਵਰਡ ਭੁੱਲ ਗਏ ਹੋ ਤਾਂ ਚਿੰਤਾ ਨਾ ਕਰੋ। ਲੌਗਇਨ ਪੇਜ 'ਤੇ Forgot Password ਨਾਲ ਨਵਾਂ ਪਾਸਵਰਡ ਬਣਾ ਸਕਦੇ ਹੋ।",
+      en: "No worries! You can reset your password using the 'Forgot Password' option on the Login page. Taking you there now.",
+      bn: "পাসওয়ার্ড ভুলে গেলে চিন্তা নেই। লগইন পেজে 'Forgot Password' থেকে নতুন পাসওয়ার্ড সেট করতে পারেন।",
+      mr: "पासवर्ड विसरला असाल तरी काळजी करू नका. लॉगिन पेजवर 'Forgot Password' द्वारे नवीन पासवर्ड तयार करा.",
+      ta: "கடவுச்சொல் மறந்துவிட்டால் கவலைப்பட வேண்டாம். உள்நுழைவு பக்கத்தில் மாற்றிக்கொள்ளலாம்.",
+      te: "పాస్‌వర్డ్ మర్చిపోతే చింతించకండి. లాగిన్ పేజీలో రీసెట్ చేసుకోవచ్చు.",
+      gu: "પાસવર્ડ ભૂલી ગયા હોવ તો ચિંતા કરશો નહીં. લૉગિન પેજ પરથી નવો પાસવર્ડ બનાવી શકો છો.",
+      kn: "ಪಾಸ್‌ವರ್ಡ್ ಮರೆತಿದ್ದರೆ ಚಿಂತಿಸಬೇಡಿ. ಲಾಗಿನ್ ಪುಟದಲ್ಲಿ ಮರುಹೊಂದಿಸಬಹುದು.",
+      ml: "പാസ്‌വേഡ് മറന്നുപോയെങ്കിൽ വിഷമിക്കേണ്ട. ലോഗിൻ പേജിൽ റീസെറ്റ് ചെയ്യാം.",
+      or: "ପାସୱାର୍ଡ ଭୁଲିଯାଇଥିଲେ ଚିନ୍ତା କରନ୍ତୁ ନାହିଁ। ଲଗ୍ ଇନ୍ ପୃଷ୍ଠାରେ ରିସେଟ୍ କରିପାରିବେ।",
+      ur: "اگر پاس ورڈ بھول گئے ہیں تو پریشان نہ ہوں۔ لاگ ان پیج پر نیا پاس ورڈ بنا سکتے ہیں۔"
+    },
     askRole: {
       hi: "क्या आपको काम चाहिए या आप किसी काम के लिए वर्कर को रखना चाहते हैं?",
       pa: "ਕੀ ਤੁਹਾਨੂੰ ਕੰਮ ਚਾਹੀਦਾ ਹੈ ਜਾਂ ਤੁਸੀਂ ਕਿਸੇ ਕੰਮ ਲਈ ਵਰਕਰ ਨੂੰ ਹਾਇਰ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ?",
@@ -1830,6 +1928,95 @@
       this.addMessage(text, 'user');
       this.saveSession();
 
+      const lower = text.toLowerCase().trim();
+
+      // 1. Google Assistant: Voice-Driven Language Change across all states
+      for (const [code, meta] of Object.entries(LANGUAGES)) {
+        const langRegex = new RegExp(`\\b(${meta.name.toLowerCase()}|${meta.native.toLowerCase()}|${code})\\b`, 'i');
+        const changeWords = /change|switch|bolo|speak|language|bhasha|boliye/;
+        if (langRegex.test(lower) && (changeWords.test(lower) || lower.split(/\s+/).length <= 2)) {
+          this.setLanguage(code, true);
+          return;
+        }
+      }
+
+      // If user is actively answering a mandatory profile question, let profile collector capture it
+      if (this.state === States.COLLECTING_PROFILE_FIELDS && this.workerProfilePendingField) {
+        this.handleWorkerProfileAnswer(text);
+        return;
+      }
+      if (this.state === States.AWAITING_PROFILE_CONFIRMATION) {
+        this.handleProfileConfirmationAnswer(text);
+        return;
+      }
+
+      // 2. Google Assistant: Login Intent ("मुझे लॉगिन करना है", "help me login", "sign in", etc.)
+      if (/\b(login|log in|signin|sign in|khata kholo|account kholna|account open|pehle se account|purana account|mera account|login kaise|login me madad|help to login|help me login|i want to login|apna account|login karwao)\b/i.test(lower)) {
+        this.handleGoogleLoginIntent();
+        return;
+      }
+
+      // 3. Google Assistant: How to Use / Platform Guide Intent ("यह कैसे काम करता है", "guide me", etc.)
+      if (/\b(kaise use kare|how to use|kaise kaam karta hai|guide me|website kya hai|what is voicehire|kya hota hai|batao kaise|help me use|kya suvidha|guide karo)\b/i.test(lower)) {
+        this.handleGoogleGuideIntent();
+        return;
+      }
+
+      // 4. Google Assistant: Worker / Job Seeker Intent ("मुझे काम चाहिए", "नौकरी", "मैं प्लंबर हूँ")
+      if (/\b(worker|kaam chahiye|rozgar|naukri|job chahiye|job dhundh|majdoor|mistri hu|plumber hu|electrician hu|carpenter hu|driver hu|helper hu|labor|i want work|find work)\b/i.test(lower)) {
+        this.selectedRole = 'worker';
+        const detectedTrade = detectTradeFromText(text);
+        if (detectedTrade) this.workerProfile.work = detectedTrade;
+        const msg = DIALOGUES.workerSignupGuidance[this.currentLang] || DIALOGUES.workerSignupGuidance.hi;
+        this.addMessage(msg, 'bot');
+        this.lastInstruction = msg;
+        this.state = States.AUTH_IN_PROGRESS;
+        this.saveSession();
+        this.speak(msg, this.currentLang).finally(() => {
+          setTimeout(() => { window.location.href = '/signup/worker'; }, 600);
+        });
+        return;
+      }
+
+      // 5. Google Assistant: Customer / Hire Worker Intent ("प्लंबर चाहिए", "इलेक्ट्रीशियन भेजो", "hire worker")
+      if (/\b(customer|maalik|booking|hire|bulao|chahiye|nal theek|plumber chahiye|electrician chahiye|mistri chahiye|maid chahiye|safai wali|book worker|need worker)\b/i.test(lower)) {
+        this.selectedRole = 'user';
+        const msg = DIALOGUES.customerBookingGuidance[this.currentLang] || DIALOGUES.customerBookingGuidance.hi;
+        this.addMessage(msg, 'bot');
+        this.lastInstruction = msg;
+        this.saveSession();
+        this.speak(msg, this.currentLang).finally(() => {
+          setTimeout(() => { window.location.href = '/workers'; }, 600);
+        });
+        return;
+      }
+
+      // 6. Google Assistant: Sign Up / Register Intent ("नया खाता बनाना है", "register", "create account")
+      if (/\b(register|signup|sign up|naya khata|create account|new account|naya account|khata banana|join)\b/i.test(lower)) {
+        this.showRoleSelection();
+        return;
+      }
+
+      // 7. Google Assistant: Identity / Greeting Intent ("नमस्ते", "तुम कौन हो", "who are you")
+      if (/\b(namaste|hello|hi|hey|kya hal|tum kaun ho|who are you|what can you do|apna naam batao|parichay)\b/i.test(lower)) {
+        const greeting = DIALOGUES.aiAssistantIdentity[this.currentLang] || DIALOGUES.aiAssistantIdentity.hi;
+        this.addMessage(greeting, 'bot');
+        this.lastInstruction = greeting;
+        this.speak(greeting, this.currentLang);
+        return;
+      }
+
+      // 8. Google Assistant: Forgot Password Intent ("पासवर्ड भूल गया", "forgot password")
+      if (/\b(password bhool gaya|forgot password|password reset|password yaad nahi|naya password)\b/i.test(lower)) {
+        const fpMsg = DIALOGUES.forgotPasswordGuidance[this.currentLang] || DIALOGUES.forgotPasswordGuidance.hi;
+        this.addMessage(fpMsg, 'bot');
+        this.lastInstruction = fpMsg;
+        this.speak(fpMsg, this.currentLang).finally(() => {
+          setTimeout(() => { window.location.href = '/login'; }, 600);
+        });
+        return;
+      }
+
       // State machine branching
       if (this.state === States.GREETING || this.state === States.LANGUAGE_SELECT) {
         this.handleLanguageChoiceUtterance(text);
@@ -1837,10 +2024,6 @@
         this.handleRoleChoiceUtterance(text);
       } else if (this.state === States.ACTION_SELECT) {
         this.handleActionChoiceUtterance(text);
-      } else if (this.state === States.COLLECTING_PROFILE_FIELDS && this.workerProfilePendingField) {
-        this.handleWorkerProfileAnswer(text);
-      } else if (this.state === States.AWAITING_PROFILE_CONFIRMATION) {
-        this.handleProfileConfirmationAnswer(text);
       } else {
         // General conversational turn through Orchestration Engine API
         this.executeGeneralVoiceIntent(text, confidence);
@@ -2308,31 +2491,112 @@
       document.cookie = `voicehire_lang=${code}; path=/; max-age=2592000; SameSite=Lax`;
       if (window.VH) window.VH.lang = code;
 
-      // Confirmation message in selected language
-      const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
-      this.addMessage(confirmText, 'bot');
-
-      // Update session state so assistant restores seamlessly on reloaded page
+      // Update assistant state
       this.currentLang = code;
-      this.state = States.ROLE_SELECT;
-      this.langJustSelected = true;
+      this.state = States.ACTION_SELECT;
+      this.langJustSelected = false;
       this.saveSession();
+
+      // Synchronize with server session & database via background AJAX (never reloads!)
+      try {
+        fetch('/set_lang/' + encodeURIComponent(code), {
+          headers: { 'Accept': 'application/json' }
+        }).catch(() => {});
+      } catch (e) {}
+
+      // Update navbar language label if present
+      const langLabel = document.getElementById('current-lang-label');
+      if (langLabel) {
+        langLabel.textContent = (code || 'hi').toUpperCase();
+      }
+
+      // Update drawer cards
+      if (this.dom.langDrawer) {
+        this.dom.langDrawer.querySelectorAll('.vh-lang-card').forEach(c => {
+          c.classList.toggle('selected', c.dataset.code === code);
+        });
+        this.dom.langDrawer.classList.remove('is-open');
+      }
 
       // Immediate client-side live translation for instant feedback
       this.liveTranslatePage(code);
 
-      // Speak confirmation in chosen language, then reload entire website via /set_lang/<code>
-      let navDone = false;
-      const doNavigate = () => {
-        if (navDone) return;
-        navDone = true;
-        window.location.href = '/set_lang/' + encodeURIComponent(code);
-      };
+      // Transition smoothly into Google Assistant Conversational Flow without reload!
+      this.showGoogleAssistantWelcome(code);
+    }
 
-      // Set fallback timeout so navigation never hangs
-      setTimeout(doNavigate, 1500);
+    showGoogleAssistantWelcome(code) {
+      const lang = code || this.currentLang || 'hi';
+      const welcomeText = DIALOGUES.googleAssistantWelcome[lang] || DIALOGUES.googleAssistantWelcome.hi;
 
-      this.speak(confirmText, code).then(doNavigate).catch(doNavigate);
+      this.addMessage(welcomeText, 'bot');
+      this.lastInstruction = welcomeText;
+      this.state = States.ACTION_SELECT;
+      this.saveSession();
+
+      // Render interactive suggestion action chips
+      const choices = document.createElement('div');
+      choices.className = 'vh-choices';
+      choices.style.cssText = 'display:flex; flex-direction:column; gap:6px; margin-top:8px;';
+
+      const pills = [
+        { icon: 'fa-right-to-bracket', text: DIALOGUES.actionLogin[lang] || 'Log In', sub: 'खाते में प्रवेश करें', action: () => this.handleGoogleLoginIntent() },
+        { icon: 'fa-user-plus', text: DIALOGUES.actionRegister[lang] || 'Sign Up', sub: 'नया खाता बनाएं', action: () => this.showRoleSelection() },
+        { icon: 'fa-helmet-safety', text: DIALOGUES.roleWorker[lang] || 'I Want Work (Worker)', sub: 'लोकल नौकरियाँ खोजें', action: () => { this.selectedRole = 'worker'; this.navigateToTargetPage(); } },
+        { icon: 'fa-magnifying-glass', text: DIALOGUES.roleCustomer[lang] || 'Hire Worker', sub: 'प्लंबर, इलेक्ट्रीशियन खोजें', action: () => { this.selectedRole = 'user'; window.location.href = '/workers'; } },
+        { icon: 'fa-circle-question', text: 'यह कैसे काम करता है? (How it works)', sub: 'प्लेटफ़ॉर्म की जानकारी', action: () => this.handleGoogleGuideIntent() }
+      ];
+
+      pills.forEach(p => {
+        const btn = document.createElement('button');
+        btn.className = 'vh-choice-btn';
+        btn.innerHTML = `
+          <div class="vh-choice-icon"><i class="fa-solid ${p.icon}"></i></div>
+          <div class="vh-choice-content">
+            <span class="vh-choice-title">${p.text}</span>
+            <span class="vh-choice-sub">${p.sub}</span>
+          </div>
+        `;
+        btn.addEventListener('click', () => {
+          this.addMessage(p.text, 'user');
+          p.action();
+        });
+        choices.appendChild(btn);
+      });
+
+      this.dom.messages.appendChild(choices);
+      this.scrollToBottom();
+
+      // Speak welcome in chosen language & auto-listen after speech
+      this.speak(welcomeText, lang);
+    }
+
+    handleGoogleLoginIntent() {
+      this.selectedAction = 'login';
+      const lang = this.currentLang;
+      const text = DIALOGUES.loginVoiceGuidance[lang] || DIALOGUES.loginVoiceGuidance.hi;
+      this.addMessage(text, 'bot');
+      this.lastInstruction = text;
+      this.state = States.AUTH_IN_PROGRESS;
+      this.saveSession();
+
+      const role = this.selectedRole || 'worker';
+      const targetUrl = `/login?role=${role}`;
+
+      this.speak(text, lang).finally(() => {
+        setTimeout(() => {
+          window.location.href = targetUrl;
+        }, 500);
+      });
+    }
+
+    handleGoogleGuideIntent() {
+      const lang = this.currentLang;
+      const text = DIALOGUES.howPlatformWorks[lang] || DIALOGUES.howPlatformWorks.hi;
+      this.addMessage(text, 'bot');
+      this.lastInstruction = text;
+      this.saveSession();
+      this.speak(text, lang);
     }
 
     handleLanguageChoiceUtterance(text) {
@@ -2643,13 +2907,7 @@
       this.liveTranslatePage(code);
 
       if (announce) {
-        const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
-        this.addMessage(confirmText, 'bot');
-        this.langJustSelected = true;
-        this.saveSession();
-        this.speak(confirmText, code).finally(() => {
-          window.location.href = '/set_lang/' + encodeURIComponent(code);
-        });
+        this.showGoogleAssistantWelcome(code);
       }
       this.saveSession();
     }

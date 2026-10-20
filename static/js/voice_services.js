@@ -94,16 +94,127 @@
       const voices = this.getVoices();
       if (!voices.length) return null;
 
-      const exact = voices.find(v => v.lang === localeMeta.tts);
+      const targetTag = (localeMeta.tts || 'hi-IN').replace('_', '-').toLowerCase();
+      const langPrefix = targetTag.split('-')[0];
+
+      // 1. Exact BCP-47 match
+      const exact = voices.find(v => (v.lang || '').replace('_', '-').toLowerCase() === targetTag);
       if (exact) return exact;
 
-      const langPrefix = localeMeta.tts.split('-')[0];
-      const prefixMatch = voices.find(v => v.lang && v.lang.toLowerCase().startsWith(langPrefix));
+      // 2. Language-specific name keyword mapping for native Indian voices
+      const voiceKeywords = {
+        hi: ['hindi', 'हिन्दी', 'kalpana', 'hemant', 'swara', 'madhur'],
+        pa: ['punjabi', 'panjabi', 'ਪੰਜਾਬੀ'],
+        bn: ['bengali', 'bangla', 'বাংলা', 'tapan', 'bashkar'],
+        mr: ['marathi', 'मराठी', 'aarohi', 'manohar'],
+        ta: ['tamil', 'தமிழ்', 'valluvar', 'iniya'],
+        te: ['telugu', 'తెలుగు', 'mohan', 'shruti'],
+        gu: ['gujarati', 'ગુજરાતી', 'dhwani', 'niranjan'],
+        kn: ['kannada', 'ಕನ್ನಡ', 'gagan', 'sapna'],
+        ml: ['malayalam', 'മലയാളം', 'midhun', 'sobhana'],
+        ur: ['urdu', 'اردو', 'salman', 'uzma'],
+        en: ['en-in', 'india', 'indian', 'ravi', 'heera', 'neerja', 'prabhat']
+      };
+
+      const kws = voiceKeywords[langPrefix] || [];
+      const namedMatch = voices.find(v => {
+        const vName = (v.name || '').toLowerCase();
+        const vLang = (v.lang || '').replace('_', '-').toLowerCase();
+        return kws.some(k => vName.includes(k)) || (vLang.startsWith(langPrefix) && !vName.includes('english'));
+      });
+      if (namedMatch) return namedMatch;
+
+      // 3. Prefix match on lang tag
+      const prefixMatch = voices.find(v => (v.lang || '').replace('_', '-').toLowerCase().startsWith(langPrefix));
       if (prefixMatch) return prefixMatch;
 
-      // Fallback: check if Indian English voice exists for Indian regional fallback
-      const inFallback = voices.find(v => v.lang === 'en-IN' || v.lang === 'hi-IN');
-      return inFallback || null;
+      return null;
+    }
+
+    _chunkText(text, maxLen = 160) {
+      if (!text || text.length <= maxLen) return [text];
+      const chunks = [];
+      const sentences = text.split(/([।,\.\?!;\n]+)/);
+      let cur = '';
+
+      for (let i = 0; i < sentences.length; i++) {
+        const part = sentences[i];
+        if (!part) continue;
+        if ((cur + part).length > maxLen) {
+          if (cur.trim()) chunks.push(cur.trim());
+          cur = part;
+        } else {
+          cur += part;
+        }
+      }
+      if (cur.trim()) chunks.push(cur.trim());
+      return chunks.length ? chunks : [text.slice(0, maxLen)];
+    }
+
+    playCloudAudio(text, lang = 'hi', options = {}) {
+      return new Promise((resolve) => {
+        if (!text || this.isMuted) {
+          resolve();
+          return;
+        }
+        if (typeof Audio === 'undefined') {
+          resolve();
+          return;
+        }
+
+        const rawCode = (lang || 'hi').toLowerCase().split('-')[0];
+        const audioLang = rawCode === 'pa' ? 'pa' : rawCode;
+        const chunks = this._chunkText(text, 170);
+
+        this.isSpeaking = true;
+        this.currentAudioIndex = 0;
+        this.isAudioCancelled = false;
+        if (this.onStart) this.onStart(text, getLocaleMeta(lang));
+        if (this.onStateChange) this.onStateChange(VoiceStates.SPEAKING);
+
+        const playNextChunk = () => {
+          if (this.isAudioCancelled || this.currentAudioIndex >= chunks.length) {
+            this._cleanup();
+            if (options.onEnd) options.onEnd(text);
+            if (this.onEnd) this.onEnd(text);
+            if (this.onStateChange) this.onStateChange(VoiceStates.IDLE);
+            resolve();
+            return;
+          }
+
+          const chunk = chunks[this.currentAudioIndex++];
+          const ttsUrl = `https://translate.google.com/translate_tts?ie=UTF-8&client=tw-ob&tl=${encodeURIComponent(audioLang)}&q=${encodeURIComponent(chunk)}`;
+          
+          try {
+            const audio = new Audio(ttsUrl);
+            this.currentAudio = audio;
+            audio.playbackRate = options.rate !== undefined ? options.rate : 0.95;
+
+            const onDone = () => {
+              if (this.currentAudio === audio) this.currentAudio = null;
+              playNextChunk();
+            };
+
+            audio.onended = onDone;
+            audio.onerror = () => {
+              console.warn('[Cloud TTS] Audio element error, resolving chunk.');
+              onDone();
+            };
+
+            const playPromise = audio.play();
+            if (playPromise !== undefined) {
+              playPromise.catch((err) => {
+                console.warn('[Cloud TTS] Play rejected (autoplay policy):', err);
+                onDone();
+              });
+            }
+          } catch (e) {
+            playNextChunk();
+          }
+        };
+
+        playNextChunk();
+      });
     }
 
     speak(text, lang = 'hi', options = {}) {
@@ -113,19 +224,33 @@
           return;
         }
 
+        // Cancel any pending speech to prevent queuing build-up
+        this.cancel();
+
+        const meta = getLocaleMeta(lang);
+        const voice = this.findBestVoice(meta);
+        const langPrefix = (meta.tts || 'hi').split('-')[0].toLowerCase();
+
+        // If no native voice exists in browser for regional languages, use natural cloud audio
+        const browserHasNativeVoice = Boolean(voice);
+        const isEnglishOrHindi = (langPrefix === 'en' || (langPrefix === 'hi' && browserHasNativeVoice));
+
+        if (!isEnglishOrHindi && !browserHasNativeVoice && typeof Audio !== 'undefined') {
+          return this.playCloudAudio(text, lang, options).then(resolve);
+        }
+
         if (!this.synth) {
+          if (typeof Audio !== 'undefined') {
+            return this.playCloudAudio(text, lang, options).then(resolve);
+          }
           console.warn('[TTS] SpeechSynthesis not supported on this browser.');
           resolve();
           return;
         }
 
-        // Cancel any pending speech to prevent queuing build-up
-        this.cancel();
-
-        const meta = getLocaleMeta(lang);
         const utterance = new SpeechSynthesisUtterance(text);
         utterance.lang = meta.tts;
-        utterance.rate = options.rate !== undefined ? options.rate : 0.95; // Slightly slower for low-literacy clarity
+        utterance.rate = options.rate !== undefined ? options.rate : 0.92;
         utterance.pitch = options.pitch !== undefined ? options.pitch : 1.0;
 
         this.currentUtterance = utterance;
@@ -155,9 +280,12 @@
           } else if (errType === 'canceled' || errType === 'interrupted') {
             resolve();
           } else {
-            console.warn('[TTS] Synthesis error:', errType);
-            if (this.onError) this.onError(errType, e);
-            resolve();
+            // SpeechSynthesis failed; fall back to cloud audio seamlessly
+            if (typeof Audio !== 'undefined') {
+              this.playCloudAudio(text, lang, options).then(resolve);
+            } else {
+              resolve();
+            }
           }
         };
 
@@ -166,7 +294,6 @@
             if (this.synth.paused) {
               try { this.synth.resume(); } catch (e) {}
             }
-            const voice = this.findBestVoice(meta);
             if (voice) {
               utterance.voice = voice;
             }
@@ -181,7 +308,11 @@
             }, 3000);
           } catch (err) {
             this._cleanup();
-            reject('autoplay_blocked');
+            if (typeof Audio !== 'undefined') {
+              this.playCloudAudio(text, lang, options).then(resolve);
+            } else {
+              reject('autoplay_blocked');
+            }
           }
         };
 
@@ -207,6 +338,14 @@
     }
 
     cancel() {
+      this.isAudioCancelled = true;
+      if (this.currentAudio) {
+        try {
+          this.currentAudio.pause();
+          this.currentAudio.currentTime = 0;
+        } catch (e) {}
+        this.currentAudio = null;
+      }
       if (this.synth) {
         try { this.synth.cancel(); } catch (e) {}
       }
