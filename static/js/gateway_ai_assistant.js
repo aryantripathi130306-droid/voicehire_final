@@ -80,18 +80,18 @@
       ur: "سلام! میں VoiceHire کا آواز معاون ہوں۔ میں آپ کو کام تلاش کرنے یا ورکر بک کرنے میں مدد کر سکتا ہوں۔"
     },
     askLanguage: {
-      hi: "आप किस भाषा में बात करना चाहते हैं? अपनी पसंद की भाषा चुनें।",
-      pa: "ਤੁਸੀਂ ਕਿਸ ਭਾਸ਼ਾ ਵਿੱਚ ਗੱਲਬਾਤ ਕਰਨਾ ਚਾਹੁੰਦੇ ਹੋ? ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ।",
-      en: "Which language do you prefer? Please choose below.",
-      bn: "আপনি কোন ভাষায় কথা বলতে চান? আপনার ভাষা বেছে নিন।",
-      mr: "तुम्हाला कोणत्या भाषेत बोलायला आवडेल? कृपया तुमची भाषा निवडा.",
-      ta: "நீங்கள் எந்த மொழியில் பேச விரும்புகிறீர்கள்? உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்.",
-      te: "మీరు ఏ భాషలో మాట్లాడాలనుకుంటున్నారు? దయచేసి ఎంచుకోండి.",
-      gu: "તમે કઈ ભાષામાં વાત કરવા માંગો છો? તમારી ભાષા પસંદ કરો.",
-      kn: "ನೀವು ಯಾವ ಭಾಷೆಯಲ್ಲಿ ಮಾತನಾಡಲು ಬಯಸುತ್ತೀರಿ? ದಯವಿಟ್ಟು ಆಯ್ಕೆಮಾಡಿ.",
-      ml: "ഏത് ഭാഷയിലാണ് സംസാരിക്കാൻ ആഗ്രഹിക്കുന്നത്? ദയവായി തിരഞ്ഞെടുക്കുക.",
-      or: "ଆପଣ କେଉଁ ଭାଷାରେ କଥା ହେବାକୁ ଚାହାଁନ୍ତି? ଆପଣଙ୍କର ଭାଷା ବାଛନ୍ତୁ।",
-      ur: "آپ کس زبان میں بات کرنا چاہتے ہیں؟ براہ کرم اپنی زبان منتخب کریں۔"
+      hi: "नमस्ते! VoiceHire में आपका स्वागत है। कृपया अपनी भाषा चुनें: हिंदी, अंग्रेज़ी, पंजाबी, मराठी, बंगाली, तमिल, तेलुगु, या गुजराती।",
+      pa: "ਸਤਿ ਸ੍ਰੀ ਅਕਾਲ! VoiceHire ਵਿੱਚ ਜੀ ਆਇਆਂ ਨੂੰ। ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ: ਹਿੰਦੀ, ਅੰਗਰੇਜ਼ੀ, ਪੰਜਾਬੀ, ਜਾਂ ਹੋਰ ਭਾਸ਼ਾਵਾਂ।",
+      en: "Hello! Welcome to VoiceHire. Please choose your language: Hindi, English, Punjabi, or other regional languages.",
+      bn: "নমস্কার! VoiceHire-এ স্বাগতম। অনুগ্রহ করে আপনার ভাষা নির্বাচন করুন: হিন্দি, ইংরেজি, বাংলা, বা অন্যান্য ভাষা।",
+      mr: "नमस्कार! VoiceHire मध्ये आपले स्वागत आहे. कृपया आपली भाषा निवडा: हिंदी, इंग्रजी, मराठी, किंवा इतर भाषा.",
+      ta: "வணக்கம்! VoiceHire-க்கு வரவேற்கிறோம். தயவுசெய்து உங்கள் மொழியைத் தேர்ந்தெடுக்கவும்: தமிழ், இந்தி, ஆங்கிலம்.",
+      te: "నమస్కారం! VoiceHireకి స్వాగతం. దయచేసి మీ భాషను ఎంచుకోండి: తెలుగు, హిందీ, ఇంగ్లీష్.",
+      gu: "નમસ્તે! VoiceHire માં સ્વાગત છે. કૃપા કરીને તમારી ભાષા પસંદ કરો: ગુજરાતી, હિન્દી, અંગ્રેજી.",
+      kn: "ನಮಸ್ಕಾರ! VoiceHire ಗೆ ಸುಸ್ವಾಗತ. ದಯವಿಟ್ಟು ನಿಮ್ಮ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ: ಕನ್ನಡ, ಹಿಂದಿ, ಇಂಗ್ಲಿಷ್.",
+      ml: "നമസ്കാരം! VoiceHire-ലേക്ക് സ്വാഗതം. ദയവായി നിങ്ങളുടെ ഭാഷ തിരഞ്ഞെടുക്കുക: മലയാളം, ഹിന്ദി, ഇംഗ്ലീഷ്.",
+      or: "ନମସ୍କାର! VoiceHire କୁ ସ୍ୱାଗତ। ଦୟାକରି ଆପଣଙ୍କ ଭାଷା ବାଛନ୍ତୁ: ଓଡ଼ିଆ, ହିନ୍ଦୀ, ଇଂରାଜୀ।",
+      ur: "سلام! VoiceHire میں خوش آمدید۔ براہ کرم اپنی زبان منتخب کریں: اردو، ہندی، انگریزی۔"
     },
     langConfirmed: {
       hi: "बहुत अच्छा! अब हम हिंदी में बात करेंगे।",
@@ -658,7 +658,7 @@
         setTimeout(() => {
           this.open();
           this.startOnboarding();
-        }, 750);
+        }, 350);
       } else {
         // Direct arrival on an interior page without prior session
         this.handleDirectPageVisit();
@@ -693,6 +693,7 @@
           workerProfilePendingField: this.workerProfilePendingField,
           voiceMode: this.voiceMode,
           isMuted: this.isMuted,
+          langJustSelected: Boolean(this.langJustSelected),
           lastRoute: window.location.pathname,
           lastInstruction: this.lastInstruction,
           messages: safeMessages,
@@ -742,6 +743,16 @@
       // Always open panel if user had an in-progress onboarding or arrived on auth/dashboard
       if (this.state !== States.IDLE && !this.isDismissed) {
         this.open();
+      }
+
+      // Check if language was just selected and page reloaded into the chosen language
+      if (saved.langJustSelected) {
+        this.langJustSelected = false;
+        this.saveSession();
+        setTimeout(() => {
+          this.showRoleSelection();
+        }, 400);
+        return;
       }
 
       // Handle Route Change vs Explicit Restart
@@ -2192,24 +2203,46 @@
 
     /* ── Initial Onboarding Sequence (Gateway / First Visit) ─────────── */
     startOnboarding() {
-      this.setState(States.GREETING);
-      const greetingHi = DIALOGUES.greeting.hi;
-      this.addMessage(greetingHi, 'bot');
-      this.lastInstruction = greetingHi;
-
-      this.speak(greetingHi, 'hi').then(() => {
-        this.showLanguageSelection();
-      });
+      // Direct jump to language selection with immediate Hindi spoken prompt & language options
+      this.showLanguageSelection();
     }
 
     showLanguageSelection() {
       this.setState(States.LANGUAGE_SELECT);
-      const askText = DIALOGUES.askLanguage.hi;
-      this.addMessage(askText, 'bot');
-      this.lastInstruction = askText;
+      const displayText = "🎙️ नमस्ते! VoiceHire में आपका स्वागत है।\nकृपया अपनी भाषा चुनें (Please choose your language):";
+      const speechPrompt = DIALOGUES.askLanguage.hi;
+      this.addMessage(displayText, 'bot');
+      this.lastInstruction = speechPrompt;
+
+      // Update hero bubble and tap-to-listen button if present on gateway
+      const heroBubble = document.getElementById('hero-bubble');
+      if (heroBubble) {
+        heroBubble.innerHTML = '🎙️ <strong>नमस्ते!</strong> कृपया अपनी पसंदीदा भाषा चुनें: <strong>हिंदी, English, ਪੰਜਾਬੀ...</strong>';
+      }
+      const heroListenBtn = document.getElementById('hero-tap-listen-btn');
+      if (heroListenBtn) {
+        heroListenBtn.style.display = 'inline-block';
+      }
 
       const choicesContainer = document.createElement('div');
       choicesContainer.className = 'vh-choices';
+
+      // Tap-to-listen button inside assistant chat if autoplay is deferred by browser
+      const ctaRow = document.createElement('div');
+      ctaRow.id = 'vh-lang-speak-cta';
+      ctaRow.style.cssText = 'margin: 4px 0 10px; text-align: center;';
+      ctaRow.innerHTML = `
+        <button type="button" class="btn btn-sm btn-primary" style="border-radius:20px; font-size:0.8rem; padding: 6px 16px; box-shadow: 0 2px 8px rgba(37,99,235,0.3);">
+          <i class="fa-solid fa-volume-high mr-1"></i> 🔊 आवाज़ सुनें (Tap to Listen)
+        </button>
+      `;
+      ctaRow.querySelector('button').addEventListener('click', (e) => {
+        e.stopPropagation();
+        ctaRow.remove();
+        if (heroListenBtn) heroListenBtn.style.display = 'none';
+        this.speak(speechPrompt, 'hi');
+      });
+      choicesContainer.appendChild(ctaRow);
 
       const orderedCodes = ['hi', 'pa', 'en', 'bn', 'mr', 'ta', 'te', 'gu', 'kn', 'ml', 'or', 'ur'];
       const grid = document.createElement('div');
@@ -2228,13 +2261,7 @@
           </div>
         `;
         btn.addEventListener('click', () => {
-          this.addMessage(`${lang.flag} ${lang.native} (${lang.name})`, 'user');
-          this.setLanguage(code, false);
-          const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
-          this.addMessage(confirmText, 'bot');
-          this.speak(confirmText, code).then(() => {
-            this.showRoleSelection();
-          });
+          this.handleLanguageSelected(code);
         });
         grid.appendChild(btn);
       });
@@ -2243,19 +2270,76 @@
       this.dom.messages.appendChild(choicesContainer);
       this.scrollToBottom();
 
-      this.speak(askText, 'hi');
+      // Trigger Hindi speech automatically
+      this.speak(speechPrompt, 'hi').then(() => {
+        if (document.getElementById('vh-lang-speak-cta')) {
+          document.getElementById('vh-lang-speak-cta').remove();
+        }
+        if (heroListenBtn) heroListenBtn.style.display = 'none';
+      }).catch(() => {});
+
+      // One-time gesture listener on the window to unlock and speak immediately on first user touch/click anywhere
+      const unlockListener = () => {
+        if (this.state === States.LANGUAGE_SELECT && !this.isSpeaking && !this.isMuted) {
+          if (this.tts && this.tts.synth && this.tts.synth.paused) {
+            try { this.tts.synth.resume(); } catch (e) {}
+          }
+          this.speak(speechPrompt, 'hi').then(() => {
+            if (document.getElementById('vh-lang-speak-cta')) {
+              document.getElementById('vh-lang-speak-cta').remove();
+            }
+            if (heroListenBtn) heroListenBtn.style.display = 'none';
+          }).catch(() => {});
+        }
+      };
+      if (typeof window !== 'undefined' && typeof window.addEventListener === 'function') {
+        ['click', 'touchstart', 'pointerdown', 'keydown'].forEach(evt => {
+          window.addEventListener(evt, unlockListener, { once: true, passive: true });
+        });
+      }
+    }
+
+    handleLanguageSelected(code) {
+      const lang = LANGUAGES[code] || LANGUAGES.hi;
+      this.addMessage(`${lang.flag} ${lang.native} (${lang.name})`, 'user');
+
+      // Update storage and cookie
+      localStorage.setItem('vh_lang', code);
+      document.cookie = `voicehire_lang=${code}; path=/; max-age=2592000; SameSite=Lax`;
+      if (window.VH) window.VH.lang = code;
+
+      // Confirmation message in selected language
+      const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
+      this.addMessage(confirmText, 'bot');
+
+      // Update session state so assistant restores seamlessly on reloaded page
+      this.currentLang = code;
+      this.state = States.ROLE_SELECT;
+      this.langJustSelected = true;
+      this.saveSession();
+
+      // Immediate client-side live translation for instant feedback
+      this.liveTranslatePage(code);
+
+      // Speak confirmation in chosen language, then reload entire website via /set_lang/<code>
+      let navDone = false;
+      const doNavigate = () => {
+        if (navDone) return;
+        navDone = true;
+        window.location.href = '/set_lang/' + encodeURIComponent(code);
+      };
+
+      // Set fallback timeout so navigation never hangs
+      setTimeout(doNavigate, 1500);
+
+      this.speak(confirmText, code).then(doNavigate).catch(doNavigate);
     }
 
     handleLanguageChoiceUtterance(text) {
       const lower = text.toLowerCase();
       for (const [code, meta] of Object.entries(LANGUAGES)) {
         if (lower.includes(meta.name.toLowerCase()) || lower.includes(meta.native.toLowerCase()) || lower === code) {
-          this.setLanguage(code, false);
-          const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
-          this.addMessage(confirmText, 'bot');
-          this.speak(confirmText, code).then(() => {
-            this.showRoleSelection();
-          });
+          this.handleLanguageSelected(code);
           return;
         }
       }
@@ -2561,7 +2645,11 @@
       if (announce) {
         const confirmText = DIALOGUES.langConfirmed[code] || DIALOGUES.langConfirmed.hi;
         this.addMessage(confirmText, 'bot');
-        this.speak(confirmText, code);
+        this.langJustSelected = true;
+        this.saveSession();
+        this.speak(confirmText, code).finally(() => {
+          window.location.href = '/set_lang/' + encodeURIComponent(code);
+        });
       }
       this.saveSession();
     }
@@ -2579,8 +2667,21 @@
           document.querySelectorAll('[data-i18n]').forEach(el => {
             const k = el.getAttribute('data-i18n');
             if (tr[k]) {
-              if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') el.placeholder = tr[k];
-              else el.textContent = tr[k];
+              if (el.tagName === 'INPUT' || el.tagName === 'TEXTAREA') {
+                el.placeholder = tr[k];
+              } else {
+                const icon = el.querySelector('i');
+                if (icon) {
+                  const iconHtml = icon.outerHTML;
+                  if (el.innerHTML.trim().startsWith('<i')) {
+                    el.innerHTML = iconHtml + ' ' + tr[k];
+                  } else {
+                    el.innerHTML = tr[k] + ' ' + iconHtml;
+                  }
+                } else {
+                  el.textContent = tr[k];
+                }
+              }
             }
           });
 

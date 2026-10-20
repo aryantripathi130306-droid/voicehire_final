@@ -147,8 +147,11 @@
                     </div>
                 </div>
                 <div class="ai-bubble" id="hero-bubble" style="font-size:.9rem; line-height:1.6;">
-                    🎙️ <strong>{{ t('Namaste!') }}</strong> {{ t('I am your VoiceHire voice assistant. I can help you find local work or book skilled workers.') }}
+                    🎙️ <strong>{{ t('Namaste!') }}</strong> {{ t('Please choose your language:') }} <strong>हिंदी, English, ਪੰਜਾਬੀ...</strong>
                 </div>
+                <button id="hero-tap-listen-btn" class="btn btn-sm btn-primary" style="margin-top:10px; width:100%; border-radius:20px; font-size:.8rem; display:none;" onclick="event.stopPropagation(); if (window.VHAssistant) { window.VHAssistant.open(); window.VHAssistant.speakCurrentInstruction(); }">
+                    <i class="fa-solid fa-volume-high mr-1"></i> {{ t('Tap to Listen') }}
+                </button>
                 <div class="ai-quick-btns">
                     <button class="ai-quick-btn" onclick="event.stopPropagation(); document.getElementById('vhb-fab') && document.getElementById('vhb-fab').click()" style="background:linear-gradient(135deg,#4F46E5,#7C3AED);color:white;border:none;cursor:pointer;">
                         <i class="fa-solid fa-microphone mr-1"></i>{{ t('Voice Based Access') }}
@@ -210,45 +213,45 @@
 <section class="features-section" id="for-workers">
     <div class="container">
         <div class="text-center mb-12">
-            <div class="section-label">For Workers</div>
-            <h2 class="section-title">Everything you need to find work</h2>
-            <p class="section-desc">Built for daily-wage workers, gig workers, and informal job seekers across India.</p>
+            <div class="section-label" data-i18n="For Workers">{{ t('For Workers') }}</div>
+            <h2 class="section-title" data-i18n="Everything you need to find work">{{ t('Everything you need to find work') }}</h2>
+            <p class="section-desc" data-i18n="Built for daily-wage workers, gig workers, and informal job seekers across India.">{{ t('Built for daily-wage workers, gig workers, and informal job seekers across India.') }}</p>
         </div>
         <div class="features-grid">
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-microphone-lines"></i></div>
-                <h3>Voice-First Profile</h3>
-                <p>Create your profile by speaking. Tell employers about your skills in your own language.</p>
+                <h3 data-i18n="Voice-First Profile">{{ t('Voice-First Profile') }}</h3>
+                <p data-i18n="Create your profile by speaking. Tell employers about your skills in your own language.">{{ t('Create your profile by speaking. Tell employers about your skills in your own language.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-location-dot"></i></div>
-                <h3>Hyper-Local Jobs</h3>
-                <p>Find jobs within 2–10 km of your location. Work close to home, no long commutes.</p>
+                <h3 data-i18n="Hyper-Local Jobs">{{ t('Hyper-Local Jobs') }}</h3>
+                <p data-i18n="Find jobs within 2–10 km of your location. Work close to home, no long commutes.">{{ t('Find jobs within 2–10 km of your location. Work close to home, no long commutes.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-language"></i></div>
-                <h3>8 Regional Languages</h3>
-                <p>Hindi, Marathi, Tamil, Telugu, Kannada, Bengali, Gujarati support.</p>
+                <h3 data-i18n="8 Regional Languages">{{ t('8 Regional Languages') }}</h3>
+                <p data-i18n="Hindi, Marathi, Tamil, Telugu, Kannada, Bengali, Gujarati support.">{{ t('Hindi, Marathi, Tamil, Telugu, Kannada, Bengali, Gujarati support.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-qrcode"></i></div>
-                <h3>QR Attendance</h3>
-                <p>Simple QR code scan for check-in and job completion. No paperwork.</p>
+                <h3 data-i18n="QR Attendance">{{ t('QR Attendance') }}</h3>
+                <p data-i18n="Simple QR code scan for check-in and job completion. No paperwork.">{{ t('Simple QR code scan for check-in and job completion. No paperwork.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-chart-line"></i></div>
-                <h3>Work History & Ratings</h3>
-                <p>Build a verifiable track record of completed jobs. Higher ratings = more work.</p>
+                <h3 data-i18n="Work History & Ratings">{{ t('Work History & Ratings') }}</h3>
+                <p data-i18n="Build a verifiable track record of completed jobs. Higher ratings = more work.">{{ t('Build a verifiable track record of completed jobs. Higher ratings = more work.') }}</p>
             </div>
             <div class="feature-card">
                 <div class="feature-icon"><i class="fa-solid fa-shield-halved"></i></div>
-                <h3>Verified & Safe</h3>
-                <p>ID verification, employer reviews, and secure payments protect every transaction.</p>
+                <h3 data-i18n="Verified & Safe">{{ t('Verified & Safe') }}</h3>
+                <p data-i18n="ID verification, employer reviews, and secure payments protect every transaction.">{{ t('ID verification, employer reviews, and secure payments protect every transaction.') }}</p>
             </div>
         </div>
         <div class="text-center mt-8">
-            <a href="{{ url_for('worker_signup_page') }}" class="btn btn-primary btn-lg">
-                Sign Up as Worker <i class="fa-solid fa-arrow-right ml-2"></i>
+            <a href="{{ url_for('worker_signup_page') }}" class="btn btn-primary btn-lg" data-i18n="Sign Up as Worker">
+                {{ t('Sign Up as Worker') }} <i class="fa-solid fa-arrow-right ml-2"></i>
             </a>
         </div>
     </div>
@@ -259,9 +262,9 @@
 <section class="how-section" id="for-employers" style="background:var(--bg);">
     <div class="container">
         <div class="text-center mb-12">
-            <div class="section-label">For Employers</div>
-            <h2 class="section-title">Find verified local workers fast</h2>
-            <p class="section-desc">Post a job, browse voice profiles, and book workers in your neighbourhood.</p>
+            <div class="section-label" data-i18n="For Employers">{{ t('For Employers') }}</div>
+            <h2 class="section-title" data-i18n="Find verified local workers fast">{{ t('Find verified local workers fast') }}</h2>
+            <p class="section-desc" data-i18n="Post a job, browse voice profiles, and book workers in your neighbourhood.">{{ t('Post a job, browse voice profiles, and book workers in your neighbourhood.') }}</p>
         </div>
 
         <div style="display:grid; grid-template-columns:1fr 1fr; gap:48px; align-items:center;">
@@ -270,28 +273,28 @@
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div class="trust-icon" style="flex-shrink:0;"><i class="fa-solid fa-magnifying-glass"></i></div>
                         <div>
-                            <h4 style="color:var(--dark); margin-bottom:4px;">Search Instantly</h4>
-                            <p style="font-size:.875rem;">Find plumbers, electricians, drivers available near you right now.</p>
+                            <h4 style="color:var(--dark); margin-bottom:4px;" data-i18n="Search Instantly">{{ t('Search Instantly') }}</h4>
+                            <p style="font-size:.875rem;" data-i18n="Find plumbers, electricians, drivers available near you right now.">{{ t('Find plumbers, electricians, drivers available near you right now.') }}</p>
                         </div>
                     </div>
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div class="trust-icon" style="flex-shrink:0;"><i class="fa-solid fa-volume-high"></i></div>
                         <div>
-                            <h4 style="color:var(--dark); margin-bottom:4px;">Hear Voice Profiles</h4>
-                            <p style="font-size:.875rem;">Listen to workers describe their skills before hiring.</p>
+                            <h4 style="color:var(--dark); margin-bottom:4px;" data-i18n="Hear Voice Profiles">{{ t('Hear Voice Profiles') }}</h4>
+                            <p style="font-size:.875rem;" data-i18n="Listen to workers describe their skills before hiring.">{{ t('Listen to workers describe their skills before hiring.') }}</p>
                         </div>
                     </div>
                     <div style="display:flex; gap:16px; align-items:flex-start;">
                         <div class="trust-icon" style="flex-shrink:0;"><i class="fa-solid fa-calendar-check"></i></div>
                         <div>
-                            <h4 style="color:var(--dark); margin-bottom:4px;">Book & Track</h4>
-                            <p style="font-size:.875rem;">Schedule work slots, track attendance via QR, confirm completion.</p>
+                            <h4 style="color:var(--dark); margin-bottom:4px;" data-i18n="Book & Track">{{ t('Book & Track') }}</h4>
+                            <p style="font-size:.875rem;" data-i18n="Schedule work slots, track attendance via QR, confirm completion.">{{ t('Schedule work slots, track attendance via QR, confirm completion.') }}</p>
                         </div>
                     </div>
                 </div>
                 <div class="mt-8">
-                    <a href="{{ url_for('user_signup_page') }}" class="btn btn-primary btn-lg">
-                        Post a Job Free <i class="fa-solid fa-arrow-right ml-2"></i>
+                    <a href="{{ url_for('user_signup_page') }}" class="btn btn-primary btn-lg" data-i18n="Post a Job Free">
+                        {{ t('Post a Job Free') }} <i class="fa-solid fa-arrow-right ml-2"></i>
                     </a>
                 </div>
             </div>
@@ -333,17 +336,17 @@
 <!-- ── CTA ── -->
 <section class="cta-section text-center" id="about">
     <div class="container">
-        <div style="display:inline-block; background:rgba(255,255,255,.15); color:white; padding:4px 16px; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:20px;">
-            Real Jobs. Real People. Voice Powered.
+        <div style="display:inline-block; background:rgba(255,255,255,.15); color:white; padding:4px 16px; border-radius:999px; font-size:.75rem; font-weight:700; letter-spacing:.06em; text-transform:uppercase; margin-bottom:20px;" data-i18n="Real Jobs. Real People. Voice Powered.">
+            {{ t('Real Jobs. Real People. Voice Powered.') }}
         </div>
-        <h2 class="section-title">Start your journey with VoiceHire today</h2>
-        <p class="section-desc">Join thousands of workers and employers already using VoiceHire across India.</p>
+        <h2 class="section-title" data-i18n="Start your journey with VoiceHire today">{{ t('Start your journey with VoiceHire today') }}</h2>
+        <p class="section-desc" data-i18n="Join thousands of workers and employers already using VoiceHire across India.">{{ t('Join thousands of workers and employers already using VoiceHire across India.') }}</p>
         <div class="cta-actions">
-            <a href="{{ url_for('worker_signup_page') }}" class="btn btn-lg" style="background:white; color:var(--primary);">
-                I'm a Worker <i class="fa-solid fa-hard-hat ml-2"></i>
+            <a href="{{ url_for('worker_signup_page') }}" class="btn btn-lg" style="background:white; color:var(--primary);" data-i18n="I'm a Worker">
+                {{ t("I'm a Worker") }} <i class="fa-solid fa-hard-hat ml-2"></i>
             </a>
-            <a href="{{ url_for('user_signup_page') }}" class="btn btn-lg" style="background:rgba(255,255,255,.15); color:white; border:1.5px solid rgba(255,255,255,.4);">
-                I'm an Employer <i class="fa-solid fa-building ml-2"></i>
+            <a href="{{ url_for('user_signup_page') }}" class="btn btn-lg" style="background:rgba(255,255,255,.15); color:white; border:1.5px solid rgba(255,255,255,.4);" data-i18n="I'm an Employer">
+                {{ t("I'm an Employer") }} <i class="fa-solid fa-building ml-2"></i>
             </a>
         </div>
     </div>
@@ -358,36 +361,36 @@
                 <div class="logo-icon"><i class="fa-solid fa-microphone-lines"></i></div>
                 <span class="logo-text">VoiceHire</span>
             </a>
-            <p>Empowering India's informal workforce through voice technology and simple digital tools.</p>
+            <p data-i18n="Empowering India's informal workforce through voice technology and simple digital tools.">{{ t("Empowering India's informal workforce through voice technology and simple digital tools.") }}</p>
         </div>
         <div class="footer-col">
-            <h5>Product</h5>
+            <h5 data-i18n="Product">{{ t('Product') }}</h5>
             <ul>
-                <li><a href="#how-it-works">How It Works</a></li>
-                <li><a href="#for-workers">For Workers</a></li>
-                <li><a href="#for-employers">For Employers</a></li>
+                <li><a href="#how-it-works" data-i18n="How It Works">{{ t('How It Works') }}</a></li>
+                <li><a href="#for-workers" data-i18n="For Workers">{{ t('For Workers') }}</a></li>
+                <li><a href="#for-employers" data-i18n="For Employers">{{ t('For Employers') }}</a></li>
             </ul>
         </div>
         <div class="footer-col">
-            <h5>Get Started</h5>
+            <h5 data-i18n="Get Started">{{ t('Get Started') }}</h5>
             <ul>
-                <li><a href="{{ url_for('worker_signup_page') }}">Sign Up as Worker</a></li>
-                <li><a href="{{ url_for('user_signup_page') }}">Sign Up as Employer</a></li>
-                <li><a href="{{ url_for('login_page', role='worker') }}">Worker Login</a></li>
-                <li><a href="{{ url_for('login_page', role='user') }}">Employer Login</a></li>
+                <li><a href="{{ url_for('worker_signup_page') }}" data-i18n="Sign Up as Worker">{{ t('Sign Up as Worker') }}</a></li>
+                <li><a href="{{ url_for('user_signup_page') }}" data-i18n="Sign Up as Employer">{{ t('Sign Up as Employer') }}</a></li>
+                <li><a href="{{ url_for('login_page', role='worker') }}" data-i18n="Worker Login">{{ t('Worker Login') }}</a></li>
+                <li><a href="{{ url_for('login_page', role='user') }}" data-i18n="Employer Login">{{ t('Employer Login') }}</a></li>
             </ul>
         </div>
         <div class="footer-col">
-            <h5>Legal</h5>
+            <h5 data-i18n="Legal">{{ t('Legal') }}</h5>
             <ul>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms of Service</a></li>
+                <li><a href="#" data-i18n="Privacy Policy">{{ t('Privacy Policy') }}</a></li>
+                <li><a href="#" data-i18n="Terms of Service">{{ t('Terms of Service') }}</a></li>
             </ul>
         </div>
     </div>
     <div class="footer-bottom">
-        <span>© 2026 VoiceHire. All rights reserved.</span>
-        <span>Made with ❤️ in India</span>
+        <span data-i18n="All rights reserved.">© 2026 VoiceHire. {{ t('All rights reserved.') }}</span>
+        <span data-i18n="Made with ❤️ in India">{{ t('Made with ❤️ in India') }}</span>
     </div>
 </footer>
 

@@ -5190,6 +5190,221 @@ _EXTRA_UI_TRANSLATIONS = {
         "pa": "ਮੈਂ ਤੁਹਾਡਾ VoiceHire ਆਵਾਜ਼ ਸਹਾਇਕ ਹਾਂ। ਮੈਂ ਸਥਾਨਕ ਕੰਮ ਲੱਭਣ ਜਾਂ ਹੁਨਰਮੰਦ ਕਾਮਿਆਂ ਨੂੰ ਬੁੱਕ ਕਰਨ ਵਿੱਚ ਤੁਹਾਡੀ ਮਦਦ ਕਰ ਸਕਦਾ ਹਾਂ।",
         "en": "I am your VoiceHire voice assistant. I can help you find local work or book skilled workers."
     },
+    "Please choose your language:": {
+        "hi": "कृपया अपनी भाषा चुनें:",
+        "pa": "ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ:",
+        "en": "Please choose your language:"
+    },
+    "Please choose your language: Hindi, English, Punjabi, Marathi, Bengali, Tamil, Telugu, Gujarati, or other languages.": {
+        "hi": "कृपया अपनी भाषा चुनें: हिंदी, अंग्रेज़ी, पंजाबी, मराठी, बंगाली, तमिल, तेलुगु, या गुजराती।",
+        "pa": "ਕਿਰਪਾ ਕਰਕੇ ਆਪਣੀ ਭਾਸ਼ਾ ਚੁਣੋ: ਹਿੰਦੀ, ਅੰਗਰੇਜ਼ੀ, ਪੰਜਾਬੀ, ਮਰਾਠੀ, ਬੰਗਾਲੀ, ਤਾਮਿਲ, ਤੇਲਗੂ, ਜਾਂ ਗੁਜਰਾਤੀ।",
+        "en": "Please choose your language: Hindi, English, Punjabi, Marathi, Bengali, Tamil, Telugu, Gujarati, or other languages."
+    },
+    "Tap to Listen": {
+        "hi": "सुनने के लिए टैप करें",
+        "pa": "ਸੁਣਨ ਲਈ ਟੈਪ ਕਰੋ",
+        "en": "Tap to Listen"
+    },
+    "Everything you need to find work": {
+        "hi": "काम खोजने के लिए आपकी ज़रूरत की हर चीज़",
+        "pa": "ਕੰਮ ਲੱਭਣ ਲਈ ਤੁਹਾਡੀ ਲੋੜ ਦੀ ਹਰ ਚੀਜ਼",
+        "en": "Everything you need to find work"
+    },
+    "Built for daily-wage workers, gig workers, and informal job seekers across India.": {
+        "hi": "भारत भर के दिहाड़ी मजदूरों, गिग वर्करों और अनौपचारिक नौकरी चाहने वालों के लिए निर्मित।",
+        "pa": "ਭਾਰਤ ਭਰ ਦੇ ਦਿਹਾੜੀਦਾਰ ਮਜ਼ਦੂਰਾਂ, ਗਿਗ ਵਰਕਰਾਂ ਅਤੇ ਗੈਰ-ਰਸਮੀ ਨੌਕਰੀ ਲੱਭਣ ਵਾਲਿਆਂ ਲਈ ਬਣਾਇਆ ਗਿਆ।",
+        "en": "Built for daily-wage workers, gig workers, and informal job seekers across India."
+    },
+    "Voice-First Profile": {
+        "hi": "वॉइस-फर्स्ट प्रोफाइल",
+        "pa": "ਆਵਾਜ਼-ਅਧਾਰਤ ਪ੍ਰੋਫਾਈਲ",
+        "en": "Voice-First Profile"
+    },
+    "Create your profile by speaking. Tell employers about your skills in your own language.": {
+        "hi": "बोलकर अपनी प्रोफाइल बनाएं। अपनी भाषा में नियोक्ताओं को अपने हुनर के बारे में बताएं।",
+        "pa": "ਬੋਲ ਕੇ ਆਪਣੀ ਪ੍ਰੋਫਾਈਲ ਬਣਾਓ। ਆਪਣੀ ਭਾਸ਼ਾ ਵਿੱਚ ਮਾਲਕਾਂ ਨੂੰ ਆਪਣੇ ਹੁਨਰ ਬਾਰੇ ਦੱਸੋ।",
+        "en": "Create your profile by speaking. Tell employers about your skills in your own language."
+    },
+    "Hyper-Local Jobs": {
+        "hi": "नज़दीकी नौकरियाँ",
+        "pa": "ਨੇੜਲੀਆਂ ਨੌਕਰੀਆਂ",
+        "en": "Hyper-Local Jobs"
+    },
+    "Find jobs within 2–10 km of your location. Work close to home, no long commutes.": {
+        "hi": "अपने स्थान से 2–10 किमी के भीतर काम खोजें। घर के पास काम करें, लंबी दूरी नहीं।",
+        "pa": "ਆਪਣੇ ਸਥਾਨ ਤੋਂ 2-10 ਕਿਲੋਮੀਟਰ ਦੇ ਅੰਦਰ ਕੰਮ ਲੱਭੋ। ਘਰ ਦੇ ਨੇੜੇ ਕੰਮ ਕਰੋ, ਲੰਬਾ ਸਫ਼ਰ ਨਹੀਂ।",
+        "en": "Find jobs within 2–10 km of your location. Work close to home, no long commutes."
+    },
+    "8 Regional Languages": {
+        "hi": "क्षेत्रीय भाषाएँ",
+        "pa": "ਖੇਤਰੀ ਭਾਸ਼ਾਵਾਂ",
+        "en": "Regional Languages"
+    },
+    "Hindi, Marathi, Tamil, Telugu, Kannada, Bengali, Gujarati support.": {
+        "hi": "हिंदी, पंजाबी, मराठी, तमिल, तेलुगु, बंगाली, गुजराती समर्थन।",
+        "pa": "ਹਿੰਦੀ, ਪੰਜਾਬੀ, ਮਰਾਠੀ, ਤਾਮਿਲ, ਤੇਲਗੂ, ਬੰਗਾਲੀ, ਗੁਜਰਾਤੀ ਸਹਾਇਤਾ।",
+        "en": "Hindi, Punjabi, Marathi, Tamil, Telugu, Bengali, Gujarati support."
+    },
+    "QR Attendance": {
+        "hi": "क्यूआर हाज़िरी",
+        "pa": "ਕਿਊਆਰ ਹਾਜ਼ਰੀ",
+        "en": "QR Attendance"
+    },
+    "Simple QR code scan for check-in and job completion. No paperwork.": {
+        "hi": "चेक-इन और काम पूरा करने के लिए सरल क्यूआर कोड स्कैन। कोई कागज़ी कार्रवाई नहीं।",
+        "pa": "ਚੈੱਕ-ਇਨ ਅਤੇ ਕੰਮ ਪੂਰਾ ਕਰਨ ਲਈ ਸਧਾਰਨ QR ਕੋਡ ਸਕੈਨ। ਕੋਈ ਕਾਗਜ਼ੀ ਕਾਰਵਾਈ ਨਹੀਂ।",
+        "en": "Simple QR code scan for check-in and job completion. No paperwork."
+    },
+    "Work History & Ratings": {
+        "hi": "कार्य इतिहास और रेटिंग",
+        "pa": "ਕੰਮ ਦਾ ਇਤਿਹਾਸ ਅਤੇ ਰੇਟਿੰਗ",
+        "en": "Work History & Ratings"
+    },
+    "Build a verifiable track record of completed jobs. Higher ratings = more work.": {
+        "hi": "किए गए कामों का सत्यापित रिकॉर्ड बनाएं। बेहतर रेटिंग = अधिक काम।",
+        "pa": "ਪੂਰੇ ਕੀਤੇ ਕੰਮਾਂ ਦਾ ਪ੍ਰਮਾਣਿਤ ਰਿਕਾਰਡ ਬਣਾਓ। ਉੱਚ ਰੇਟਿੰਗ = ਵੱਧ ਕੰਮ।",
+        "en": "Build a verifiable track record of completed jobs. Higher ratings = more work."
+    },
+    "Verified & Safe": {
+        "hi": "सत्यापित और सुरक्षित",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਅਤੇ ਸੁਰੱਖਿਅਤ",
+        "en": "Verified & Safe"
+    },
+    "ID verification, employer reviews, and secure payments protect every transaction.": {
+        "hi": "पहचान सत्यापन, नियोक्ता समीक्षाएं और सुरक्षित भुगतान हर लेन-देन की रक्षा करते हैं।",
+        "pa": "ਪਛਾਣ ਪ੍ਰਮਾਣਿਕਤਾ, ਮਾਲਕ ਦੀਆਂ ਸਮੀਖਿਆਵਾਂ ਅਤੇ ਸੁਰੱਖਿਅਤ ਭੁਗਤਾਨ ਹਰ ਲੈਣ-ਦੇਣ ਦੀ ਰੱਖਿਆ ਕਰਦੇ ਹਨ।",
+        "en": "ID verification, employer reviews, and secure payments protect every transaction."
+    },
+    "For Workers": {
+        "hi": "श्रमिकों के लिए",
+        "pa": "ਕਾਮਿਆਂ ਲਈ",
+        "en": "For Workers"
+    },
+    "For Employers": {
+        "hi": "नियोक्ताओं के लिए",
+        "pa": "ਮਾਲਕਾਂ ਲਈ",
+        "en": "For Employers"
+    },
+    "Find verified local workers fast": {
+        "hi": "सत्यापित स्थानीय श्रमिक तेज़ी से खोजें",
+        "pa": "ਪ੍ਰਮਾਣਿਤ ਸਥਾਨਕ ਕਾਮੇ ਤੇਜ਼ੀ ਨਾਲ ਲੱਭੋ",
+        "en": "Find verified local workers fast"
+    },
+    "Post a job, browse voice profiles, and book workers in your neighbourhood.": {
+        "hi": "नौकरी पोस्ट करें, वॉइस प्रोफाइल सुनें और अपने पड़ोस में कुशल श्रमिक बुक करें।",
+        "pa": "ਨੌਕਰੀ ਪੋਸਟ ਕਰੋ, ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ ਸੁਣੋ ਅਤੇ ਆਪਣੇ ਇਲਾਕੇ ਵਿੱਚ ਕਾਮੇ ਬੁੱਕ ਕਰੋ।",
+        "en": "Post a job, browse voice profiles, and book workers in your neighbourhood."
+    },
+    "Search Instantly": {
+        "hi": "तुरंत खोजें",
+        "pa": "ਤੁਰੰਤ ਖੋਜੋ",
+        "en": "Search Instantly"
+    },
+    "Find plumbers, electricians, drivers available near you right now.": {
+        "hi": "अपने आस-पास उपलब्ध प्लंबर, इलेक्ट्रीशियन, ड्राइवर तुरंत खोजें।",
+        "pa": "ਆਪਣੇ ਨੇੜੇ ਉਪਲਬਧ ਪਲੰਬਰ, ਇਲੈਕਟ੍ਰੀਸ਼ੀਅਨ, ਡਰਾਈਵਰ ਤੁਰੰਤ ਲੱਭੋ।",
+        "en": "Find plumbers, electricians, drivers available near you right now."
+    },
+    "Hear Voice Profiles": {
+        "hi": "वॉइस प्रोफाइल सुनें",
+        "pa": "ਆਵਾਜ਼ ਪ੍ਰੋਫਾਈਲ ਸੁਣੋ",
+        "en": "Hear Voice Profiles"
+    },
+    "Listen to workers describe their skills before hiring.": {
+        "hi": "काम पर रखने से पहले श्रमिकों को अपने हुनर के बारे में बताते हुए सुनें।",
+        "pa": "ਕੰਮ 'ਤੇ ਰੱਖਣ ਤੋਂ ਪਹਿਲਾਂ ਕਾਮਿਆਂ ਨੂੰ ਆਪਣੇ ਹੁਨਰ ਬਾਰੇ ਦੱਸਦਿਆਂ ਸੁਣੋ।",
+        "en": "Listen to workers describe their skills before hiring."
+    },
+    "Book & Track": {
+        "hi": "बुक करें और ट्रैक करें",
+        "pa": "ਬੁੱਕ ਕਰੋ ਅਤੇ ਟਰੈਕ ਕਰੋ",
+        "en": "Book & Track"
+    },
+    "Schedule work slots, track attendance via QR, confirm completion.": {
+        "hi": "काम के समय निर्धारित करें, क्यूआर से हाज़िरी ट्रैक करें, काम पूरा होने की पुष्टि करें।",
+        "pa": "ਕੰਮ ਦੇ ਸਮੇਂ ਤੈਅ ਕਰੋ, ਕਿਊਆਰ ਨਾਲ ਹਾਜ਼ਰੀ ਟ੍ਰੈਕ ਕਰੋ, ਕੰਮ ਪੂਰਾ ਹੋਣ ਦੀ ਪੁਸ਼ਟੀ ਕਰੋ।",
+        "en": "Schedule work slots, track attendance via QR, confirm completion."
+    },
+    "Post a Job Free": {
+        "hi": "मुफ़्त नौकरी पोस्ट करें",
+        "pa": "ਮੁਫ਼ਤ ਨੌਕਰੀ ਪੋਸਟ ਕਰੋ",
+        "en": "Post a Job Free"
+    },
+    "Real Jobs. Real People. Voice Powered.": {
+        "hi": "असली काम। असली लोग। आवाज़ की ताकत।",
+        "pa": "ਅਸਲੀ ਕੰਮ। ਅਸਲੀ ਲੋਕ। ਆਵਾਜ਼ ਦੀ ਤਾਕਤ।",
+        "en": "Real Jobs. Real People. Voice Powered."
+    },
+    "Start your journey with VoiceHire today": {
+        "hi": "आज ही VoiceHire के साथ अपना सफर शुरू करें",
+        "pa": "ਅੱਜ ਹੀ VoiceHire ਨਾਲ ਆਪਣਾ ਸਫ਼ਰ ਸ਼ੁਰੂ ਕਰੋ",
+        "en": "Start your journey with VoiceHire today"
+    },
+    "Join thousands of workers and employers already using VoiceHire across India.": {
+        "hi": "भारत भर में VoiceHire का उपयोग कर रहे हज़ारों श्रमिकों और नियोक्ताओं से जुड़ें।",
+        "pa": "ਭਾਰਤ ਭਰ ਵਿੱਚ VoiceHire ਦੀ ਵਰਤੋਂ ਕਰ ਰਹੇ ਹਜ਼ਾਰਾਂ ਕਾਮਿਆਂ ਅਤੇ ਮਾਲਕਾਂ ਨਾਲ ਜੁੜੋ।",
+        "en": "Join thousands of workers and employers already using VoiceHire across India."
+    },
+    "I'm a Worker": {
+        "hi": "मैं एक श्रमिक हूँ",
+        "pa": "ਮੈਂ ਇੱਕ ਕਾਮਾ ਹਾਂ",
+        "en": "I'm a Worker"
+    },
+    "I'm an Employer": {
+        "hi": "मैं एक नियोक्ता हूँ",
+        "pa": "ਮੈਂ ਇੱਕ ਮਾਲਕ ਹਾਂ",
+        "en": "I'm an Employer"
+    },
+    "Product": {
+        "hi": "उत्पाद",
+        "pa": "ਉਤਪਾਦ",
+        "en": "Product"
+    },
+    "Legal": {
+        "hi": "कानूनी",
+        "pa": "ਕਾਨੂੰਨੀ",
+        "en": "Legal"
+    },
+    "Sign Up as Employer": {
+        "hi": "नियोक्ता के रूप में साइन अप करें",
+        "pa": "ਮਾਲਕ ਵਜੋਂ ਸਾਈਨ ਅੱਪ ਕਰੋ",
+        "en": "Sign Up as Employer"
+    },
+    "Worker Login": {
+        "hi": "श्रमिक लॉगिन",
+        "pa": "ਕਾਮਾ ਲੌਗਇਨ",
+        "en": "Worker Login"
+    },
+    "Employer Login": {
+        "hi": "नियोक्ता लॉगिन",
+        "pa": "ਮਾਲਕ ਲੌਗਇਨ",
+        "en": "Employer Login"
+    },
+    "Privacy Policy": {
+        "hi": "गोपनीयता नीति",
+        "pa": "ਪ੍ਰਾਈਵੇਸੀ ਨੀਤੀ",
+        "en": "Privacy Policy"
+    },
+    "Terms of Service": {
+        "hi": "सेवा की शर्तें",
+        "pa": "ਸੇਵਾ ਦੀਆਂ ਸ਼ਰਤਾਂ",
+        "en": "Terms of Service"
+    },
+    "All rights reserved.": {
+        "hi": "सर्वाधिकार सुरक्षित।",
+        "pa": "ਸਾਰੇ ਹੱਕ ਰਾਖਵੇਂ ਹਨ।",
+        "en": "All rights reserved."
+    },
+    "Made with ❤️ in India": {
+        "hi": "भारत में ❤️ के साथ निर्मित",
+        "pa": "ਭਾਰਤ ਵਿੱਚ ❤️ ਨਾਲ ਬਣਾਇਆ ਗਿਆ",
+        "en": "Made with ❤️ in India"
+    },
+    "Empowering India's informal workforce through voice technology and simple digital tools.": {
+        "hi": "आवाज़ तकनीक और सरल डिजिटल साधनों से भारत के अनौपचारिक कार्यबल को सशक्त बनाना।",
+        "pa": "ਆਵਾਜ਼ ਤਕਨਾਲੋਜੀ ਅਤੇ ਸਧਾਰਨ ਡਿਜੀਟਲ ਸਾਧਨਾਂ ਰਾਹੀਂ ਭਾਰਤ ਦੇ ਕਾਮਿਆਂ ਨੂੰ ਸਮਰੱਥ ਬਣਾਉਣਾ।",
+        "en": "Empowering India's informal workforce through voice technology and simple digital tools."
+    },
 }
 for _k, _t_map in _EXTRA_UI_TRANSLATIONS.items():
     for _l in TRANSLATIONS:

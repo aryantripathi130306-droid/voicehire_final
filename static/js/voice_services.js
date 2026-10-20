@@ -128,11 +128,6 @@
         utterance.rate = options.rate !== undefined ? options.rate : 0.95; // Slightly slower for low-literacy clarity
         utterance.pitch = options.pitch !== undefined ? options.pitch : 1.0;
 
-        const voice = this.findBestVoice(meta);
-        if (voice) {
-          utterance.voice = voice;
-        }
-
         this.currentUtterance = utterance;
 
         utterance.onstart = () => {
@@ -166,18 +161,47 @@
           }
         };
 
-        try {
-          this.synth.speak(utterance);
+        const doSpeak = () => {
+          try {
+            if (this.synth.paused) {
+              try { this.synth.resume(); } catch (e) {}
+            }
+            const voice = this.findBestVoice(meta);
+            if (voice) {
+              utterance.voice = voice;
+            }
+            this.synth.speak(utterance);
 
-          // Non-blocking autoplay detection
+            // Safe non-blocking autoplay detection with 3000ms tolerance
+            setTimeout(() => {
+              if (!this.isSpeaking && this.synth && !this.synth.speaking && !this.synth.pending && !this.isMuted) {
+                if (this.onError) this.onError('autoplay_blocked');
+                reject('autoplay_blocked');
+              }
+            }, 3000);
+          } catch (err) {
+            this._cleanup();
+            reject('autoplay_blocked');
+          }
+        };
+
+        // If voices list is still loading, wait briefly for voiceschanged
+        if (this.getVoices().length === 0 && this.synth.onvoiceschanged !== undefined) {
+          let voicesFired = false;
+          const handler = () => {
+            if (voicesFired) return;
+            voicesFired = true;
+            doSpeak();
+          };
+          this.synth.onvoiceschanged = handler;
           setTimeout(() => {
-            if (!this.isSpeaking && this.synth && !this.synth.speaking && !this.isMuted) {
-              reject('autoplay_blocked');
+            if (!voicesFired) {
+              voicesFired = true;
+              doSpeak();
             }
           }, 350);
-        } catch (err) {
-          this._cleanup();
-          reject('autoplay_blocked');
+        } else {
+          doSpeak();
         }
       });
     }
